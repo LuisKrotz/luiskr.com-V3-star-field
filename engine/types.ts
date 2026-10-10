@@ -134,8 +134,6 @@ export interface SFBodyDef {
    * in seconds.
    */
   cycle?: { period: number }
-  /** Whether to draw the orbit guide ring. */
-  ring?: boolean
   /**
    * Authored distance label for the hover tooltip — semi-major axis in
    * AU for Solar-System bodies, light-years for deep-sky objects. Units
@@ -272,8 +270,6 @@ export interface SFState {
   anchors: Map<string, THREE_NS.Object3D>
   /** Pickable meshes for raycasting. */
   pickables: THREE_NS.Object3D[]
-  /** Orbit rings so destroy can dispose their geometry. */
-  rings: THREE_NS.Object3D[]
   /** ids whose dossier was already prefetched — approach fires once. */
   approached: Set<string>
   /**
@@ -338,7 +334,7 @@ export interface SFNode {
   satPivots: Array<{ pivot: THREE_NS.Object3D; speed: number; phase: number }>
   /**
    * LOD-toggleable secondary geometry — atmosphere shells, ring discs,
-   * satellite pivots and the orbit guide ring; frame.ts hides these
+   * satellite pivots; frame.ts hides these
    * beyond the detail distance so far bodies draw as one primitive.
    */
   detail?: THREE_NS.Object3D[]

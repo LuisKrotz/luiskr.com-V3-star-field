@@ -39,6 +39,8 @@ const fake2d = () => ({
   beginPath: jest.fn(),
   moveTo: jest.fn(),
   lineTo: jest.fn(),
+  quadraticCurveTo: jest.fn(),
+  fill: jest.fn(),
   stroke: jest.fn(),
 })
 
@@ -135,7 +137,9 @@ describe('volumetric dust lane', () => {
     const list = []
 
     class RecPoints {
-      constructor() {
+      constructor(geo, mat) {
+        this.geometry = geo
+        this.material = mat
         this.userData = {}
         this.position = { x: 0, y: 0, z: 0, set: () => {} }
         this.rotation = { x: 0, y: 0, z: 0 }
@@ -153,6 +157,7 @@ describe('volumetric dust lane', () => {
         radius: 100,
         tilt: 0.35,
         pos: [-267, 0, 0],
+        spin: 0.02,
         spiralDisc: { count: 2000, volumetric: true, bubble: 30 },
       },
       new Map(),
@@ -162,10 +167,33 @@ describe('volumetric dust lane', () => {
 
     expect(out.group).toBeTruthy()
 
-    // Star cloud + dust cloud — both carry no-op raycasts.
-    expect(list.length).toBeGreaterThanOrEqual(2)
+    // `spin` on a volumetric galaxy splits the fill at INNER_SPIN_R —
+    // the inner disc + inner dust ride the rotor around the galactic
+    // center while the outer layers stay fixed around the carved
+    // heliocentric bubble.
+    expect(out.rotor).toBeTruthy()
+
+    // Inner + outer star clouds, inner + outer dust lanes — all four
+    // carry no-op raycasts.
+    expect(list.length).toBeGreaterThanOrEqual(4)
 
     for (const inst of list) inst.raycast?.()
+
+    // Bubble without `pos` and no `spin` — the carve guard's pos-less
+    // arm plus the volumetric-without-rotor arm of the dust split.
+    const anchorless = makeSpiralGalaxy(
+      T,
+      {
+        id: 'anchorless',
+        radius: 50,
+        spiralDisc: { count: 100, volumetric: true, bubble: 30 },
+      },
+      new Map(),
+      undefined,
+      false
+    )
+
+    expect(anchorless.rotor).toBeUndefined()
   })
 })
 

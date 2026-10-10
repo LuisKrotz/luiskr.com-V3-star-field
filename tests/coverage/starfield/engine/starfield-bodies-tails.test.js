@@ -46,6 +46,8 @@ const fake2d = () => ({
   beginPath: jest.fn(),
   moveTo: jest.fn(),
   lineTo: jest.fn(),
+  quadraticCurveTo: jest.fn(),
+  fill: jest.fn(),
   stroke: jest.fn(),
 })
 
@@ -196,7 +198,6 @@ describe('bodies-scene detail layers', () => {
     nodes: new Map(),
     anchors: new Map(),
     pickables: [],
-    rings: [],
   })
 
   test('planet detail maps, saturn ring UVs, clouds + star halo arms', () => {

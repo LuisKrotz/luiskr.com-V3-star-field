@@ -479,7 +479,6 @@ describe('spiral + satellite arms', () => {
       nodes: new Map(),
       anchors: new Map(),
       pickables: [],
-      rings: [],
       mwGroup: null,
     }
 

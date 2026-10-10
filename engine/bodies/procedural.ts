@@ -51,6 +51,30 @@ const _STYLE_BANDS = 1
 const _STYLE_STREAKS = 2
 
 /**
+ * Corona recipe — all sprite-space fractions of the half-edge:
+ * symmetric diffraction-spike sets (always even so blades mirror
+ * through the star), blade taper/length, and the curved wisp arcs that
+ * stand in for a turbulent outer atmosphere.
+ */
+const _CORONA_SPIKES = [4, 6, 8]
+const _CORONA_SPIKE_JITTER = 0.05
+const _CORONA_SPIKE_LEN = 0.94
+const _CORONA_SPIKE_LEN_VAR = 0.06
+const _CORONA_SPIKE_WIDTH = 0.008
+const _CORONA_SPIKE_ROOT = 0.16
+const _CORONA_SPIKE_ALPHA = 0.9
+const _CORONA_SPIKE_FADE = 0.7
+const _CORONA_WISP_MIN = 5
+const _CORONA_WISP_VAR = 4
+const _CORONA_WISP_R0 = 0.3
+const _CORONA_WISP_RVAR = 0.12
+const _CORONA_WISP_BEND = 1.1
+const _CORONA_WISP_REACH = 0.12
+const _CORONA_WISP_ALPHA = 0.5
+const _CORONA_WISP_W = 1.2
+const _CORONA_WISP_WVAR = 2.4
+
+/**
  * Unpacks a packed hex color into `[r, g, b]` channel floats (0–255) —
  * the canvas API wants css-rgba() strings, not three hex ints.
  * @param hex Packed color int (may be undefined → neutral grey fallback
@@ -351,52 +375,74 @@ export function coronaFor(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Texture 
   const rand = lcg(seedFrom(`${def.id}:corona`))
   const mid = _SPRITE_PX / 2
 
-  // Photosphere glow — a TIGHT hot center; a full-extent blob paints a
-  // big colored bubble around the star instead of a corona.
-  blob(ctx, _SPRITE_PX, _SPRITE_PX, mid, mid, mid * 0.42, css(shade(base, 0.8), 0.9), css(base, 0))
+  // Photosphere glow — a TIGHT hot center; the diffraction spikes must
+  // read OUTSIDE it, so the blob stays small and its edge fades early.
+  blob(ctx, _SPRITE_PX, _SPRITE_PX, mid, mid, mid * 0.3, css(shade(base, 0.8), 0.85), css(base, 0))
 
-  // Radial streamers — thin bright fans at seeded angles; unequal
-  // lengths keep it organic, and rotation animates the shimmer.
-  const streaksN = 12 + Math.floor(rand() * 7)
+  // Diffraction spikes — the long thin blades a real aperture puts on a
+  // bright star. Always an even count so every blade has a mirrored twin
+  // through the center (4/6/8), lengths nearly equal, width a razor-thin
+  // tapering wedge — the asymmetry that made the old streamer fan look
+  // hand-drawn is gone.
+  const spikes = _CORONA_SPIKES[Math.floor(rand() * _CORONA_SPIKES.length)]
+  const spikeBase = rand() * Math.PI
 
-  for (let i = 0; i < streaksN; i++) {
-    const ang = (i / streaksN) * Math.PI * 2 + rand() * 0.4
-    const len = mid * (0.6 + rand() * 0.4)
+  for (let i = 0; i < spikes; i++) {
+    const ang = spikeBase + (i / spikes) * Math.PI * 2 + (rand() - 0.5) * _CORONA_SPIKE_JITTER
+    const len = mid * (_CORONA_SPIKE_LEN + rand() * _CORONA_SPIKE_LEN_VAR)
 
-    const x1 = mid + Math.cos(ang) * len
-    const y1 = mid + Math.sin(ang) * len
+    const tipX = mid + Math.cos(ang) * len
+    const tipY = mid + Math.sin(ang) * len
+    const perpX = -Math.sin(ang)
+    const perpY = Math.cos(ang)
+    const half = mid * _CORONA_SPIKE_WIDTH
+    const root = mid * _CORONA_SPIKE_ROOT
 
-    const g = ctx.createLinearGradient(mid, mid, x1, y1)
+    const g = ctx.createLinearGradient(mid, mid, tipX, tipY)
 
-    g.addColorStop(0, css(shade(base, 0.65), 0.7))
+    g.addColorStop(0, css(shade(base, 0.95), _CORONA_SPIKE_ALPHA))
+    g.addColorStop(_CORONA_SPIKE_FADE, css(shade(base, 0.65), _CORONA_SPIKE_ALPHA * 0.5))
+    g.addColorStop(1, css(base, 0))
+
+    ctx.fillStyle = g
+
+    ctx.beginPath()
+    ctx.moveTo(mid + perpX * half + Math.cos(ang) * root, mid + perpY * half + Math.sin(ang) * root)
+    ctx.lineTo(tipX, tipY)
+    ctx.lineTo(mid - perpX * half + Math.cos(ang) * root, mid - perpY * half + Math.sin(ang) * root)
+    ctx.fill()
+  }
+
+  // Corona wisps — short CURVED arcs hugging the limb (the turbulent
+  // outer atmosphere); quadratic bends keep them organic without the
+  // straight cartoon-spoke look.
+  const wisps = _CORONA_WISP_MIN + Math.floor(rand() * _CORONA_WISP_VAR)
+
+  for (let i = 0; i < wisps; i++) {
+    const ang = rand() * Math.PI * 2
+    const r0 = mid * (_CORONA_WISP_R0 + rand() * _CORONA_WISP_RVAR)
+    const bend = (rand() - 0.5) * _CORONA_WISP_BEND
+    const reach = mid * (_CORONA_WISP_REACH + rand() * _CORONA_WISP_RVAR)
+
+    const x0 = mid + Math.cos(ang) * r0
+    const y0 = mid + Math.sin(ang) * r0
+    const x1 = mid + Math.cos(ang + bend * 0.5) * (r0 + reach * 0.5)
+    const y1 = mid + Math.sin(ang + bend * 0.5) * (r0 + reach * 0.5)
+    const x2 = mid + Math.cos(ang + bend) * (r0 + reach)
+    const y2 = mid + Math.sin(ang + bend) * (r0 + reach)
+
+    const g = ctx.createLinearGradient(x0, y0, x2, y2)
+
+    g.addColorStop(0, css(shade(base, 0.6), _CORONA_WISP_ALPHA))
     g.addColorStop(1, css(base, 0))
 
     ctx.strokeStyle = g
-    ctx.lineWidth = 1.5 + rand() * 4
+    ctx.lineWidth = _CORONA_WISP_W + rand() * _CORONA_WISP_WVAR
 
     ctx.beginPath()
-    ctx.moveTo(mid, mid)
-    ctx.lineTo(x1, y1)
+    ctx.moveTo(x0, y0)
+    ctx.quadraticCurveTo(x1, y1, x2, y2)
     ctx.stroke()
-  }
-
-  // Flare knots — small bright clumps riding a few streamers.
-  const knots = 2 + Math.floor(rand() * 3)
-
-  for (let i = 0; i < knots; i++) {
-    const ang = rand() * Math.PI * 2
-    const d = mid * (0.4 + rand() * 0.4)
-
-    blob(
-      ctx,
-      _SPRITE_PX,
-      _SPRITE_PX,
-      mid + Math.cos(ang) * d,
-      mid + Math.sin(ang) * d,
-      mid * (0.05 + rand() * 0.08),
-      css(shade(base, 0.8), 0.7),
-      css(base, 0)
-    )
   }
 
   const out = new THREE.CanvasTexture(canvas)

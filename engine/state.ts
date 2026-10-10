@@ -36,7 +36,7 @@ export function createStarState(canvas: HTMLCanvasElement, events: SFEvents = {}
     nodes: new Map(),
     anchors: new Map(),
     pickables: [],
-    rings: [],
+
     approached: new Set(),
     starCloud: null,
     starCloudLoading: false,

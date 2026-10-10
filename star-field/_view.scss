@@ -49,7 +49,10 @@
   --sf-field-hover: color-mix(in srgb, var(--color-white-raw) 14%, transparent);
 }
 
-// The Three.js render canvas (fullscreen behind every overlay layer).
+// The Three.js render canvas — FULLSCREEN behind every overlay layer.
+// Only the chrome (drawer, dossier, HUD, buttons) tracks the site's
+// content gutter; the scene itself bleeds to the window edge like the
+// other experiments.
 .#{$_B_SF}-canvas {
   position: absolute;
   inset: 0;
@@ -70,6 +73,8 @@
 .#{$_B_SF}-fallback {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
   pointer-events: none;
   background:

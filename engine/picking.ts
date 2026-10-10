@@ -43,6 +43,25 @@ function resolveHit(object: {
 }
 
 /**
+ * Walks a hit object's ancestor chain — three.js raycasts don't cull
+ * `visible: false` objects, so a deep-tier body gated off by the LOD
+ * tier reveal would still hover/pick through its hidden pivot.
+ * @param object The raycast hit object (may be a deep child).
+ * @returns false when any ancestor is hidden.
+ */
+function chainVisible(object: { visible?: boolean; parent?: unknown } | null | undefined): boolean {
+  let node: { visible?: boolean; parent?: unknown } | null | undefined = object
+
+  while (node) {
+    if (node.visible === false) return false
+
+    node = node.parent as { visible?: boolean; parent?: unknown } | null | undefined
+  }
+
+  return true
+}
+
+/**
  * Raycasts pickables at a pointer position — converts client coords into
  * canvas-relative NDC, then intersects `s.pickables` recursively so shell
  * children resolve to their body's mesh via userData walk-up. Hits that
@@ -76,6 +95,8 @@ function pickAt(s: SFState, clientX: number, clientY: number): string | null {
   let proxyId: string | null = null
 
   for (const hit of hits ?? []) {
+    if (!chainVisible(hit?.object)) continue
+
     const resolved = hit?.object ? resolveHit(hit.object) : null
 
     if (!resolved) continue

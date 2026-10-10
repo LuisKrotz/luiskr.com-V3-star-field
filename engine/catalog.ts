@@ -86,10 +86,44 @@ const M31_LY = 2537000
 const M31_POS = gpos(M31_L, M31_B, M31_LY)
 
 /**
- * Solar-system bodies — compressed orbits so all eight planets fit inside
- * a single readable sweep around the Sun.
+ * Solar-tier shrink — every AU-scale body authored below is diagram-size
+ * (a 12-unit Sun would mass 1 200 ly at the galactic tier — bigger than
+ * honestly-scaled dwarf spheroidals). Multiplying the whole tier by
+ * SF_SCALE.SOLAR_SCALE keeps the planets visitable while making the Sun
+ * smaller than the least dwarf galaxy and leaving a real void between
+ * the Kuiper edge (~30 units) and the neighborhood band (300+).
+ * `radius`, `orbit`, `belt` bounds and `satellites` all shrink together
+ * so internal proportions stay authored. Exported so coverage tails can
+ * pin every arm — no current solar def carries satellites, but the arm
+ * keeps a future moon-bearing def honest.
+ * @param def Solar-tier body at authored diagram scale.
+ * @returns Copy with every spatial field scaled by SOLAR_SCALE.
  */
-const SOLAR: SFBodyDef[] = [
+export const shrinkSolar = (d: SFBodyDef): SFBodyDef => ({
+  ...d,
+  radius: d.radius * SF_SCALE.SOLAR_SCALE,
+  orbit: d.orbit != null ? d.orbit * SF_SCALE.SOLAR_SCALE : d.orbit,
+  belt: d.belt
+    ? {
+        ...d.belt,
+        inner: d.belt.inner * SF_SCALE.SOLAR_SCALE,
+        outer: d.belt.outer * SF_SCALE.SOLAR_SCALE,
+      }
+    : d.belt,
+  satellites: d.satellites?.map((s) => ({
+    ...s,
+    radius: s.radius * SF_SCALE.SOLAR_SCALE,
+    orbit: s.orbit * SF_SCALE.SOLAR_SCALE,
+  })),
+})
+
+/**
+ * Solar-system bodies — compressed orbits so all eight planets fit inside
+ * a single readable sweep around the Sun, then shrunken by
+ * SF_SCALE.SOLAR_SCALE (see `shrinkSolar` above). The literal is typed
+ * before mapping so `pos` keeps its tuple shape through the transform.
+ */
+const SOLAR_RAW: SFBodyDef[] = [
   {
     id: 'sun',
     name: 'Sun',
@@ -113,7 +147,6 @@ const SOLAR: SFBodyDef[] = [
     spin: 0.02,
     dist: '0.39 AU',
     texture: SF_TEXTURES.MERCURY,
-    ring: true,
     phase: 0.4,
   },
   {
@@ -128,7 +161,6 @@ const SOLAR: SFBodyDef[] = [
     dist: '0.72 AU',
     texture: SF_TEXTURES.VENUS_SURFACE,
     shellTexture: SF_TEXTURES.VENUS_ATMOS,
-    ring: true,
     phase: 1.8,
   },
   {
@@ -147,7 +179,6 @@ const SOLAR: SFBodyDef[] = [
     emissiveTexture: SF_TEXTURES.EARTH_NIGHT,
     cloudTexture: SF_TEXTURES.EARTH_CLOUDS,
     bumpTexture: SF_TEXTURES.EARTH_ELEVATION,
-    ring: true,
     phase: 3.1,
     cycle: { period: 90 },
   },
@@ -175,7 +206,6 @@ const SOLAR: SFBodyDef[] = [
     spin: 0.97,
     dist: '1.52 AU',
     texture: SF_TEXTURES.MARS,
-    ring: true,
     phase: 4.4,
   },
   {
@@ -188,7 +218,6 @@ const SOLAR: SFBodyDef[] = [
     speed: 0.65,
     dist: '2.77 AU',
     color: SF_COLORS.CERES,
-    ring: true,
     phase: 0.9,
   },
   {
@@ -202,7 +231,6 @@ const SOLAR: SFBodyDef[] = [
     spin: 2.4,
     dist: '5.20 AU',
     texture: SF_TEXTURES.JUPITER,
-    ring: true,
     phase: 5.3,
   },
   {
@@ -219,7 +247,6 @@ const SOLAR: SFBodyDef[] = [
     texture: SF_TEXTURES.SATURN,
     shellTexture: SF_TEXTURES.SATURN_RING,
     shellRing: true,
-    ring: true,
     phase: 2.2,
   },
   {
@@ -234,7 +261,6 @@ const SOLAR: SFBodyDef[] = [
     tilt: 1.71,
     dist: '19.2 AU',
     texture: SF_TEXTURES.URANUS,
-    ring: true,
     phase: 4.9,
   },
   {
@@ -248,7 +274,6 @@ const SOLAR: SFBodyDef[] = [
     spin: 1.5,
     dist: '30.1 AU',
     texture: SF_TEXTURES.NEPTUNE,
-    ring: true,
     phase: 5.8,
   },
   {
@@ -261,7 +286,6 @@ const SOLAR: SFBodyDef[] = [
     speed: 0.15,
     dist: '39.5 AU',
     color: SF_COLORS.PLUTO,
-    ring: true,
     phase: 1.5,
   },
   {
@@ -300,7 +324,6 @@ const SOLAR: SFBodyDef[] = [
     speed: 0.7,
     dist: '2.36 AU',
     color: SF_COLORS.VESTA,
-    ring: true,
     phase: 2.7,
   },
   {
@@ -456,7 +479,6 @@ const SOLAR: SFBodyDef[] = [
     speed: 1.1,
     dist: '1.19 AU',
     color: SF_COLORS.RYUGU,
-    ring: true,
     phase: 5.5,
   },
   {
@@ -469,7 +491,6 @@ const SOLAR: SFBodyDef[] = [
     speed: 1.05,
     dist: '1.13 AU',
     color: SF_COLORS.BENNU,
-    ring: true,
     phase: 2.2,
   },
   {
@@ -497,6 +518,9 @@ const SOLAR: SFBodyDef[] = [
     belt: { inner: 118, outer: 150, count: 9000, puff: 0.28, gapFreq: 0 },
   },
 ]
+
+/** Solar tier at render scale — every def run through `shrinkSolar`. */
+const SOLAR: SFBodyDef[] = SOLAR_RAW.map(shrinkSolar)
 
 /**
  * Milky Way neighborhood — famous nearby systems at their real galactic

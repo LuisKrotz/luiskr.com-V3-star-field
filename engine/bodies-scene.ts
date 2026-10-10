@@ -4,8 +4,8 @@
  * SFBodyDef into a pickable node: textured sphere for mapped bodies,
  * procedural MeshStandard for dwarf planets, unlit MeshBasic for stars,
  * billboard sprites for nebulae, tilted gradient discs for galaxies, plus
- * Saturn/Venus shell layers, the accretion ring on Sgr A*, orbit guide
- * rings, and decorative satellite pivots.
+ * Saturn/Venus shell layers, the accretion ring on Sgr A*, and decorative
+ * satellite pivots.
  */
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL, SF_SCENE, SF_SPIRAL } from '@core/tokens/starfield/params.js'
@@ -374,31 +374,9 @@ function makeSatellites(
 }
 
 /**
- * Orbit guide ring — a thin hairline torus in the orbital plane marking
- * the path; centered on the parent's anchor so moon rings ride Earth.
- */
-function makeOrbitRing(THREE: ThreeModule, def: SFBodyDef, orbit: number) {
-  const geo = new THREE.RingGeometry(orbit - 0.08, orbit + 0.08, SF_SCENE.ORBIT_SEGMENTS)
-
-  const mat = new THREE.MeshBasicMaterial({
-    color: SF_COLORS.ORBIT_LINE,
-    transparent: true,
-    opacity: SF_SCENE.ORBIT_OPACITY,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  })
-
-  const ring = new THREE.Mesh(geo, mat)
-
-  ring.rotation.x = -Math.PI / 2
-
-  return ring
-}
-
-/**
  * Builds every catalog body into the scene graph: pivots for orbiting
  * bodies (rotation.y = phase + t·speed), fixed groups for `pos` bodies,
- * satellites, shells and guide rings, then registers the node, anchor
+ * satellites and shells, then registers the node, anchor
  * and pickable in the state maps.
  * @param s Engine state.
  * @param THREE The three.js module.
@@ -458,6 +436,14 @@ export function buildStarBodies(
         mesh = spiral.group
 
         pickMesh = spiral.pick
+
+        // Embedded volumetric galaxies (the Milky Way) get a dedicated
+        // inner-disc rotor as the spin target — tickStar's `spin` then
+        // revolves the core around Sgr A* instead of tumbling the whole
+        // disc (which would sweep the heliocentric bubble and carry the
+        // anchored black hole off the rotation axis). External galaxies
+        // keep the whole-mesh spinner — no bubble to protect.
+        spinner = spiral.rotor ?? null
       } else {
         mesh = makeGalaxyDisc(THREE, def, texMap, glowTex)
       }
@@ -567,16 +553,6 @@ export function buildStarBodies(
     const anchor = def.parent ? s.anchors.get(def.parent) : s.scene
 
     if (anchor) anchor.add(pivot)
-
-    if (def.ring && def.orbit != null) {
-      const ring = makeOrbitRing(THREE, def, def.orbit)
-
-      anchor?.add(ring)
-
-      s.rings.push(ring)
-
-      detail.push(ring)
-    }
 
     const node: SFNode = { def, pivot, mesh, spinner: spinner ?? mesh, satPivots, detail, corona }
 

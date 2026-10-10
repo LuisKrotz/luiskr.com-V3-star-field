@@ -13,8 +13,9 @@
   @extend %TTL_XS;
 
   position: absolute;
-  bottom: to-rem($space-xl);
-  left: to-rem($gap-272);
+  // Inside the framed viewport — one pad up from the canvas bottom edge.
+  bottom: calc(#{to-rem($space-xl)} + #{to-rem($space-md)});
+  left: calc(#{to-rem($gap-272)} + #{to-rem($space-md)});
   z-index: 30;
   text-transform: uppercase;
   padding: to-rem($space-sm) to-rem($space-lg);
@@ -25,9 +26,10 @@
   transition: opacity 0.2s ease;
   cursor: pointer;
 
-  // Track the site's content gutter at every grid step — mirrors %MAXAREA.
+  // Track the site's content gutter at every grid step — mirrors %MAXAREA,
+  // plus the inner pad that clears the viewport frame.
   @include grid-steps() using ($step, $gap, $cols) {
-    left: to-rem($gap);
+    left: calc(#{to-rem($gap)} + #{to-rem($space-md)});
   }
 
   &::before,
@@ -67,16 +69,23 @@
   }
 }
 
+// Floating catalog card — clears the fixed logo/nav chrome and tracks the
+// site gutter like the dossier panel, so the logo never sits on chrome
+// and the drawer respects the content column.
 .#{$_B_SF}-nav {
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: $_NAV_INSET;
+  left: to-rem($gap-272);
+  bottom: to-rem($space-xl);
   z-index: 40;
   width: min(#{to-rem($space-7xl)}, 84vw);
-  translate: -100% 0;
+  translate: calc(-100% - #{to-rem($space-4xl)}) 0;
   transition: translate 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
+
+  @include grid-steps() using ($step, $gap, $cols) {
+    left: to-rem($gap);
+  }
 
   &--open {
     translate: 0 0;
@@ -89,7 +98,9 @@
     padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xl);
     background: var(--sf-chrome);
     backdrop-filter: blur(to-rem($space-md));
-    border-right: var(--space-hairline) solid var(--sf-line);
+    border: var(--space-hairline) solid var(--sf-line);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card-hover);
   }
 
   &-heading {

@@ -254,8 +254,11 @@ function makeStarPoints(
  * resolves through it; a missing/absent entry keeps the procedural path.
  * @param glowTex Shared radial-gradient glow texture (may be undefined).
  * @param mobile Whether to apply the mobile divisor (small viewport).
- * @returns `{ group, pick, points }` — the spin target, the pickable
- * mesh, and the sparkle/cloud Points.
+ * @returns `{ group, pick, points, rotor }` — the tilted spin target, the
+ * pickable mesh, the static outer sparkle/cloud Points, and (volumetric
+ * spinning galaxies only) the inner-disc rotor group whose rotation.y
+ * revolves the core around the galactic center without sweeping the
+ * carved heliocentric bubble through the solar system.
  */
 export function makeSpiralGalaxy(
   THREE: ThreeModule,
@@ -263,7 +266,12 @@ export function makeSpiralGalaxy(
   texMap: Map<string, THREE_NS.Texture> | undefined,
   glowTex: THREE_NS.Texture | undefined,
   mobile = false
-): { group: THREE_NS.Object3D; pick: THREE_NS.Object3D; points: THREE_NS.Points } {
+): {
+  group: THREE_NS.Object3D
+  pick: THREE_NS.Object3D
+  points: THREE_NS.Points
+  rotor?: THREE_NS.Object3D
+} {
   const group = new THREE.Group()
 
   const asked = Math.min(def.spiralDisc?.count ?? SF_SPIRAL.COUNT, SF_SPIRAL.COUNT_MAX)
@@ -344,6 +352,21 @@ export function makeSpiralGalaxy(
     )
   }
 
+  /**
+   * Rotor split — a volumetric galaxy with `spin` partitions its
+   * particle fill at SF_SPIRAL.INNER_SPIN_R: points inside the cutoff
+   * ride a rotor subgroup whose rotation.y (set by tickStar via the
+   * node spinner) revolves the inner disc around the galactic center,
+   * while the outer disc stays static so the carved heliocentric bubble
+   * — which sits far outside the cutoff on the Sun's ring — is never
+   * swept through the solar system. Real galactic rotation curves are
+   * near-flat past the core, so a revolving core inside a still rim is
+   * the honest read of differential rotation at chart scale.
+   */
+  const spinCut2 = volumetric && def.spin ? (def.radius * SF_SPIRAL.INNER_SPIN_R) ** 2 : 0
+
+  let rotor: THREE_NS.Object3D | undefined
+
   const points = makeStarPoints(
     THREE,
     pos,
@@ -352,6 +375,65 @@ export function makeSpiralGalaxy(
     glowTex,
     volumetric
   )
+
+  if (spinCut2 > 0) {
+    // Partition the filled buffers into inner/outer clouds — order is
+    // preserved so the seeded pattern stays identical to the unsplit
+    // galaxy, just routed to two draw calls.
+    let nIn = 0
+
+    for (let i = 0; i < sparkleCount; i++) {
+      if (pos[i * 3] * pos[i * 3] + pos[i * 3 + 2] * pos[i * 3 + 2] < spinCut2) nIn++
+    }
+
+    const ip = new Float32Array(nIn * 3)
+    const ic = new Float32Array(nIn * 3)
+    const op = new Float32Array((sparkleCount - nIn) * 3)
+    const oc = new Float32Array((sparkleCount - nIn) * 3)
+
+    let ii = 0
+    let oo = 0
+
+    for (let i = 0; i < sparkleCount; i++) {
+      const inner = pos[i * 3] * pos[i * 3] + pos[i * 3 + 2] * pos[i * 3 + 2] < spinCut2
+      const dst = inner ? ip : op
+      const dstC = inner ? ic : oc
+      const j = inner ? ii++ : oo++
+
+      dst[j * 3] = pos[i * 3]
+      dst[j * 3 + 1] = pos[i * 3 + 1]
+      dst[j * 3 + 2] = pos[i * 3 + 2]
+      dstC[j * 3] = col[i * 3]
+      dstC[j * 3 + 1] = col[i * 3 + 1]
+      dstC[j * 3 + 2] = col[i * 3 + 2]
+    }
+
+    const innerGeo = new THREE.BufferGeometry()
+
+    innerGeo.setAttribute('position', new THREE.BufferAttribute(ip, 3))
+    innerGeo.setAttribute('color', new THREE.BufferAttribute(ic, 3))
+    innerGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(nIn * 2), 2))
+
+    // Shared material — one draw state, and updateGalaxyClouds' distance
+    // fade applies to both layers through the same opacity write.
+    const innerPts = new THREE.Points(innerGeo, points.material)
+
+    innerPts.userData = { volumetric: true }
+    innerPts.raycast = () => undefined
+
+    rotor = new THREE.Group()
+    rotor.add(innerPts)
+
+    // Rewrite the original cloud in place — the returned `points` stays
+    // the outer disc so updateGalaxyClouds fades both layers uniformly.
+    const geo = points.geometry as THREE_NS.BufferGeometry
+
+    geo.setAttribute('position', new THREE.BufferAttribute(op, 3))
+    geo.setAttribute('color', new THREE.BufferAttribute(oc, 3))
+    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(op.length / 3), 2))
+
+    group.add(rotor)
+  }
 
   group.add(points)
 
@@ -412,6 +494,54 @@ export function makeSpiralGalaxy(
 
     dust.raycast = () => undefined
 
+    if (rotor && spinCut2 > 0) {
+      // Lane split — dust inside the rotor cutoff orbits with the inner
+      // disc (lanes are part of the disc, not a fixed overlay); the
+      // outer lanes stay with the static rim.
+      let nDust = 0
+
+      for (let i = 0; i < SF_SPIRAL.DUST_COUNT; i++) {
+        if (dpos[i * 3] * dpos[i * 3] + dpos[i * 3 + 2] * dpos[i * 3 + 2] < spinCut2) nDust++
+      }
+
+      const dip = new Float32Array(nDust * 3)
+      const dic = new Float32Array(nDust * 3)
+      const dop = new Float32Array((SF_SPIRAL.DUST_COUNT - nDust) * 3)
+      const doc = new Float32Array((SF_SPIRAL.DUST_COUNT - nDust) * 3)
+
+      let di = 0
+      let do2 = 0
+
+      for (let i = 0; i < SF_SPIRAL.DUST_COUNT; i++) {
+        const inner = dpos[i * 3] * dpos[i * 3] + dpos[i * 3 + 2] * dpos[i * 3 + 2] < spinCut2
+        const dp = inner ? dip : dop
+        const dc = inner ? dic : doc
+        const j = inner ? di++ : do2++
+
+        dp[j * 3] = dpos[i * 3]
+        dp[j * 3 + 1] = dpos[i * 3 + 1]
+        dp[j * 3 + 2] = dpos[i * 3 + 2]
+        dc[j * 3] = dcol[i * 3]
+        dc[j * 3 + 1] = dcol[i * 3 + 1]
+        dc[j * 3 + 2] = dcol[i * 3 + 2]
+      }
+
+      const dustInGeo = new THREE.BufferGeometry()
+
+      dustInGeo.setAttribute('position', new THREE.BufferAttribute(dip, 3))
+      dustInGeo.setAttribute('color', new THREE.BufferAttribute(dic, 3))
+      dustInGeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(nDust * 2), 2))
+
+      const dustIn = new THREE.Points(dustInGeo, dmat)
+
+      dustIn.raycast = () => undefined
+      rotor.add(dustIn)
+
+      dgeo.setAttribute('position', new THREE.BufferAttribute(dop, 3))
+      dgeo.setAttribute('color', new THREE.BufferAttribute(doc, 3))
+      dgeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(dop.length / 3), 2))
+    }
+
     group.add(dust)
   }
 
@@ -444,5 +574,5 @@ export function makeSpiralGalaxy(
 
   group.rotation.x = -Math.PI / 2 + (def.tilt ?? 0)
 
-  return { group, pick, points }
+  return { group, pick, points, rotor }
 }
