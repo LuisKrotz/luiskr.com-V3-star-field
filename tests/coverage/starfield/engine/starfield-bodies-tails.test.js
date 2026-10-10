@@ -5,8 +5,12 @@
  * canvas), deep-sky.ts nebula sprite + galaxy disc (photo path, aspect
  * arms, glow fallbacks, localTilt), spiral.ts photo-disc + sparkle arms,
  * and the bodies-scene detail map / ring-UV / cloud / halo branches.
- * three.js is auto-mocked (chainable proxies), so assertions target
- * spy calls and pure helpers rather than graph internals.
+ * Also covers the particle-body tails: belt.ts missing-field fallbacks,
+ * black-hole.ts jet fade/raycast/jets-less arms, and structures.ts
+ * structure-less/color-less/speckle arms. three.js is auto-mocked
+ * (chainable proxies), so assertions target spy calls and pure helpers
+ * rather than graph internals; makers that stub `raycast` need real
+ * recording stand-ins so the no-op arrows actually execute.
  */
 import { describe, test, expect, jest, afterEach } from '@jest/globals'
 
@@ -19,6 +23,9 @@ const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
 import { maskPhotoTexture, photoSize } from '../../../../engine/bodies/mask.js'
 import { makeGalaxyDisc, makeNebulaSprite } from '../../../../engine/bodies/deep-sky.js'
+import { makeBelt } from '../../../../engine/bodies/belt.js'
+import { makeBlackHole } from '../../../../engine/bodies/black-hole.js'
+import { makeStructure } from '../../../../engine/bodies/structures.js'
 import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
 import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
@@ -317,5 +324,116 @@ describe('bodies-scene detail layers', () => {
 
     expect(s.nodes.size).toBe(defs.length)
     expect(s.pickables.length).toBe(defs.length)
+  })
+})
+
+describe('particle-body tails (belt / black-hole / structures)', () => {
+  /**
+   * Recording Mesh/Points stand-in — the chain proxy swallows the
+   * `obj.raycast = () => undefined` assignment into its set trap, so the
+   * stub arrow never becomes invocable. A real class stores it as a
+   * plain property; `list` recovers instances `group.add` hides.
+   */
+  const recNodes = () => {
+    const list = []
+
+    class Rec {
+      constructor() {
+        this.position = { x: 0, y: 0, z: 0, set: () => {} }
+        this.rotation = { x: 0, y: 0, z: 0 }
+        this.scale = { x: 1, y: 1, z: 1, set: () => {}, setScalar: () => {} }
+        list.push(this)
+      }
+    }
+
+    return { list, Ctor: Rec }
+  }
+
+  /**
+   * CylinderGeometry stand-in exposing a finite `position` attribute —
+   * the chain-mock's `count` proxy coerces to 0 so the jet vertex-fade
+   * loop never iterates under the auto-mock.
+   */
+  const fakeCyl = () =>
+    class {
+      constructor() {
+        this.attrs = { position: { count: 4, getY: (i) => i - 1.5 } }
+      }
+
+      getAttribute(n) {
+        return this.attrs[n]
+      }
+
+      setAttribute(n, v) {
+        this.attrs[n] = v
+      }
+    }
+
+  test('makeBelt covers the missing-belt/color fallbacks and no-op raycast', () => {
+    const pts = recNodes()
+
+    const T = { ...THREE, Points: pts.Ctor }
+
+    // `belt`-less + `color`-less def — every `??` fallback arm at once.
+    const bare = makeBelt(T, { id: 'belt-bare' }, undefined)
+
+    expect(bare).toBeInstanceOf(pts.Ctor)
+    expect(bare.raycast()).toBeUndefined()
+
+    // `gapFreq: 0` → `lanes > 0` false arm (smooth classical disc).
+    const smooth = makeBelt(
+      T,
+      { id: 'belt-smooth', color: 0x334455, belt: { inner: 1, outer: 3, count: 24, puff: 0.2, gapFreq: 0 } },
+      undefined
+    )
+
+    expect(smooth).toBeInstanceOf(pts.Ctor)
+  })
+
+  test('makeBlackHole covers the jets-less arm, vertex fade and raycast stubs', () => {
+    const pts = recNodes()
+    const msh = recNodes()
+
+    const T = { ...THREE, Points: pts.Ctor, Mesh: msh.Ctor, CylinderGeometry: fakeCyl() }
+
+    const jetted = makeBlackHole(T, NODE_DEPS, { id: 'bh-jets', radius: 2, jets: true }, undefined)
+
+    expect(jetted.group).toBeTruthy()
+    expect(jetted.spin).toBeTruthy()
+
+    // No `jets` flag → `if (def.jets)` else arm.
+    const quiet = makeBlackHole(T, NODE_DEPS, { id: 'bh-calm', radius: 2 }, undefined)
+
+    expect(quiet.group).toBeTruthy()
+    expect(quiet.spin).toBeTruthy()
+
+    // Fire every stubbed raycast — swirl Points + both jet Meshes.
+    for (const inst of [...pts.list, ...msh.list]) inst.raycast?.()
+  })
+
+  test('makeStructure covers structure-less/color-less/speckle arms and raycast stubs', () => {
+    const pts = recNodes()
+    const msh = recNodes()
+
+    const T = { ...THREE, Points: pts.Ctor, Mesh: msh.Ctor }
+
+    // `structure`-less def → `structure?.radius ?? def.radius`,
+    // `structure?.speckles ?? 0` and `color ?? SHELL_LOCAL` arms.
+    const bare = makeStructure(T, NODE_DEPS, { id: 'st-bare', radius: 4 }, undefined)
+
+    expect(bare).toBeTruthy()
+
+    // Speckled + color-less → `color ?? SPECKLE` tint arm.
+    const speckled = makeStructure(
+      T,
+      NODE_DEPS,
+      { id: 'st-speckled', radius: 4, structure: { radius: 3, speckles: 8 } },
+      undefined
+    )
+
+    expect(speckled).toBeTruthy()
+
+    // Fire the shell + speckle-cloud raycast stubs.
+    for (const inst of [...pts.list, ...msh.list]) inst.raycast?.()
   })
 })

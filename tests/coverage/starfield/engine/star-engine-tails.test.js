@@ -530,6 +530,37 @@ describe('frame helpers', () => {
 
     raf.mockRestore()
   })
+
+  test('tickStar edge-fades orbit rings and tolerates degenerate matrices', () => {
+    const s = makeState({
+      camera: fakeCamera(),
+      renderer: { render: jest.fn() },
+      controls: { update: jest.fn() },
+    })
+
+    s.rings = [
+      // No matrixWorld → `!e` continue arm.
+      {},
+      // matrixWorld but no material → `!mat` continue arm.
+      { matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] } },
+      // Empty elements → every `e[i] ?? 0` fallback + `len || 1`
+      // (camera sits exactly on the ring origin → zero distance).
+      { matrixWorld: { elements: [] }, material: { opacity: 1 } },
+    ]
+
+    const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+
+    tickStar(s, 1000)
+
+    // Edge-on (zero-length elements) → opacity fades to 0.
+    expect(s.rings[2].material.opacity).toBe(0)
+
+    // `!s.rings` early-return arm.
+    s.rings = undefined
+    tickStar(s, 2000)
+
+    raf.mockRestore()
+  })
 })
 
 describe('fly tween', () => {
