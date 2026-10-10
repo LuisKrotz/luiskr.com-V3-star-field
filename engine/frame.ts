@@ -16,6 +16,7 @@ import {
   SF_SPIRAL,
   SF_STRUCTURE,
 } from '@core/tokens/starfield/params.js'
+import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { updateFly } from './fly.js'
 import type { SFState } from './types.js'
 
@@ -165,13 +166,12 @@ export function rotateStarCamera(s: SFState, dAzimuth: number, dPolar: number): 
 export function handleStarResize(s: SFState): void {
   if (!s.canvas || !s.renderer || !s.camera) return
 
-  const root = s.canvas.getRootNode()
+  // The canvas element's own box — the chart renders inside a framed,
+  // grid-tracked rect now, so sizing to the host would stretch the
+  // framebuffer across the gutters.
+  const w = s.canvas.clientWidth || s.canvas.parentElement?.clientWidth || window.innerWidth
 
-  const host = root instanceof ShadowRoot ? (root.host as HTMLElement) : null
-
-  const w = host?.clientWidth || s.canvas.parentElement?.clientWidth || window.innerWidth
-
-  const h = host?.clientHeight || s.canvas.parentElement?.clientHeight || window.innerHeight
+  const h = s.canvas.clientHeight || s.canvas.parentElement?.clientHeight || window.innerHeight
 
   if (!w || !h) return
 
@@ -219,7 +219,7 @@ function checkApproach(s: SFState): void {
 
 /**
  * Detail level-of-detail — toggles each node's secondary geometry
- * (shells, satellite pivots, orbit guides) by camera distance so remote
+ * (shells, satellite pivots) by camera distance so remote
  * bodies draw as one primitive. Orbit radius counts toward `size` so a
  * body's ring stays visible while the camera is still inside it.
  * @param s Engine state.
@@ -229,7 +229,29 @@ function updateLod(s: SFState): void {
 
   const cam = s.camera.position
 
+  // The deep-tier gate keys on how far the CAMERA is from the solar
+  // barycenter, not the body: while the camera orbits inside the local
+  // bubble the galactic centre, external galaxies and hierarchy shells
+  // would render beside the solar system as if they were neighbors.
+  const camHome = Math.hypot(cam.x, cam.y, cam.z)
+  const deepOn = camHome > SF_LOD.DEEP_REVEAL
+
   for (const node of s.nodes.values()) {
+    const def = node.def
+
+    const deep =
+      def.kind === SF_KINDS.BLACK_HOLE ||
+      def.kind === SF_KINDS.STRUCTURE ||
+      ((def.kind === SF_KINDS.GALAXY || def.kind === SF_KINDS.DWARF_GALAXY) &&
+        !def.spiralDisc?.volumetric)
+
+    if (deep && !deepOn) {
+      node.pivot.visible = false
+      continue
+    }
+
+    node.pivot.visible = true
+
     if (!node.detail?.length) continue
 
     const p = anchorWorldPos(node.mesh)
@@ -328,42 +350,6 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
 
   return t * t * (3 - 2 * t)
-}
-
-/**
- * Orbit-guide edge fade — each ring's opacity follows the view angle so
- * a guide seen edge-on dissolves instead of cutting a hard straight
- * line through its body. The math is zero-alloc: `matrixWorld` is
- * column-major, so elements [8..10] are the ring's world-space local +Z
- * (the plane normal, since the mesh is rotated flat) and [12..14] the
- * world translation. `edge` = |normal · dirToCamera| — 1 face-on, 0
- * edge-on; ORBIT_EDGE_GAIN keeps rings near-full until steep tilt.
- * @param s Engine state.
- */
-function updateRings(s: SFState): void {
-  if (!s.camera || !s.rings) return
-
-  const cam = s.camera.position
-
-  for (const ring of s.rings) {
-    const e = (ring as { matrixWorld?: { elements?: readonly number[] } }).matrixWorld?.elements
-
-    const mat = (ring as { material?: { opacity?: number } }).material
-
-    if (!e || !mat) continue
-
-    const dx = cam.x - (e[12] ?? 0)
-
-    const dy = cam.y - (e[13] ?? 0)
-
-    const dz = cam.z - (e[14] ?? 0)
-
-    const len = Math.hypot(dx, dy, dz) || 1
-
-    const edge = Math.abs(((e[8] ?? 0) * dx + (e[9] ?? 0) * dy + (e[10] ?? 0) * dz) / len)
-
-    mat.opacity = SF_SCENE.ORBIT_OPACITY * Math.min(1, edge * SF_SCENE.ORBIT_EDGE_GAIN)
-  }
 }
 
 /**
@@ -471,8 +457,6 @@ export function tickStar(s: SFState, now?: number): void {
   updateStructures(s)
 
   updateGalaxyClouds(s)
-
-  updateRings(s)
 
   updateFx(s)
 

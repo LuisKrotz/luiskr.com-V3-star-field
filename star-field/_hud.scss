@@ -7,7 +7,8 @@
 
 .#{$_B_SF}-hud {
   position: absolute;
-  top: $_NAV_INSET;
+  // Clears the fixed nav chrome, a pad below its row.
+  top: calc(#{$_NAV_INSET} + #{to-rem($space-md)});
   left: 50%;
   translate: -50% 0;
   z-index: 20;

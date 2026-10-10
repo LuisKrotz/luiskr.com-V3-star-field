@@ -12,6 +12,7 @@ import { STATE_CLASSES } from '@core/tokens/classes/state.js'
 import { POINTER_EVENTS, MOUSE_EVENTS, WINDOW_EVENTS } from '@core/tokens/events/dom.js'
 import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { SF_KINDS, SF_GROUPS } from '@core/tokens/starfield/kinds.js'
+import { SF_LOD } from '@core/tokens/starfield/params.js'
 import { getDevLog, clearDevLog } from '@core/devlog.js'
 import { LOG_LEVELS } from '@core/tokens/data/log.js'
 
@@ -478,6 +479,58 @@ describe('frame helpers', () => {
     raf.mockRestore()
   })
 
+  test('tickStar LOD deep-tier gate hides galactic bodies inside the local bubble', () => {
+    const s = makeState({
+      camera: fakeCamera(),
+      renderer: { render: jest.fn() },
+      scene: {},
+      controls: { update: jest.fn() },
+    })
+
+    const mk = (def, extra = {}) => ({
+      def: { radius: 1, ...def },
+      pivot: { rotation: { y: 0 }, visible: true },
+      spinner: { rotation: { y: 0 } },
+      mesh: {},
+      satPivots: [],
+      ...extra,
+    })
+
+    s.nodes.set('bh', mk({ kind: SF_KINDS.BLACK_HOLE }))
+    s.nodes.set('struct', mk({ kind: SF_KINDS.STRUCTURE }))
+    s.nodes.set('m31', mk({ kind: SF_KINDS.GALAXY }))
+    s.nodes.set('dwarf', mk({ kind: SF_KINDS.DWARF_GALAXY }))
+    s.nodes.set(
+      'mw',
+      mk({ kind: SF_KINDS.GALAXY, spiralDisc: { volumetric: true } }, { mesh: { children: [] } })
+    )
+    s.nodes.set('sol', mk({ kind: SF_KINDS.STAR }))
+
+    const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+
+    // Camera at the solar barycenter — inside the local bubble.
+    tickStar(s, 1000)
+
+    expect(s.nodes.get('bh').pivot.visible).toBe(false)
+    expect(s.nodes.get('struct').pivot.visible).toBe(false)
+    expect(s.nodes.get('m31').pivot.visible).toBe(false)
+    expect(s.nodes.get('dwarf').pivot.visible).toBe(false)
+    // The embedded volumetric Milky Way disc stays — it IS the sky band.
+    expect(s.nodes.get('mw').pivot.visible).toBe(true)
+    expect(s.nodes.get('sol').pivot.visible).toBe(true)
+
+    // Camera pulled past the reveal distance → the hierarchy draws.
+    s.camera.position.x = SF_LOD.DEEP_REVEAL + 1
+    tickStar(s, 2000)
+
+    expect(s.nodes.get('bh').pivot.visible).toBe(true)
+    expect(s.nodes.get('struct').pivot.visible).toBe(true)
+    expect(s.nodes.get('m31').pivot.visible).toBe(true)
+    expect(s.nodes.get('dwarf').pivot.visible).toBe(true)
+
+    raf.mockRestore()
+  })
+
   test('checkApproach fires once per body within the approach radius', () => {
     const s = makeState({
       camera: fakeCamera(),
@@ -531,36 +584,6 @@ describe('frame helpers', () => {
     raf.mockRestore()
   })
 
-  test('tickStar edge-fades orbit rings and tolerates degenerate matrices', () => {
-    const s = makeState({
-      camera: fakeCamera(),
-      renderer: { render: jest.fn() },
-      controls: { update: jest.fn() },
-    })
-
-    s.rings = [
-      // No matrixWorld → `!e` continue arm.
-      {},
-      // matrixWorld but no material → `!mat` continue arm.
-      { matrixWorld: { elements: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] } },
-      // Empty elements → every `e[i] ?? 0` fallback + `len || 1`
-      // (camera sits exactly on the ring origin → zero distance).
-      { matrixWorld: { elements: [] }, material: { opacity: 1 } },
-    ]
-
-    const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
-
-    tickStar(s, 1000)
-
-    // Edge-on (zero-length elements) → opacity fades to 0.
-    expect(s.rings[2].material.opacity).toBe(0)
-
-    // `!s.rings` early-return arm.
-    s.rings = undefined
-    tickStar(s, 2000)
-
-    raf.mockRestore()
-  })
 })
 
 describe('fly tween', () => {
@@ -794,6 +817,23 @@ describe('picking', () => {
 
     expect(s.hoverId).toBe('saturn')
 
+    // Hits under a hidden pivot (deep-tier LOD gate) are skipped —
+    // the chain walk covers the `visible === false` early return, the
+    // visible-parent walk, and the null-root exit.
+    const hidden = {
+      object: {
+        userData: { [SF_USER_BODY]: 'sagittarius-a' },
+        parent: { visible: false, parent: { userData: {} } },
+      },
+    }
+
+    armPicking(makeRaycaster([hidden, pluto]))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 6, clientY: 6 })
+    )
+
+    expect(s.hoverId).toBe('pluto')
+
     armPicking(makeRaycaster([orphan, proxy]))
     canvas.dispatchEvent(
       new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 6, clientY: 6 })
@@ -882,7 +922,6 @@ describe('buildStarBodies', () => {
 
     expect(s.nodes.size).toBe(SF_CATALOG.length)
     expect(s.pickables.length).toBe(pickable.length)
-    expect(s.rings.length).toBeGreaterThan(0)
   })
 
   test('synthetic defs cover orbit/pos/parent/ring/shell edge arms', async () => {
@@ -978,7 +1017,7 @@ describe('buildStarBodies', () => {
       pos: [0, 4, 0],
       shellTexture: 'tex://haze',
     })
-    buildStarBodies({ ...s, nodes: new Map(), anchors: new Map(), pickables: [], rings: [] }, three, NODE_DEPS, [defs[defs.length - 1]], new Map(), undefined)
+    buildStarBodies({ ...s, nodes: new Map(), anchors: new Map(), pickables: [] }, three, NODE_DEPS, [defs[defs.length - 1]], new Map(), undefined)
   })
 })
 

@@ -8,16 +8,17 @@
 
 .#{$_B_SF}-actions {
   position: absolute;
-  bottom: to-rem($space-xl);
-  right: to-rem($gap-272);
+  // Inside the framed viewport — one pad up/in from the canvas edges.
+  bottom: calc(#{to-rem($space-xl)} + #{to-rem($space-md)});
+  right: calc(#{to-rem($gap-272)} + #{to-rem($space-md)});
   z-index: 30;
   display: flex;
   gap: to-rem($space-sm);
 
   // Track the site's content gutter at every grid step — mirrors %MAXAREA
-  // so the cluster aligns with the page grid instead of a fixed inset.
+  // plus the inner pad that clears the viewport frame.
   @include grid-steps() using ($step, $gap, $cols) {
-    right: to-rem($gap);
+    right: calc(#{to-rem($gap)} + #{to-rem($space-md)});
   }
 }
 
