@@ -342,6 +342,12 @@ export interface SFNode {
    * beyond the detail distance so far bodies draw as one primitive.
    */
   detail?: THREE_NS.Object3D[]
+  /**
+   * Star corona sprite — the seeded streamer texture from
+   * `procedural.coronaFor`; updateFx rotates `material.rotation` and
+   * breathes `material.opacity` so stars shimmer like live suns.
+   */
+  corona?: { material: { rotation: number; opacity: number }; rate: number; phase: number }
 }
 
 /** Active camera fly-to tween — cubic ease-in-out over FLY_MS. */

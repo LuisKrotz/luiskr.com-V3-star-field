@@ -13,6 +13,7 @@
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL } from '@core/tokens/starfield/params.js'
 import { maskPhotoTexture, photoSize } from './mask.js'
+import { gasFor } from './procedural.js'
 import { matParams } from '../materials.js'
 import type { SFBodyDef } from '../types.js'
 
@@ -42,14 +43,19 @@ export function makeNebulaSprite(
 
   const masked = photo ? maskPhotoTexture(THREE, photo, { lobes, seed: def.id }) : undefined
 
+  // No photo → seeded wispy gas cloud instead of the uniform glow blob,
+  // so photo-less nebulae still read as sculpted gas. Normal blending —
+  // the generated canvas carries its own alpha.
+  const gas = photo ? undefined : gasFor(THREE, def)
+
   const mat = new THREE.SpriteMaterial(
     matParams({
-      map: masked ?? photo ?? glowTex,
-      // Untinted when real imagery renders — tint only colors the
-      // procedural glow fallback.
-      color: photo ? SF_COLORS.SUN_LIGHT : def.color,
+      map: masked ?? photo ?? gas ?? glowTex,
+      // Untinted when real imagery or generated gas renders — tint only
+      // colors the last-ditch glow fallback.
+      color: photo || gas ? SF_COLORS.SUN_LIGHT : def.color,
       transparent: true,
-      blending: photo ? THREE.NormalBlending : THREE.AdditiveBlending,
+      blending: photo || gas ? THREE.NormalBlending : THREE.AdditiveBlending,
       depthWrite: false,
     })
   )

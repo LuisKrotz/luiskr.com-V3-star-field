@@ -394,6 +394,15 @@ function updateFx(s: SFState): void {
 
       mat?.color?.lerpColors?.(_warmColor as never, _iceColor as never, k)
     }
+
+    // Star corona — slow in-plane rotation plus a subtle brightness
+    // breathe makes the streamer field shimmer like a live photosphere.
+    if (node.corona) {
+      const co = node.corona
+
+      co.material.rotation = co.phase + s.t * co.rate
+      co.material.opacity = 0.55 + 0.2 * Math.sin(s.t * (co.rate * 6) + co.phase)
+    }
   }
 }
 
