@@ -42,7 +42,7 @@
   "media": {
     "images": [
       {
-        "src": "media/saturn/img-1.jpg",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/saturn/img-1.jpg",
         "caption": "De rand van de nacht",
         "credit": "NASA"
       }
@@ -56,7 +56,7 @@
     ],
     "audio": [
       {
-        "src": "media/saturn/audio-1.wav",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/saturn/audio-1.wav",
         "caption": "Radio-emissies van Saturnus - Cassini RPWS",
         "credit": "NASA/JPL — via Wikimedia Commons"
       }
