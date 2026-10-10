@@ -49,7 +49,7 @@
     ],
     "videos": [
       {
-        "src": "media/milky-way/video-1.mp4",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/milky-way/video-1.mp4",
         "caption": "Espectrògraf d'orígens còsmics: estructura a gran escala de l'univers",
         "credit": "NASA"
       }

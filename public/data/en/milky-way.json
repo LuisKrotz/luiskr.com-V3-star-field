@@ -41,7 +41,7 @@
     ],
     "videos": [
       {
-        "src": "media/milky-way/video-1.mp4",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/milky-way/video-1.mp4",
         "caption": "Cosmic Origins Spectrograph: Large Scale Structure of the Universe",
         "credit": "NASA"
       }

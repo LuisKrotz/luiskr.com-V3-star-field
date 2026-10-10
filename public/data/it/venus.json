@@ -49,7 +49,7 @@
     ],
     "videos": [
       {
-        "src": "media/venus/video-1.mp4",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/venus/video-1.mp4",
         "caption": "Il vento elettrico di Venere",
         "credit": "NASA Goddard"
       }

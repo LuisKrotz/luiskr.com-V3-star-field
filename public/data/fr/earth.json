@@ -49,7 +49,7 @@
     ],
     "videos": [
       {
-        "src": "media/earth/video-1.mp4",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/earth/video-1.mp4",
         "caption": "Earthrise après qu'Orion ait exécuté un survol motorisé sortant",
         "credit": "NASA"
       }
