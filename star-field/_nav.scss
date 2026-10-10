@@ -1,28 +1,70 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  star-field/_nav.scss — the left-side body navigator drawer: toggle button,
 //  slide-in panel, grouped searchable body list, item meta, and the
-//  "show more" pagination button.
+//  "show more" pagination button. Chrome follows the --sf-* theme vars on
+//  :host (light glass ⇄ dark glass); the toggle carries the project's
+//  corner-bracket button signature.
 //  Imported by star-field.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
+// Navigator toggle — corner-bracket chrome matching .sf-btn.
 .#{$_B_SF}-nav-toggle {
-  @extend %LK_LINK;
+  @extend %RESETBTN;
+  @extend %TTL_XS;
 
   position: absolute;
   bottom: to-rem($space-xl);
-  left: to-rem($space-xl);
+  left: to-rem($gap-272);
   z-index: 30;
-  font-family: var(--font-mono);
-  font-size: to-rem($space-lg);
-  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba($color-white, 0.85);
-  background: rgba($color-black, 0.4);
-  backdrop-filter: blur(to-rem($space-xs));
-  border: 1px solid rgba($color-white, 0.14);
-  border-radius: var(--radius-sm);
   padding: to-rem($space-sm) to-rem($space-lg);
+  color: var(--sf-ink);
+  background: var(--sf-chrome-2);
+  backdrop-filter: blur(to-rem($space-xs));
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
   cursor: pointer;
+
+  // Track the site's content gutter at every grid step — mirrors %MAXAREA.
+  @include grid-steps() using ($step, $gap, $cols) {
+    left: to-rem($gap);
+  }
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: to-rem($space-sm);
+    height: to-rem($space-sm);
+    transition:
+      width 0.25s ease,
+      height 0.25s ease;
+  }
+
+  &::before {
+    top: 0;
+    left: 0;
+    border-top: var(--space-hairline) solid var(--sf-ink-2);
+    border-left: var(--space-hairline) solid var(--sf-ink-2);
+  }
+
+  &::after {
+    bottom: 0;
+    right: 0;
+    border-bottom: var(--space-hairline) solid var(--sf-ink-2);
+    border-right: var(--space-hairline) solid var(--sf-ink-2);
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 0.75;
+
+    &::before,
+    &::after {
+      width: calc(100% - to-rem($space-2xs));
+      height: calc(100% - to-rem($space-2xs));
+    }
+  }
 }
 
 .#{$_B_SF}-nav {
@@ -45,9 +87,9 @@
     height: 100%;
     overflow-y: auto;
     padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xl);
-    background: rgba($color-black, 0.72);
+    background: var(--sf-chrome);
     backdrop-filter: blur(to-rem($space-md));
-    border-right: 1px solid rgba($color-white, 0.1);
+    border-right: var(--space-hairline) solid var(--sf-line);
   }
 
   &-heading {
@@ -55,7 +97,7 @@
 
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: rgba($color-white, 0.45);
+    color: var(--sf-ink-3);
     margin: 0 0 to-rem($space-xl);
   }
 
@@ -68,7 +110,7 @@
 
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: rgba($color-white, 0.55);
+    color: var(--sf-ink-2);
     margin: 0 0 to-rem($space-sm);
   }
 
@@ -77,21 +119,24 @@
   }
 
   &-item {
-    @extend %LK_LINK;
+    @extend %RESETBTN;
 
     display: block;
     width: 100%;
     text-align: left;
     font-family: var(--font-mono);
     font-size: to-rem($space-lg);
-    color: rgba($color-white, 0.8);
-    background: none;
-    border: none;
+    color: var(--sf-ink);
     padding: to-rem($space-sm) to-rem($space-xs);
     cursor: pointer;
 
+    &:hover,
+    &:focus-visible {
+      color: var(--sf-ink-strong);
+    }
+
     &--active {
-      color: var(--color-white-raw);
+      color: var(--sf-ink-strong);
     }
   }
 }
@@ -100,20 +145,20 @@
   width: 100%;
   font-family: var(--font-mono);
   font-size: to-rem($space-lg);
-  color: rgba($color-white, 0.9);
-  background: rgba($color-white, 0.06);
-  border: 1px solid rgba($color-white, 0.16);
+  color: var(--sf-ink-strong);
+  background: var(--sf-field);
+  border: var(--space-hairline) solid var(--sf-line);
   border-radius: var(--radius-sm);
   padding: to-rem($space-sm) to-rem($space-md);
   margin-bottom: to-rem($space-xl);
   outline: none;
 
   &::placeholder {
-    color: rgba($color-white, 0.38);
+    color: var(--sf-ink-3);
   }
 
   &:focus-visible {
-    border-color: rgba($color-white, 0.5);
+    border-color: var(--sf-ink-2);
   }
 }
 
@@ -121,7 +166,7 @@
   @extend .txt-xs;
 
   display: block;
-  color: rgba($color-white, 0.42);
+  color: var(--sf-ink-3);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-top: to-rem($space-2xs);
@@ -134,17 +179,17 @@
   width: 100%;
   padding: to-rem($space-xs) to-rem($space-sm);
   margin-top: to-rem($space-2xs);
-  color: var(--color-white-raw);
+  color: var(--sf-ink-strong);
   text-align: center;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  background: rgba($color-white, 0.06);
-  border: var(--bw-1) solid rgba($color-white, 0.18);
+  background: var(--sf-field);
+  border: var(--bw-1) solid var(--sf-line);
   border-radius: var(--radius-s);
 
   &:hover,
   &:focus-visible {
-    background: rgba($color-white, 0.14);
+    background: var(--sf-field-hover);
   }
 }

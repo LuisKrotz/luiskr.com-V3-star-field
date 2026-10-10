@@ -9,6 +9,7 @@
 import { describe, test, expect, jest, afterEach } from '@jest/globals'
 import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { SF_CLASSES } from '@core/tokens/classes/starfield.js'
+import { SF_CATALOG } from '../../../engine/catalog.js'
 
 jest.unstable_mockModule('@core/utils/data/db.js', () => ({
   fetchFirebaseDb: jest.fn(async () => ({ exists: () => true, val: () => ({}) })),
@@ -176,8 +177,8 @@ describe('StarField registry directory', () => {
 
     const rows = el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_NAV_ITEM}`)
 
-    // 66 catalog + 2 loaded registry rows.
-    expect(rows.length).toBe(68)
+    // All catalog rows + the 2 loaded registry rows.
+    expect(rows.length).toBe(SF_CATALOG.length + 2)
 
     const more = el.shadowRoot.querySelector(`.${SF_CLASSES.SF_NAV_MORE}`)
 

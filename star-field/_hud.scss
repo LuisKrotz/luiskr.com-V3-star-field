@@ -22,14 +22,15 @@
 .#{$_B_SF}-hint {
   @extend .txt-sm;
 
-  color: rgba($color-white, 0.5);
+  // Paints straight on deep space — sky ink never themes with the chrome.
+  color: var(--sf-sky-ink);
   letter-spacing: 0.08em;
 }
 
 .#{$_B_SF}-live {
   @extend .ttl-xs;
 
-  color: rgba($color-white, 0.9);
+  color: var(--sf-sky-ink-2);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   min-height: to-rem($space-lg);
@@ -56,8 +57,8 @@
     left: -(to-rem($space-sm) / 2);
     top: -(to-rem($space-sm) / 2);
     border-radius: var(--radius-round);
-    border: 1px solid rgba($color-white, 0.8);
-    background: rgba($color-white, 0.15);
+    border: 1px solid var(--sf-sky-ink-2);
+    background: var(--sf-sky-faint);
   }
 
   &-line {
@@ -68,7 +69,7 @@
     top: 0;
     transform-origin: 0 0;
     transform: rotate(-50deg);
-    background: rgba($color-white, 0.55);
+    background: var(--sf-sky-ink);
   }
 
   &-label {
@@ -81,10 +82,10 @@
     font-family: var(--font-mono);
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba($color-white, 0.92);
-    background: rgba($color-black, 0.55);
+    color: var(--sf-ink);
+    background: var(--sf-chrome);
     backdrop-filter: blur(to-rem($space-xs));
-    border: 1px solid rgba($color-white, 0.16);
+    border: 1px solid var(--sf-line);
     border-radius: var(--radius-sm);
     padding: to-rem($space-sm) to-rem($space-md);
   }

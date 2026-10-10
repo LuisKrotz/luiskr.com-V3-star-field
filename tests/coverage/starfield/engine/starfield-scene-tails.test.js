@@ -19,6 +19,11 @@ import {
 import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
 import * as THREE from 'three'
+import { MeshBasicNodeMaterial } from 'three/webgpu'
+import * as TSL from 'three/tsl'
+
+/** TSL namespace + node-material ctor bundle injected into body makers. */
+const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
@@ -453,7 +458,7 @@ describe('spiral + satellite arms', () => {
       mwGroup: null,
     }
 
-    buildStarBodies(s, THREE, defs, new Map(), undefined)
+    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), undefined)
 
     expect(s.nodes.size).toBe(3)
     expect(s.nodes.get('probe-planet').satPivots[0].phase).toBe(0)

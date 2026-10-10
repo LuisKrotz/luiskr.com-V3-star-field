@@ -12,6 +12,7 @@ import {
   SF_KEYS,
   SF_LOD,
   SF_MOTION,
+  SF_SCENE,
 } from '@core/tokens/starfield/params.js'
 import { updateFly } from './fly.js'
 import type { SFState } from './types.js'
@@ -244,6 +245,42 @@ function updateLod(s: SFState): void {
 }
 
 /**
+ * Orbit-guide edge fade — each ring's opacity follows the view angle so
+ * a guide seen edge-on dissolves instead of cutting a hard straight
+ * line through its body. The math is zero-alloc: `matrixWorld` is
+ * column-major, so elements [8..10] are the ring's world-space local +Z
+ * (the plane normal, since the mesh is rotated flat) and [12..14] the
+ * world translation. `edge` = |normal · dirToCamera| — 1 face-on, 0
+ * edge-on; ORBIT_EDGE_GAIN keeps rings near-full until steep tilt.
+ * @param s Engine state.
+ */
+function updateRings(s: SFState): void {
+  if (!s.camera || !s.rings) return
+
+  const cam = s.camera.position
+
+  for (const ring of s.rings) {
+    const e = (ring as { matrixWorld?: { elements?: readonly number[] } }).matrixWorld?.elements
+
+    const mat = (ring as { material?: { opacity?: number } }).material
+
+    if (!e || !mat) continue
+
+    const dx = cam.x - (e[12] ?? 0)
+
+    const dy = cam.y - (e[13] ?? 0)
+
+    const dz = cam.z - (e[14] ?? 0)
+
+    const len = Math.hypot(dx, dy, dz) || 1
+
+    const edge = Math.abs(((e[8] ?? 0) * dx + (e[9] ?? 0) * dy + (e[10] ?? 0) * dz) / len)
+
+    mat.opacity = SF_SCENE.ORBIT_OPACITY * Math.min(1, edge * SF_SCENE.ORBIT_EDGE_GAIN)
+  }
+}
+
+/**
  * Ambient life — the small "alive" behaviors on top of the static chart:
  * `pulse` bodies (variable stars, pulsars, flaring cores) breathe via a
  * sine scale oscillation; `cycle` bodies (Earth's glaciation) lerp the
@@ -335,6 +372,8 @@ export function tickStar(s: SFState, now?: number): void {
   checkApproach(s)
 
   updateLod(s)
+
+  updateRings(s)
 
   updateFx(s)
 

@@ -20,11 +20,11 @@
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  background: rgba($color-black, 0.78);
+  background: var(--sf-chrome);
   backdrop-filter: blur(to-rem($space-md));
-  border: 1px solid rgba($color-white, 0.12);
+  border: var(--space-hairline) solid var(--sf-line);
   border-radius: var(--radius-md);
-  color: rgba($color-white, 0.85);
+  color: var(--sf-ink);
   overflow: hidden;
 
   // Track the site's gutter at every grid step — mirrors %MAXAREA.
@@ -42,7 +42,7 @@
     align-items: center;
     gap: to-rem($space-md);
     padding: to-rem($space-xl) to-rem($space-xl) to-rem($space-lg);
-    border-bottom: 1px solid rgba($color-white, 0.08);
+    border-bottom: var(--space-hairline) solid var(--sf-line-2);
   }
 
   &-title {
@@ -51,7 +51,7 @@
     margin: 0;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--color-white-raw);
+    color: var(--sf-ink-strong);
     flex: 1;
   }
 
@@ -60,8 +60,8 @@
 
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba($color-white, 0.5);
-    border: 1px solid rgba($color-white, 0.18);
+    color: var(--sf-ink-2);
+    border: var(--space-hairline) solid var(--sf-line);
     border-radius: var(--radius-round);
     padding: to-rem($space-2xs) to-rem($space-sm);
   }
@@ -69,7 +69,7 @@
   &-close {
     font-family: var(--font-mono);
     font-size: to-rem($space-xl);
-    color: rgba($color-white, 0.7);
+    color: var(--sf-ink);
     background: none;
     border: none;
     padding: to-rem($space-2xs) to-rem($space-sm);
@@ -85,14 +85,14 @@
   &-loading {
     @extend .txt-sm;
 
-    color: rgba($color-white, 0.5);
+    color: var(--sf-ink-2);
     letter-spacing: 0.1em;
   }
 
   &-tagline {
     @extend .txt-sm;
 
-    color: rgba($color-white, 0.75);
+    color: var(--sf-ink);
     margin: 0 0 to-rem($space-xl);
   }
 
@@ -100,14 +100,14 @@
     @extend .txt-sm;
 
     line-height: 1.75;
-    color: rgba($color-white, 0.8);
+    color: var(--sf-ink);
     margin: to-rem($space-xl) 0;
   }
 
   &-source {
     @extend .txt-sm;
 
-    color: rgba($color-white, 0.4);
+    color: var(--sf-ink-3);
     letter-spacing: 0.06em;
   }
 }
@@ -125,12 +125,12 @@
   justify-content: space-between;
   gap: to-rem($space-md);
   padding: to-rem($space-xs) 0;
-  border-bottom: 1px solid rgba($color-white, 0.07);
+  border-bottom: var(--space-hairline) solid var(--sf-line-2);
 
   &-key {
     @extend .txt-sm;
 
-    color: rgba($color-white, 0.5);
+    color: var(--sf-ink-2);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     margin: 0;
@@ -139,7 +139,7 @@
   &-val {
     @extend .txt-sm;
 
-    color: rgba($color-white, 0.9);
+    color: var(--sf-ink-strong);
     text-align: right;
     margin: 0;
   }
@@ -154,7 +154,7 @@
 
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba($color-white, 0.55);
+    color: var(--sf-ink-2);
     margin: 0 0 to-rem($space-xs);
   }
 
@@ -162,7 +162,7 @@
     @extend .txt-sm;
 
     line-height: 1.75;
-    color: rgba($color-white, 0.78);
+    color: var(--sf-ink);
     margin: 0;
   }
 }
@@ -170,7 +170,7 @@
 .#{$_B_SF}-panel-sig {
   @extend .txt-xs;
 
-  color: rgba($color-white, 0.35);
+  color: var(--sf-ink-faint);
   letter-spacing: 0.08em;
   margin-top: to-rem($space-md);
 }

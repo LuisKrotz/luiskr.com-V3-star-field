@@ -20,8 +20,8 @@
     width: 100%;
     height: auto;
     border-radius: var(--radius-sm);
-    border: 1px solid rgba($color-white, 0.1);
-    background: rgba($color-black, 0.4);
+    border: var(--space-hairline) solid var(--sf-line);
+    background: var(--sf-chrome-2);
   }
 
   &-audio {
@@ -32,7 +32,7 @@
   &-cap {
     @extend .txt-xs;
 
-    color: rgba($color-white, 0.45);
+    color: var(--sf-ink-3);
     letter-spacing: 0.05em;
     margin-top: to-rem($space-2xs);
   }

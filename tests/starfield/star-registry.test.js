@@ -20,7 +20,7 @@ import {
   searchRegistry,
   streamRegistryShards,
 } from '../../engine/registry.js'
-import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { SF_SCALE } from '@core/tokens/starfield/params.js'
 
 const jsonRes = (body) => ({ ok: true, json: async () => body })
 
@@ -278,33 +278,36 @@ describe('registry world positions', () => {
   })
 
   test('nearby records sit at the Sun + heliocentric ly→units', () => {
-    const p = registryWorldPos(mwState(), { i: 'x', n: 'N', x: 830, y: 0, z: 0 })
+    const p = registryWorldPos(mwState(), { i: 'x', n: 'N', x: -100, y: 0, z: 0 })
 
-    // 830 ly = 1 chart unit along +X from the cloud origin (the Sun).
-    expect(p.x).toBeCloseTo(1, 5)
+    // 100 ly = 1 chart unit (galactic tier); chart +X maps from −x_gal.
+    expect(p.x).toBeCloseTo(-(-100) / SF_SCALE.GALACTIC_LY, 5)
     expect(p.y).toBeCloseTo(0, 5)
     expect(p.z).toBeCloseTo(0, 5)
   })
 
-  test('far-field records compress onto the FAR_CLAMP shell', () => {
-    const p = registryWorldPos(mwState(), { i: 'x', n: 'N', x: 1e9, y: 0, z: 0 })
+  test('far-field records compress onto the COSMIC_CLAMP shell', () => {
+    const p = registryWorldPos(mwState(), { i: 'x', n: 'N', x: -1e9, y: 0, z: 0 })
 
-    expect(p.x).toBeCloseTo(SF_STAR_CLOUD.FAR_CLAMP, 5)
+    // 1 Gly saturates the cosmic tier — radius = COSMIC_CLAMP along +X.
+    expect(p.x).toBeCloseTo(SF_SCALE.COSMIC_CLAMP, 5)
   })
 
   test('galactic z tilts onto the disc normal', () => {
-    const p = registryWorldPos(mwState(), { i: 'x', n: 'N', x: 0, y: 0, z: 830 })
+    const p = registryWorldPos(mwState(), { i: 'x', n: 'N', x: 0, y: 0, z: 100 })
 
     const a = -Math.PI / 2 + 0.35
 
-    expect(p.y).toBeCloseTo(-Math.sin(a) * 1, 5)
-    expect(p.z).toBeCloseTo(Math.cos(a) * 1, 5)
+    // 100 ly = 1 unit on the galactic Y axis, then rotation.x = a leans
+    // it onto the disc plane: y = cos(a), z = sin(a).
+    expect(p.y).toBeCloseTo(Math.cos(a) * 1, 5)
+    expect(p.z).toBeCloseTo(Math.sin(a) * 1, 5)
   })
 
   test('a Milky Way def without tilt falls back to the untilted frame', () => {
     const s = { nodes: new Map([['milky-way', { def: { pos: [-120, 0, 0] } }]]) }
 
-    const p = registryWorldPos(s, { i: 'x', n: 'N', x: 830, y: 0, z: 0 })
+    const p = registryWorldPos(s, { i: 'x', n: 'N', x: -100, y: 0, z: 0 })
 
     expect(p.x).toBeCloseTo(1, 5)
     expect(p.y).toBeCloseTo(0, 5)
