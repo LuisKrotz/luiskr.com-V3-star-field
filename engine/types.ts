@@ -9,6 +9,25 @@
 
 import type * as THREE_NS from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import type MeshBasicNodeMaterial from 'three/src/materials/nodes/MeshBasicNodeMaterial.js'
+
+/** The TSL node-graph namespace (compiled to WGSL/GLSL by the renderer). */
+type TslNs = typeof import('three/tsl')
+
+/**
+ * Lazily-loaded node-material context — the renderer is WebGPURenderer
+ * (WebGPU or forced-WebGL backend), whose node pipeline rejects classic
+ * GLSL ShaderMaterials. Every custom-shaded surface (fresnel limbs,
+ * boundary shells, the accretion disc) is therefore built as a node
+ * material: bootstrap injects the TSL namespace and the node material
+ * ctor so the body builders stay pure/mockable.
+ */
+export interface SFNodeDeps {
+  /** The `three/tsl` module namespace. */
+  TSL: TslNs
+  /** Node-material constructors re-exported by `three/webgpu`. */
+  mats: { MeshBasicNodeMaterial: typeof MeshBasicNodeMaterial }
+}
 
 /**
  * Static catalog entry — everything the scene needs to place a body,
@@ -94,6 +113,15 @@ export interface SFBodyDef {
    * would swallow every pointer ray); the navigator still flies to them.
    */
   structure?: { radius: number; speckles?: number }
+  /**
+   * Small-body annulus (asteroid/Kuiper belt) — `inner`/`outer` are the
+   * ring bounds in chart units, `count` the particle budget, `puff` the
+   * vertical half-thickness multiplier on `def.radius`. The def's
+   * `radius` doubles as the camera-framing value on fly-to; the def's
+   * `color` tints the particles. `gapFreq` overrides the Kirkwood-lane
+   * modulation frequency (0 = smooth disc, no resonance gaps).
+   */
+  belt?: { inner: number; outer: number; count: number; puff?: number; gapFreq?: number }
   /**
    * Luminosity pulse — slow breathing scale oscillation for variable
    * stars, pulsars and flaring cores; `period` in seconds, `amp` the

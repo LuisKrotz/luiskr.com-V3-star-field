@@ -22,9 +22,83 @@
 import type * as THREE_NS from 'three'
 import { SF_BH, SF_COLORS } from '@core/tokens/starfield/params.js'
 import { lcg, seedFrom } from '../rand.js'
-import type { SFBodyDef } from '../types.js'
+import { matParams } from '../materials.js'
+import type { SFBodyDef, SFNodeDeps } from '../types.js'
 
 type ThreeModule = typeof import('three')
+
+/**
+ * Dusty accretion annulus — a node-material ring whose heat falls off
+ * radially and whose dust lanes break the surface into turbulent bands.
+ * Per fragment, `k` walks the annulus inner→outer and the brightness
+ * falls off ~quadratically (the ISCO edge is blinding, the rim fades to
+ * dust); two detuned ring-harmonics multiply into irregular dark lanes —
+ * the dust absorption bands real discs show — so the annulus reads as
+ * turbulent plasma with structure, never a smooth polygon. Output is
+ * premultiplied for additive blending (dark lanes add nothing). Built
+ * as a TSL node graph — the WebGPURenderer pipeline rejects classic
+ * GLSL ShaderMaterials. RingGeometry is authored flat in XY (the mesh
+ * rotates −π/2 into the XZ disc plane), so `positionLocal.xy` is the
+ * annulus plane coordinate.
+ * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors (bootstrap-injected).
+ * @param def Catalog entry (radius scales the annulus).
+ */
+function makeAccretionDisc(THREE: ThreeModule, deps: SFNodeDeps, def: SFBodyDef): THREE_NS.Mesh {
+  const inner = def.radius * SF_BH.DISC_INNER
+  const outer = def.radius * SF_BH.DISC_OUTER
+
+  const { TSL, mats } = deps
+
+  const { positionLocal, float, clamp, atan, sin, pow, mix, uniform } = TSL
+
+  // Annulus coordinate — ring is flat in local XY pre-rotation.
+  const p = positionLocal.xy
+
+  const r = p.length()
+
+  // GLSL two-arg atan(y, x) — TSL names it `atan`, not `atan2`.
+  const ang = atan(p.y, p.x)
+
+  // k: 0 at the ISCO edge → 1 at the dusty rim.
+  const k = clamp(r.sub(inner).div(outer - inner), 0, 1)
+
+  // Dust lanes — two detuned ring waves multiply into irregular dark
+  // banding (the floor keeps lanes translucent, never solid cuts).
+  const lanes = float(SF_BH.DISC_LANE_FLOOR).add(
+    sin(ang.mul(SF_BH.DISC_LANE_ANG_A).add(r.mul(SF_BH.DISC_LANE_RAD_A)))
+      .mul(sin(r.mul(SF_BH.DISC_LANE_RAD_B).sub(ang.mul(SF_BH.DISC_LANE_ANG_B))))
+      .mul(SF_BH.DISC_LANE_AMP)
+  )
+
+  // Radial heat envelope — quadratic-ish falloff away from the ISCO.
+  const core = pow(k.oneMinus(), SF_BH.DISC_CORE_EXP)
+
+  const hot = uniform(new THREE.Color(SF_COLORS.BH_PHOTON))
+
+  const warm = uniform(new THREE.Color(SF_COLORS.ACCRETION))
+
+  const col = mix(hot, warm, k).mul(lanes)
+
+  const a = core
+    .mul(float(SF_BH.DISC_A_FLOOR).add(lanes.mul(SF_BH.DISC_A_AMP)))
+    .mul(SF_BH.DISC_OPACITY)
+
+  const mat = new mats.MeshBasicNodeMaterial()
+
+  mat.colorNode = col.mul(a)
+  mat.opacityNode = a
+  mat.transparent = true
+  mat.side = THREE.DoubleSide
+  mat.blending = THREE.AdditiveBlending
+  mat.depthWrite = false
+
+  const disc = new THREE.Mesh(new THREE.RingGeometry(inner, outer, SF_BH.DISC_SEGMENTS), mat)
+
+  disc.rotation.x = -Math.PI / 2
+
+  return disc
+}
 
 /**
  * Orbiting accretion plasma — seeded particles inside the annulus
@@ -81,17 +155,22 @@ function makeSwirl(
 
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
+  // Empty uv — the node pipeline samples `uv` for `map` even though
+  // points shade via gl_PointCoord; declaring it keeps the graph quiet.
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * 2), 2))
 
-  const mat = new THREE.PointsMaterial({
-    size: SF_BH.SWIRL_PX,
-    map: glowTex,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.95,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true,
-  })
+  const mat = new THREE.PointsMaterial(
+    matParams({
+      size: SF_BH.SWIRL_PX,
+      map: glowTex,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    })
+  )
 
   const points = new THREE.Points(geo, mat)
 
@@ -173,12 +252,14 @@ function makeJet(THREE: ThreeModule, def: SFBodyDef, dir: number): THREE_NS.Mesh
  * plane / ±Y normal, which inside the Milky Way's tilted group is the
  * galactic plane and poles.
  * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors (bootstrap-injected).
  * @param def Catalog entry (`kind: blackHole`; `jets` adds the cones).
  * @param glowTex Shared radial-gradient glow texture (may be undefined).
  * @returns `{ group, spin }` — scene node + per-frame rotation target.
  */
 export function makeBlackHole(
   THREE: ThreeModule,
+  deps: SFNodeDeps,
   def: SFBodyDef,
   glowTex: THREE_NS.Texture | undefined
 ): { group: THREE_NS.Object3D; spin: THREE_NS.Object3D } {
@@ -210,23 +291,9 @@ export function makeBlackHole(
 
   group.add(photon)
 
-  // Smooth accretion annulus under the particle swirl — additive flat
-  // ring so the disc reads continuously between plasma knots.
-  const disc = new THREE.Mesh(
-    new THREE.RingGeometry(def.radius * SF_BH.DISC_INNER, def.radius * SF_BH.DISC_OUTER, 96),
-    new THREE.MeshBasicMaterial({
-      color: SF_COLORS.ACCRETION,
-      transparent: true,
-      opacity: SF_BH.DISC_OPACITY,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-  )
-
-  disc.rotation.x = -Math.PI / 2
-
-  group.add(disc)
+  // Dusty accretion annulus — node-material ring with heat falloff +
+  // dust lanes under the particle swirl (see makeAccretionDisc).
+  group.add(makeAccretionDisc(THREE, deps, def))
 
   const swirl = makeSwirl(THREE, def, glowTex)
 
@@ -242,14 +309,16 @@ export function makeBlackHole(
   // Lensing bloom — soft warm sprite so the object glows like the
   // energetic core it is even at chart zoom.
   const glow = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: glowTex,
-      color: SF_COLORS.ACCRETION,
-      transparent: true,
-      opacity: SF_BH.GLOW_OPACITY,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
+    new THREE.SpriteMaterial(
+      matParams({
+        map: glowTex,
+        color: SF_COLORS.ACCRETION,
+        transparent: true,
+        opacity: SF_BH.GLOW_OPACITY,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    )
   )
 
   const gs = def.radius * SF_BH.GLOW_SCALE

@@ -1,30 +1,78 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  star-field/_actions.scss — the bottom-right action cluster (screenshot /
-//  overview buttons) and the shared sf-btn control style.
+//  overview buttons) and the shared sf-btn control style — the project's
+//  corner-bracket button signature (expands to a full frame on hover),
+//  themed by the --sf-* chrome vars on :host.
 //  Imported by star-field.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
 .#{$_B_SF}-actions {
   position: absolute;
-  right: to-rem($space-xl);
   bottom: to-rem($space-xl);
+  right: to-rem($gap-272);
   z-index: 30;
   display: flex;
   gap: to-rem($space-sm);
+
+  // Track the site's content gutter at every grid step — mirrors %MAXAREA
+  // so the cluster aligns with the page grid instead of a fixed inset.
+  @include grid-steps() using ($step, $gap, $cols) {
+    right: to-rem($gap);
+  }
 }
 
+// Corner-bracket button — the same chrome .home-mosaic-btn uses: mono
+// uppercase label inside expanding corner brackets, themed ink so the
+// glass reads in light and dark mode.
 .#{$_B_SF}-btn {
-  @extend %LK_LINK;
+  @extend %RESETBTN;
+  @extend %TTL_XS;
 
-  font-family: var(--font-mono);
-  font-size: to-rem($space-lg);
-  letter-spacing: 0.12em;
+  position: relative;
+  display: inline-block;
+  text-align: center;
   text-transform: uppercase;
-  color: rgba($color-white, 0.85);
-  background: rgba($color-black, 0.4);
-  backdrop-filter: blur(to-rem($space-xs));
-  border: 1px solid rgba($color-white, 0.14);
-  border-radius: var(--radius-sm);
   padding: to-rem($space-sm) to-rem($space-lg);
+  color: var(--sf-ink);
+  background: var(--sf-chrome-2);
+  backdrop-filter: blur(to-rem($space-xs));
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
   cursor: pointer;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: to-rem($space-sm);
+    height: to-rem($space-sm);
+    transition:
+      width 0.25s ease,
+      height 0.25s ease;
+  }
+
+  &::before {
+    top: 0;
+    left: 0;
+    border-top: var(--space-hairline) solid var(--sf-ink-2);
+    border-left: var(--space-hairline) solid var(--sf-ink-2);
+  }
+
+  &::after {
+    bottom: 0;
+    right: 0;
+    border-bottom: var(--space-hairline) solid var(--sf-ink-2);
+    border-right: var(--space-hairline) solid var(--sf-ink-2);
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 0.75;
+
+    &::before,
+    &::after {
+      width: calc(100% - to-rem($space-2xs));
+      height: calc(100% - to-rem($space-2xs));
+    }
+  }
 }

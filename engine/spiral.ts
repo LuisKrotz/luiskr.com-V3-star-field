@@ -18,6 +18,7 @@ import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL, SF_SPIRAL } from '@core/tokens/starfield/params.js'
 import { makeGalaxyDisc } from './bodies/deep-sky.js'
 import { lcg, seedFrom } from './rand.js'
+import { matParams } from './materials.js'
 import type { SFBodyDef } from './types.js'
 
 type ThreeModule = typeof import('three')
@@ -209,17 +210,22 @@ function makeStarPoints(
 
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
+  // Empty uv — the node pipeline samples `uv` for `map` even though
+  // points shade via gl_PointCoord; declaring it keeps the graph quiet.
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((pos.length / 3) * 2), 2))
 
-  const mat = new THREE.PointsMaterial({
-    size: sizePx,
-    map: glowTex,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.9,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    sizeAttenuation: true,
-  })
+  const mat = new THREE.PointsMaterial(
+    matParams({
+      size: sizePx,
+      map: glowTex,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+    })
+  )
 
   const points = new THREE.Points(geo, mat)
 

@@ -25,8 +25,12 @@ import { makeGlowTexture, setupStarCamera, setupStarScene } from '../../../../en
 import { buildStarBodies, SF_USER_BODY } from '../../../../engine/bodies-scene.js'
 import { takeStarScreenshot } from '../../../../engine/screenshot.js'
 import { SF_CATALOG } from '../../../../engine/catalog.js'
-import { __setRendererInitDelay } from 'three/webgpu'
+import { __setRendererInitDelay, MeshBasicNodeMaterial } from 'three/webgpu'
+import * as TSL from 'three/tsl'
 import * as THREE from 'three'
+
+/** TSL namespace + node-material ctor bundle injected into body makers. */
+const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
 const setSearch = (s) => window.history.replaceState(null, '', s)
 
@@ -839,10 +843,14 @@ describe('buildStarBodies', () => {
     const three = await import('three')
     const s = makeState({ scene: new three.Scene() })
 
-    buildStarBodies(s, three, SF_CATALOG, new Map(), undefined)
+    buildStarBodies(s, three, NODE_DEPS, SF_CATALOG, new Map(), undefined)
+
+    // Every def lands as a node; structures + belts stay out of the
+    // raycast set by design (giant shells/pebbles would eat pointer rays).
+    const pickable = SF_CATALOG.filter((d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT)
 
     expect(s.nodes.size).toBe(SF_CATALOG.length)
-    expect(s.pickables.length).toBe(SF_CATALOG.length)
+    expect(s.pickables.length).toBe(pickable.length)
     expect(s.rings.length).toBeGreaterThan(0)
   })
 
@@ -925,7 +933,7 @@ describe('buildStarBodies', () => {
       },
     ]
 
-    buildStarBodies(s, three, defs, new Map(), undefined)
+    buildStarBodies(s, three, NODE_DEPS, defs, new Map(), undefined)
 
     expect(s.nodes.size).toBe(defs.length)
 
@@ -939,7 +947,7 @@ describe('buildStarBodies', () => {
       pos: [0, 4, 0],
       shellTexture: 'tex://haze',
     })
-    buildStarBodies({ ...s, nodes: new Map(), anchors: new Map(), pickables: [], rings: [] }, three, [defs[defs.length - 1]], new Map(), undefined)
+    buildStarBodies({ ...s, nodes: new Map(), anchors: new Map(), pickables: [], rings: [] }, three, NODE_DEPS, [defs[defs.length - 1]], new Map(), undefined)
   })
 })
 

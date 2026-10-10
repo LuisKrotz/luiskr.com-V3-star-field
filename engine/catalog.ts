@@ -472,6 +472,30 @@ const SOLAR: SFBodyDef[] = [
     ring: true,
     phase: 2.2,
   },
+  {
+    id: 'asteroid-belt',
+    name: 'Asteroid Belt',
+    kind: SF_KINDS.BELT,
+    group: SF_GROUPS.SOLAR,
+    radius: 12,
+    pos: [0, 0, 0],
+    spin: 0.015,
+    dist: '2.06–3.27 AU',
+    color: SF_COLORS.ASTEROID_BELT,
+    belt: { inner: 50, outer: 62, count: 6000 },
+  },
+  {
+    id: 'kuiper-belt',
+    name: 'Kuiper Belt',
+    kind: SF_KINDS.BELT,
+    group: SF_GROUPS.SOLAR,
+    radius: 30,
+    pos: [0, 0, 0],
+    spin: 0.006,
+    dist: '30–55 AU',
+    color: SF_COLORS.KUIPER_BELT,
+    belt: { inner: 118, outer: 150, count: 9000, puff: 0.28, gapFreq: 0 },
+  },
 ]
 
 /**

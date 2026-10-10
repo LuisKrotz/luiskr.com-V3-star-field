@@ -13,6 +13,7 @@
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL } from '@core/tokens/starfield/params.js'
 import { maskPhotoTexture, photoSize } from './mask.js'
+import { matParams } from '../materials.js'
 import type { SFBodyDef } from '../types.js'
 
 type ThreeModule = typeof import('three')
@@ -40,15 +41,17 @@ export function makeNebulaSprite(
 
   const masked = photo ? maskPhotoTexture(THREE, photo) : undefined
 
-  const mat = new THREE.SpriteMaterial({
-    map: masked ?? photo ?? glowTex,
-    // Untinted when real imagery renders — tint only colors the
-    // procedural glow fallback.
-    color: photo ? SF_COLORS.SUN_LIGHT : def.color,
-    transparent: true,
-    blending: photo ? THREE.NormalBlending : THREE.AdditiveBlending,
-    depthWrite: false,
-  })
+  const mat = new THREE.SpriteMaterial(
+    matParams({
+      map: masked ?? photo ?? glowTex,
+      // Untinted when real imagery renders — tint only colors the
+      // procedural glow fallback.
+      color: photo ? SF_COLORS.SUN_LIGHT : def.color,
+      transparent: true,
+      blending: photo ? THREE.NormalBlending : THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  )
 
   const sprite = new THREE.Sprite(mat)
 
@@ -104,14 +107,16 @@ export function makeGalaxyDisc(
 
   const geo = new THREE.PlaneGeometry(sx, sy)
 
-  const mat = new THREE.MeshBasicMaterial({
-    map: masked ?? photo ?? glowTex,
-    color: photo ? SF_COLORS.SUN_LIGHT : def.color,
-    transparent: true,
-    blending: photo ? THREE.NormalBlending : THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  })
+  const mat = new THREE.MeshBasicMaterial(
+    matParams({
+      map: masked ?? photo ?? glowTex,
+      color: photo ? SF_COLORS.SUN_LIGHT : def.color,
+      transparent: true,
+      blending: photo ? THREE.NormalBlending : THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+  )
 
   const mesh = new THREE.Mesh(geo, mat)
 

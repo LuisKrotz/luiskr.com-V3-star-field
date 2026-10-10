@@ -11,6 +11,11 @@
 import { describe, test, expect, jest, afterEach } from '@jest/globals'
 
 import * as THREE from 'three'
+import { MeshBasicNodeMaterial } from 'three/webgpu'
+import * as TSL from 'three/tsl'
+
+/** TSL namespace + node-material ctor bundle injected into body makers. */
+const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
 import { maskPhotoTexture, photoSize } from '../../../../engine/bodies/mask.js'
 import { makeGalaxyDisc, makeNebulaSprite } from '../../../../engine/bodies/deep-sky.js'
@@ -308,7 +313,7 @@ describe('bodies-scene detail layers', () => {
       ].map((u) => [u, fakePhoto()])
     )
 
-    buildStarBodies(s, THREE, defs, texMap, undefined)
+    buildStarBodies(s, THREE, NODE_DEPS, defs, texMap, undefined)
 
     expect(s.nodes.size).toBe(defs.length)
     expect(s.pickables.length).toBe(defs.length)

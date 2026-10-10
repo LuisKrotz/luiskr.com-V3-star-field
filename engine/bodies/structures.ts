@@ -15,7 +15,7 @@
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_STRUCTURE } from '@core/tokens/starfield/params.js'
 import { lcg, seedFrom } from '../rand.js'
-import type { SFBodyDef } from '../types.js'
+import type { SFBodyDef, SFNodeDeps } from '../types.js'
 
 type ThreeModule = typeof import('three')
 
@@ -88,50 +88,63 @@ function makeSpeckles(
   return points
 }
 
-/** Fresnel-rim vertex shader — passes normal + view direction per-vertex
- *  so the fragment stage can keep only the silhouette lit. */
-const SHELL_VS = `
-varying vec3 v_nrm;
-varying vec3 v_view;
-void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  v_nrm = normalize(normalMatrix * normal);
-  v_view = normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
-}
-`
+/**
+ * Fresnel-rim boundary shell — a node material whose emission peaks
+ * where the surface grazes the view ray (the bubble silhouette) and
+ * falls to zero face-on, so the shell never paints a flat filled disc
+ * over the sky. The node graph is the TSL translation of the original
+ * GLSL rim shader — the WebGPURenderer pipeline rejects classic
+ * ShaderMaterials. Output is premultiplied (`color·opacity·rim`) so
+ * additive blending adds exactly the rim glow.
+ * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors (bootstrap-injected).
+ * @param def Catalog entry — `def.color` tints the bubble.
+ */
+function makeShellMaterial(
+  THREE: ThreeModule,
+  deps: SFNodeDeps,
+  def: SFBodyDef
+): THREE_NS.Material {
+  const { TSL, mats } = deps
 
-/** Fresnel-rim fragment shader — alpha peaks where the surface grazes
- *  the view ray (the bubble silhouette) and falls to zero face-on, so
- *  the shell never paints a flat filled disc over the sky. */
-const SHELL_FS = `
-uniform vec3 u_color;
-uniform float u_opacity;
-uniform float u_power;
-varying vec3 v_nrm;
-varying vec3 v_view;
-void main() {
-  float rim = pow(1.0 - abs(dot(normalize(v_nrm), normalize(v_view))), u_power);
-  gl_FragColor = vec4(u_color, u_opacity * rim);
+  const { normalize, cameraPosition, positionWorld, normalWorld, pow, dot, uniform } = TSL
+
+  // rim = (1 − |view·n|)^power — 0 face-on, 1 at the silhouette.
+  const viewDir = normalize(cameraPosition.sub(positionWorld))
+
+  const rim = pow(dot(viewDir, normalWorld).abs().oneMinus(), SF_STRUCTURE.SHELL_RIM)
+
+  const mat = new mats.MeshBasicNodeMaterial()
+
+  const tint = uniform(new THREE.Color(def.color ?? SF_COLORS.SHELL_LOCAL))
+
+  mat.colorNode = tint.mul(rim).mul(SF_STRUCTURE.SHELL_OPACITY)
+  mat.transparent = true
+  mat.side = THREE.FrontSide
+  mat.blending = THREE.AdditiveBlending
+  mat.depthWrite = false
+
+  return mat
 }
-`
 
 /**
  * Builds one hierarchy structure: a low-poly fresnel-rim boundary
- * sphere plus the optional interior speckle volume. The rim shader
+ * sphere plus the optional interior speckle volume. The rim material
  * makes the shell read as a soap bubble — only the silhouette glows,
- * face-on area is transparent — so nested shells can never stack into
+ * face-on area adds nothing — so nested shells can never stack into
  * a flat film over the sky (the BackSide wash bug), and the boundary
  * blends into the black instead of cutting a hard disc. Every child's
  * raycast is stubbed so the shell can never eat a pointer hit meant
  * for bodies inside it.
  * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors (bootstrap-injected).
  * @param def Catalog entry — `structure.radius` sets the shell size.
  * @param glowTex Unused (kept for maker-signature symmetry).
  * @returns The structure group.
  */
 export function makeStructure(
   THREE: ThreeModule,
+  deps: SFNodeDeps,
   def: SFBodyDef,
   glowTex?: THREE_NS.Texture
 ): THREE_NS.Object3D {
@@ -143,19 +156,7 @@ export function makeStructure(
 
   const shell = new THREE.Mesh(
     new THREE.SphereGeometry(radius, SF_STRUCTURE.SEGMENTS, SF_STRUCTURE.SEGMENTS / 2),
-    new THREE.ShaderMaterial({
-      vertexShader: SHELL_VS,
-      fragmentShader: SHELL_FS,
-      uniforms: {
-        u_color: { value: new THREE.Color(def.color ?? SF_COLORS.SHELL_LOCAL) },
-        u_opacity: { value: SF_STRUCTURE.SHELL_OPACITY },
-        u_power: { value: SF_STRUCTURE.SHELL_RIM },
-      },
-      transparent: true,
-      side: THREE.FrontSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
+    makeShellMaterial(THREE, deps, def)
   )
 
   shell.raycast = () => undefined

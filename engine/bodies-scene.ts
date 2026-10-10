@@ -14,7 +14,9 @@ import { makeSpiralGalaxy } from './spiral.js'
 import { makeGalaxyDisc, makeNebulaSprite } from './bodies/deep-sky.js'
 import { makeBlackHole } from './bodies/black-hole.js'
 import { makeStructure } from './bodies/structures.js'
-import type { SFBodyDef, SFNode, SFState } from './types.js'
+import { makeBelt } from './bodies/belt.js'
+import { matParams } from './materials.js'
+import type { SFBodyDef, SFNode, SFNodeDeps, SFState } from './types.js'
 
 type ThreeModule = typeof import('three')
 
@@ -51,14 +53,73 @@ function makePickProxy(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Object3D {
 }
 
 /**
- * Sphere + material for a solid body — textured when the catalog maps one,
- * tinted procedural otherwise. Stars/systems use unlit MeshBasic (they
- * emit their own light); planets and smaller get lit MeshStandard.
+ * Luminous-sphere node material — a star's disc must not read as a flat
+ * polygon. The fresnel rim `(1 − |view·n|)^falloff` mixes the body's
+ * color/texture toward the limb tint and dips the alpha at the extreme
+ * silhouette, so the photosphere dissolves into its additive halo
+ * instead of cutting a hard circle against the sky. Built as a
+ * MeshBasicNodeMaterial — the WebGPURenderer node pipeline rejects
+ * classic GLSL ShaderMaterials.
  * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors (bootstrap-injected).
+ * @param colorHex Core tint (def.color; SUN_LIGHT fallback).
+ * @param tex Optional photosphere texture — modulates the core.
+ * @param rimTint Limb color (hot rim for stars, muted for moons).
+ * @param falloff Fresnel exponent — higher keeps a tight bright core.
+ */
+function makeGlowSphereMaterial(
+  THREE: ThreeModule,
+  deps: SFNodeDeps,
+  colorHex: number | undefined,
+  tex: THREE_NS.Texture | undefined,
+  rimTint: number,
+  falloff: number
+): THREE_NS.Material {
+  const { TSL, mats } = deps
+
+  const { mix, normalize, cameraPosition, positionWorld, normalWorld, pow, dot, vec3, texture } =
+    TSL
+
+  // Fresnel rim factor — 0 face-on, →1 at the grazing silhouette.
+  const viewDir = normalize(cameraPosition.sub(positionWorld))
+  const fres = pow(dot(viewDir, normalWorld).abs().oneMinus(), falloff)
+
+  const mat = new mats.MeshBasicNodeMaterial()
+
+  // Tints as vec3 constants — color nodes only support scalar mul, but
+  // the texture modulate needs componentwise vec3×vec3.
+  const coreC = new THREE.Color(colorHex ?? SF_COLORS.SUN_LIGHT)
+  const coreTint = vec3(coreC.r, coreC.g, coreC.b)
+
+  const rimC = new THREE.Color(rimTint)
+  const rim = vec3(rimC.r, rimC.g, rimC.b)
+
+  // core·tex → limb tint across the fresnel; alpha dips at the extreme
+  // silhouette so the sphere edge melts into the halo instead of a
+  // raytraced-crisp circle.
+  mat.colorNode = tex ? mix(coreTint.mul(texture(tex).rgb), rim, fres) : mix(coreTint, rim, fres)
+  mat.transparent = true
+  mat.opacityNode = fres.mul(0.55).oneMinus()
+
+  return mat
+}
+
+/**
+ * Sphere + material for a solid body — textured when the catalog maps one,
+ * tinted procedural otherwise. Stars/systems use the fresnel-limb node
+ * material (they emit their own light); planets and smaller get lit
+ * MeshStandard.
+ * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors.
  * @param def Catalog entry.
  * @param texMap Loaded texture map keyed by URL.
  */
-function makeSphere(THREE: ThreeModule, def: SFBodyDef, texMap: Map<string, THREE_NS.Texture>) {
+function makeSphere(
+  THREE: ThreeModule,
+  deps: SFNodeDeps,
+  def: SFBodyDef,
+  texMap: Map<string, THREE_NS.Texture>
+) {
   const geo = new THREE.SphereGeometry(
     def.radius,
     SF_SCENE.SPHERE_SEGMENTS,
@@ -70,14 +131,23 @@ function makeSphere(THREE: ThreeModule, def: SFBodyDef, texMap: Map<string, THRE
   if (luminous) {
     return new THREE.Mesh(
       geo,
-      new THREE.MeshBasicMaterial({ map: texMap.get(def.texture ?? ''), color: def.color })
+      makeGlowSphereMaterial(
+        THREE,
+        deps,
+        def.color,
+        texMap.get(def.texture ?? ''),
+        SF_COLORS.STAR_RIM,
+        SF_DETAIL.STAR_RIM_FALLOFF
+      )
     )
   }
 
-  const mat = new THREE.MeshStandardMaterial({
-    map: texMap.get(def.texture ?? ''),
-    color: def.color,
-  })
+  const mat = new THREE.MeshStandardMaterial(
+    matParams({
+      map: texMap.get(def.texture ?? ''),
+      color: def.color,
+    })
+  )
 
   // Relief + night-lights detail layers — Earth's three extra maps land
   // on the same material: `normalMap` shades terrain relief under the
@@ -153,14 +223,16 @@ function makeStarHalo(
   const size = def.radius * SF_DETAIL.HALO_SCALE
 
   const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map: glowTex,
-      color: def.color ?? SF_COLORS.SUN_LIGHT,
-      transparent: true,
-      opacity: SF_DETAIL.HALO_OPACITY,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
+    new THREE.SpriteMaterial(
+      matParams({
+        map: glowTex,
+        color: def.color ?? SF_COLORS.SUN_LIGHT,
+        transparent: true,
+        opacity: SF_DETAIL.HALO_OPACITY,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    )
   )
 
   sprite.scale.set(size, size, 1)
@@ -215,12 +287,14 @@ function makeShell(
       uvAttr.setXY(i, (r - inner) / (outer - inner), SF_DETAIL.RING_V)
     }
 
-    const mat = new THREE.MeshBasicMaterial({
-      map: tex,
-      transparent: true,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    })
+    const mat = new THREE.MeshBasicMaterial(
+      matParams({
+        map: tex,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      })
+    )
 
     const ring = new THREE.Mesh(geo, mat)
 
@@ -237,7 +311,7 @@ function makeShell(
     SF_SCENE.SPHERE_SEGMENTS / 2
   )
 
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.65 })
+  const mat = new THREE.MeshBasicMaterial(matParams({ map: tex, transparent: true, opacity: 0.65 }))
 
   const shell = new THREE.Mesh(geo, mat)
 
@@ -249,8 +323,17 @@ function makeShell(
 /**
  * Decorative companion satellites — small unlit spheres on child pivots;
  * `satPivots` returns the {pivot,speed,phase} records frame.ts rotates.
+ * @param THREE The three.js module.
+ * @param deps TSL namespace + node-material ctors.
+ * @param def Catalog entry — `satellites` lists the companions.
+ * @param mesh The host body mesh — pivots attach to it to orbit.
  */
-function makeSatellites(THREE: ThreeModule, def: SFBodyDef, mesh: { add(o: unknown): unknown }) {
+function makeSatellites(
+  THREE: ThreeModule,
+  deps: SFNodeDeps,
+  def: SFBodyDef,
+  mesh: { add(o: unknown): unknown }
+) {
   const satPivots: SFNode['satPivots'] = []
 
   for (const sat of def.satellites ?? []) {
@@ -258,7 +341,16 @@ function makeSatellites(THREE: ThreeModule, def: SFBodyDef, mesh: { add(o: unkno
 
     const geo = new THREE.SphereGeometry(sat.radius, 24, 12)
 
-    const mat = new THREE.MeshBasicMaterial({ color: sat.color })
+    // Companion dots share the fresnel-limb material (dim rim, loose
+    // falloff) so they read as small glowing bodies, not hard discs.
+    const mat = makeGlowSphereMaterial(
+      THREE,
+      deps,
+      sat.color,
+      undefined,
+      sat.color ?? SF_COLORS.SUN_LIGHT,
+      SF_DETAIL.SAT_RIM_FALLOFF
+    )
 
     const sm = new THREE.Mesh(geo, mat)
 
@@ -286,7 +378,7 @@ function makeOrbitRing(THREE: ThreeModule, def: SFBodyDef, orbit: number) {
   const mat = new THREE.MeshBasicMaterial({
     color: SF_COLORS.ORBIT_LINE,
     transparent: true,
-    opacity: 0.35,
+    opacity: SF_SCENE.ORBIT_OPACITY,
     side: THREE.DoubleSide,
     depthWrite: false,
   })
@@ -312,6 +404,7 @@ function makeOrbitRing(THREE: ThreeModule, def: SFBodyDef, orbit: number) {
 export function buildStarBodies(
   s: SFState,
   THREE: ThreeModule,
+  deps: SFNodeDeps,
   defs: readonly SFBodyDef[],
   texMap: Map<string, THREE_NS.Texture>,
   glowTex: THREE_NS.Texture | undefined
@@ -329,15 +422,20 @@ export function buildStarBodies(
       // Hierarchy shells — a boundary sphere + member speckles; never
       // registered in `pickables` (a multi-thousand-unit shell would
       // swallow every ray). The navigator still flies to its anchor.
-      mesh = makeStructure(THREE, def, glowTex)
+      mesh = makeStructure(THREE, deps, def, glowTex)
     } else if (def.kind === SF_KINDS.BLACK_HOLE) {
       // Sgr A* — layered relativistic composite; the plasma swirl is the
       // rotating layer so `spin` orbits the accretion flow without
       // tumbling the jets or disc.
-      const bh = makeBlackHole(THREE, def, glowTex)
+      const bh = makeBlackHole(THREE, deps, def, glowTex)
 
       mesh = bh.group
       spinner = bh.spin
+    } else if (def.kind === SF_KINDS.BELT) {
+      // Small-body annulus — a seeded Points disc; like structures it
+      // stays out of the raycast set so its pebbles can't intercept
+      // every pointer ray, but the navigator flies to its anchor.
+      mesh = makeBelt(THREE, def, glowTex)
     } else if (def.kind === SF_KINDS.GALAXY || def.kind === SF_KINDS.DWARF_GALAXY) {
       if (def.spiralDisc) {
         const spiral = makeSpiralGalaxy(
@@ -355,7 +453,7 @@ export function buildStarBodies(
         mesh = makeGalaxyDisc(THREE, def, texMap, glowTex)
       }
     } else {
-      mesh = makeSphere(THREE, def, texMap)
+      mesh = makeSphere(THREE, deps, def, texMap)
 
       // Sub-pixel bodies get an invisible pick bubble inside the mesh so
       // they stay clickable at the home zoom; the bubble is a proxy — a
@@ -417,7 +515,7 @@ export function buildStarBodies(
       mesh.add(makeStarHalo(THREE, def, glowTex))
     }
 
-    const satPivots = makeSatellites(THREE, def, mesh)
+    const satPivots = makeSatellites(THREE, deps, def, mesh)
 
     detail.push(...satPivots.map((sat) => sat.pivot))
 
@@ -440,9 +538,10 @@ export function buildStarBodies(
     s.nodes.set(def.id, node)
     s.anchors.set(def.id, mesh)
 
-    // Hierarchy shells never enter the raycast set — their enormous
-    // boundary spheres would intercept every pointer ray in the scene.
-    if (def.kind !== SF_KINDS.STRUCTURE) {
+    // Hierarchy shells and small-body belts never enter the raycast
+    // set — the enormous boundary spheres and the thousands of pebble
+    // particles would intercept every pointer ray in the scene.
+    if (def.kind !== SF_KINDS.STRUCTURE && def.kind !== SF_KINDS.BELT) {
       s.pickables.push(pickMesh ?? mesh)
     }
   }
