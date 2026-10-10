@@ -49,7 +49,7 @@
     ],
     "videos": [
       {
-        "src": "media/jupiter/video-1.mp4",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/jupiter/video-1.mp4",
         "caption": "Laghdaíonn agus Fásann Spota Mór Dearg Iúpatar",
         "credit": "NASA"
       }

@@ -41,7 +41,7 @@
     ],
     "videos": [
       {
-        "src": "media/earth/video-1.mp4",
+        "src": "https://storage.googleapis.com/luiskr.com/public/_v3/experiments/star-field/media/earth/video-1.mp4",
         "caption": "Earthrise after Orion Executes Outbound Powered Flyby",
         "credit": "NASA"
       }
