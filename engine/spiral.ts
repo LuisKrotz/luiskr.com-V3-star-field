@@ -329,8 +329,8 @@ export function makeSpiralGalaxy(
       rand,
       sparkleCount,
       arms,
-      def.spiralDisc?.thick ?? 1,
-      def.spiralDisc?.halo ?? 0,
+      def.spiralDisc?.thick,
+      def.spiralDisc?.halo,
       bubble
     )
   }

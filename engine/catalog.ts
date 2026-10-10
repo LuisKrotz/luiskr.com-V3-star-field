@@ -44,7 +44,7 @@ const gpos = (l: number, b: number, dLy: number): [number, number, number] =>
  * @param dLy Heliocentric distance in light-years.
  * @returns `[x, y, z]` chart position in scene units.
  */
-const nbr = (l: number, b: number, dLy: number): [number, number, number] => {
+export const nbr = (l: number, b: number, dLy: number): [number, number, number] => {
   const honest = sfChartDist(dLy)
 
   const bandEdge = SF_SCALE.NEIGHBORHOOD_INNER + SF_SCALE.NEIGHBORHOOD_BAND

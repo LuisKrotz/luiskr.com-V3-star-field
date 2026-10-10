@@ -74,6 +74,8 @@ describe('star-cloud decode + mount', () => {
       [0, 1, 0, 7.0, 1.2, 0],
       // kind 0 star, deep red
       [0, 0, 1, 9.0, 2.1, 0],
+      // zero-distance record → `dLy > 0 ? … : 0` fallback arm
+      [0, 0, 0, 5.0, 0.5, 0],
       // kind 1 exoplanet
       [10, 20, 30, 7.5, 0.85, 1],
       // kind 2 dso — far-field clamp
@@ -417,6 +419,29 @@ describe('spiral + satellite arms', () => {
     const c = makeSpiralGalaxy(THREE, { id: 'g4', radius: 5, tilt: 0.1 }, undefined, undefined)
 
     expect(c.points.raycast()).toBeUndefined()
+
+    // Elliptical + color-less → `color ?? DWARF_SPH` tint fallback.
+    const d = makeSpiralGalaxy(
+      THREE,
+      { id: 'g5', radius: 5, spiralDisc: { elliptical: true, count: 64 } },
+      undefined,
+      undefined,
+      false
+    )
+
+    expect(d.group).toBeTruthy()
+
+    // Heliocentric bubble with `pos` but no `tilt` → `tilt ?? 0` arm
+    // inside the bubble transform.
+    const e = makeSpiralGalaxy(
+      THREE,
+      { id: 'g6', radius: 5, pos: [267, 0, 0], spiralDisc: { count: 64, bubble: 10 } },
+      undefined,
+      undefined,
+      false
+    )
+
+    expect(e.points).toBeTruthy()
   })
 
   test('buildStarBodies covers the satellite phase-default + galaxy arms', () => {
