@@ -28,6 +28,7 @@ import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { WEBGL_STRINGS } from '@core/tokens/strings/webgl.js'
 import { CANVAS_STRINGS } from '@core/tokens/strings/canvas.js'
 import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_COLORS } from '@core/tokens/starfield/params.js'
 import { lcg, seedFrom } from '../rand.js'
 import type { SFBodyDef } from '../types.js'
 
@@ -57,7 +58,7 @@ const _STYLE_STREAKS = 2
  * @returns Channel triple.
  */
 function rgb(hex: number | undefined): Rgb {
-  const c = hex ?? 0x8a8f9a
+  const c = hex ?? SF_COLORS.BODY_NEUTRAL
 
   return [(c >> 16) & 255, (c >> 8) & 255, c & 255]
 }
