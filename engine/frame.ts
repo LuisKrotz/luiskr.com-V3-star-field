@@ -264,8 +264,6 @@ function updateStructures(s: SFState): void {
 
     const p = anchorWorldPos(node.mesh)
 
-    if (!p) continue
-
     const d = Math.hypot(cam.x - p.x, cam.y - p.y, cam.z - p.z)
     const r = node.def.structure?.radius ?? node.def.radius
 
@@ -304,8 +302,6 @@ function updateGalaxyClouds(s: SFState): void {
     if (!node.def.spiralDisc?.volumetric) continue
 
     const p = anchorWorldPos(node.mesh)
-
-    if (!p) continue
 
     const dx = cam.x - p.x
     const dy = cam.y - p.y

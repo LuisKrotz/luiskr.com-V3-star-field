@@ -18,35 +18,35 @@
   // theme: light-glass surfaces with dark ink by default, dark glass
   // under html.dark-mode. The --sf-sky-* inks never flip — they paint
   // text directly on the starfield where no glass sits behind them.
-  --sf-ink: #{rgba($color-black, 0.85)};
-  --sf-ink-2: #{rgba($color-black, 0.55)};
-  --sf-ink-3: #{rgba($color-black, 0.4)};
-  --sf-ink-faint: #{rgba($color-black, 0.3)};
-  --sf-ink-strong: #{rgba($color-black, 0.92)};
-  --sf-chrome: #{rgba($color-white, 0.82)};
-  --sf-chrome-2: #{rgba($color-white, 0.55)};
-  --sf-line: #{rgba($color-black, 0.14)};
-  --sf-line-2: #{rgba($color-black, 0.08)};
-  --sf-field: #{rgba($color-black, 0.06)};
-  --sf-field-hover: #{rgba($color-black, 0.12)};
-  --sf-sky-ink: #{rgba($color-white, 0.5)};
-  --sf-sky-ink-2: #{rgba($color-white, 0.9)};
-  --sf-sky-faint: #{rgba($color-white, 0.15)};
+  --sf-ink: var(--text-primary);
+  --sf-ink-2: var(--text-secondary);
+  --sf-ink-3: var(--text-muted);
+  --sf-ink-faint: var(--text-muted);
+  --sf-ink-strong: var(--text-primary);
+  --sf-chrome: color-mix(in srgb, var(--bg-primary) 96%, transparent);
+  --sf-chrome-2: color-mix(in srgb, var(--bg-primary) 85%, transparent);
+  --sf-line: var(--border-color);
+  --sf-line-2: color-mix(in srgb, var(--border-color) 60%, transparent);
+  --sf-field: color-mix(in srgb, var(--text-primary) 6%, transparent);
+  --sf-field-hover: color-mix(in srgb, var(--text-primary) 12%, transparent);
+  --sf-sky-ink: var(--text-muted-on-dark);
+  --sf-sky-ink-2: var(--color-white-raw);
+  --sf-sky-faint: color-mix(in srgb, var(--color-white-raw) 15%, transparent);
 }
 
 // Dark theme — the dark-glass chrome the star chart originally shipped.
 :host-context(.dark-mode) {
-  --sf-ink: #{rgba($color-white, 0.85)};
-  --sf-ink-2: #{rgba($color-white, 0.55)};
-  --sf-ink-3: #{rgba($color-white, 0.4)};
-  --sf-ink-faint: #{rgba($color-white, 0.3)};
+  --sf-ink: var(--text-primary);
+  --sf-ink-2: var(--text-secondary);
+  --sf-ink-3: var(--text-muted);
+  --sf-ink-faint: var(--text-muted);
   --sf-ink-strong: var(--color-white-raw);
-  --sf-chrome: #{rgba($color-black, 0.78)};
-  --sf-chrome-2: #{rgba($color-black, 0.4)};
-  --sf-line: #{rgba($color-white, 0.12)};
-  --sf-line-2: #{rgba($color-white, 0.07)};
-  --sf-field: #{rgba($color-white, 0.06)};
-  --sf-field-hover: #{rgba($color-white, 0.14)};
+  --sf-chrome: color-mix(in srgb, var(--bg-dark) 85%, transparent);
+  --sf-chrome-2: color-mix(in srgb, var(--bg-dark) 50%, transparent);
+  --sf-line: var(--border-color);
+  --sf-line-2: color-mix(in srgb, var(--border-color) 60%, transparent);
+  --sf-field: color-mix(in srgb, var(--color-white-raw) 6%, transparent);
+  --sf-field-hover: color-mix(in srgb, var(--color-white-raw) 14%, transparent);
 }
 
 // The Three.js render canvas (fullscreen behind every overlay layer).
@@ -73,12 +73,20 @@
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 70% 45% at 30% 40%, rgba($color-blue, 0.22) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 35% at 75% 65%, rgba($color-blue, 0.16) 0%, transparent 70%),
+    radial-gradient(
+      ellipse 70% 45% at 30% 40%,
+      color-mix(in srgb, var(--color-blue-raw) 22%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 35% at 75% 65%,
+      color-mix(in srgb, var(--color-blue-raw) 16%, transparent) 0%,
+      transparent 70%
+    ),
     radial-gradient(
       circle at center,
-      rgba($color-blue, 0.24) 0%,
-      rgba($color-black, 0.92) 62%,
+      color-mix(in srgb, var(--color-blue-raw) 24%, transparent) 0%,
+      color-mix(in srgb, var(--color-black-raw) 92%, transparent) 62%,
       var(--bg-darkest) 100%
     );
 }
