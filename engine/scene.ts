@@ -106,9 +106,9 @@ export function setupStarScene(
     scene.add(sky)
   }
 
-  scene.add(new THREE.AmbientLight(SF_COLORS.AMBIENT, 1.6))
+  scene.add(new THREE.AmbientLight(SF_COLORS.AMBIENT, SF_SCENE.AMBIENT_INT))
 
-  const sunLight = new THREE.PointLight(SF_COLORS.SUN_LIGHT, 2.2, 0, 0)
+  const sunLight = new THREE.PointLight(SF_COLORS.SUN_LIGHT, SF_SCENE.SUN_INT, 0, 0)
 
   sunLight.position.set(0, 0, 0)
 

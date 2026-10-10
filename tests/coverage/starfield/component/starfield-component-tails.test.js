@@ -34,7 +34,7 @@ const unmount = (el) => {
 }
 
 const esc = (el) =>
-  el.dispatchEvent(new window.KeyboardEvent('keydown', { key: KEYS.ESCAPE }))
+  el.dispatchEvent(new window.KeyboardEvent('keydown', { key: KEYS.ESCAPE, bubbles: true }))
 
 describe('StarField coverage tails', () => {
   test('second onMounted hits the canvas-already-mounted guard', async () => {

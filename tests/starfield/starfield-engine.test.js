@@ -106,6 +106,59 @@ describe('StarFieldEngine', () => {
     engine.destroy()
   })
 
+  test('selectBody flies to a registry object via the shard index', async () => {
+    const origFetch = globalThis.fetch
+
+    globalThis.fetch = jest.fn(async (url) => {
+      const u = String(url)
+
+      if (u.endsWith('manifest.json'))
+        return {
+          ok: true,
+          json: async () => ({
+            total: 1,
+            shardSize: 1000,
+            kinds: { star: { count: 1, shards: ['star-000.json'] } },
+          }),
+        }
+      if (u.endsWith('star-000.json'))
+        return {
+          ok: true,
+          json: async () => [{ i: 'star-000000', n: 'Sirius', m: -1.4, d: 8.6, x: 5, y: 0, z: 0 }],
+        }
+
+      return { ok: false, status: 404 }
+    })
+
+    try {
+      const engine = new StarFieldEngine(makeCanvas())
+
+      await engine.init()
+
+      engine.selectBody('star-000000')
+      await flush(40)
+
+      // Stale-selection guard — a second select before the shard lands
+      // must not be hijacked by the first resolve.
+      engine.selectBody('star-000000')
+      engine.selectBody('mars')
+      await flush(40)
+
+      engine.destroy()
+
+      // Disposed mid-flight — resolve must no-op.
+      const dead = new StarFieldEngine(makeCanvas())
+
+      await dead.init()
+
+      dead.selectBody('star-000000')
+      dead.destroy()
+      await flush(30)
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
   test('flyHome returns to the overview pose', async () => {
     const engine = new StarFieldEngine(makeCanvas())
 

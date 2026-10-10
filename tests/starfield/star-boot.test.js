@@ -46,6 +46,7 @@ const makeHost = (overrides = {}) => {
     _updateLoader: jest.fn(),
     _updateDom: jest.fn(),
     _dismissLoader: jest.fn(),
+    _applyDeepLink: jest.fn(),
     _selectBody: jest.fn(),
     _handleHover: jest.fn(),
     ...overrides,

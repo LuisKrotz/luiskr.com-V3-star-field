@@ -1,0 +1,40 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_mobile.scss — the <768px overrides: drawer and dossier panel
+//  become full-width sheets, the HUD compacts, tooltip hides, and controls
+//  move to the small-screen gutter.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+@media (max-width: $bk-768) {
+  .#{$_B_SF}-nav {
+    width: 100%;
+  }
+
+  .#{$_B_SF}-panel {
+    left: to-rem($space-md);
+    right: to-rem($space-md);
+    width: auto;
+    bottom: to-rem($space-md);
+  }
+
+  .#{$_B_SF}-hud {
+    top: auto;
+    bottom: to-rem($space-4xl);
+    width: 90%;
+  }
+
+  .#{$_B_SF}-nav-toggle {
+    bottom: to-rem($space-md);
+    left: to-rem($space-md);
+  }
+
+  .#{$_B_SF}-tip {
+    display: none;
+  }
+
+  .#{$_B_SF}-actions {
+    right: to-rem($space-md);
+    bottom: to-rem($space-md);
+    flex-direction: column;
+  }
+}

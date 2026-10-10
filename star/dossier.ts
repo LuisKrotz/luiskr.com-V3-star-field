@@ -6,10 +6,18 @@
  * locale has no translated file yet. Dossiers are cached per
  * `locale:id` so a later select never hits the network twice, and a
  * locale switch refetches only the selected body's file in the new
- * language.
+ * language. Registry ids (`star-NNNNNN`…) bypass JSON entirely — the
+ * panel is synthesized from the catalogue record with the locale's
+ * field labels, so all 139k+ objects get a real data panel without
+ * shipping per-object files.
  */
 import { SF_DATA_BASE } from '@core/tokens/starfield/textures.js'
 import { LOCALES } from '@core/tokens/locales.js'
+import { TRANSLATION_KEYS } from '@core/tokens/routes/translation-keys.js'
+import { FALLBACK_PAGES } from '@core/locale/fallback.js'
+import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { isRegistryId, loadRegistryRecord } from '../engine/registry.js'
+import type { SFRegistryRecord } from '../engine/registry.js'
 import type { SFDossier } from '../engine/types.js'
 import type { StarField } from '../StarField.js'
 import store from '@core/store.js'
@@ -60,14 +68,106 @@ function fetchJson(url: string, id: string): Promise<SFDossier | null> {
 }
 
 /**
+ * Distance label for a registry record — light-years under a million,
+ * "Mly" above, so far-field NGC galaxies read "52 Mly" instead of
+ * "52 000 000 ly". Units are universal abbreviations (no translation).
+ * @param ly Heliocentric distance in light-years.
+ * @returns Formatted distance string.
+ */
+export function registryDist(ly: number | undefined): string {
+  if (ly == null) return '—'
+
+  return ly >= SF_STAR_CLOUD.MLY
+    ? `${(ly / SF_STAR_CLOUD.MLY).toFixed(1)} Mly`
+    : `${Math.round(ly).toLocaleString()} ly`
+}
+
+/**
+ * Synthesizes a dossier-shaped view for one registry record — the
+ * 139k-object catalog can't ship per-object prose files, so the panel
+ * shows the real catalogue fields (designation, magnitude, distance,
+ * spectral/type, coordinates, provenance) under the locale's label
+ * set. `history` carries the dataset description; `meta` signs the
+ * acquisition date so the provenance contract matches authored files.
+ * @param rec The decoded shard record.
+ * @param kind Registry kind (`star`/`exoplanet`/`dso`).
+ * @param t Locale label map (pages/star-field node + English defaults).
+ * @returns A renderable SFDossier.
+ */
+function synthRegistryDossier(
+  rec: SFRegistryRecord,
+  kind: string,
+  t: Record<string, unknown>
+): SFDossier {
+  const L = (k: string): string => String(t[k] ?? k)
+
+  const facts: Array<{ label: string; value: string }> = []
+
+  if (rec.m != null) facts.push({ label: L('magnitude'), value: String(rec.m) })
+
+  if (rec.d != null) facts.push({ label: L('distance'), value: registryDist(rec.d) })
+
+  if (rec.s) facts.push({ label: L('spectralType'), value: rec.s })
+
+  if (rec.c)
+    facts.push({ label: kind === 'dso' ? L('designation') : L('constellation'), value: rec.c })
+
+  if (rec.h) facts.push({ label: L('hostStar'), value: rec.h })
+
+  if (rec.t) facts.push({ label: L('dsoType'), value: rec.t })
+
+  if (rec.y2) facts.push({ label: L('discovery'), value: rec.y2 })
+
+  if (rec.r != null) facts.push({ label: L('redshift'), value: String(rec.r) })
+
+  facts.push({
+    label: L('coordinates'),
+    value: `${rec.x.toFixed(1)}, ${rec.y.toFixed(1)}, ${rec.z.toFixed(1)} ly`,
+  })
+
+  const source =
+    kind === 'exoplanet'
+      ? SF_STAR_CLOUD.SRC_EXO
+      : kind === 'dso'
+        ? SF_STAR_CLOUD.SRC_DSO
+        : SF_STAR_CLOUD.SRC_HYG
+
+  const historyKey = `registry_${kind}`
+
+  return {
+    id: rec.i,
+    name: rec.n,
+    kind: kind === 'dso' ? 'dso' : kind === 'exoplanet' ? 'exoplanet' : 'star',
+    tagline: String(t[historyKey] ?? ''),
+    facts,
+    history: String(t[`${historyKey}_about`] ?? ''),
+    source,
+    meta: {
+      acquired: SF_STAR_CLOUD.REGISTRY_ACQUIRED,
+      translated: SF_STAR_CLOUD.REGISTRY_ACQUIRED,
+      locale: LOCALES.EN,
+    },
+  }
+}
+
+/**
  * Fetches one locale dossier JSON — `data/<locale>/<id>.json`, with the
  * canonical English file as fallback so a not-yet-translated body still
- * shows real data instead of an empty panel.
- * @param id Body id matching `public/data/<locale>/<id>.json`.
+ * shows real data instead of an empty panel. Registry ids skip the JSON
+ * path entirely: their record comes from the sharded catalogue index
+ * and the panel is synthesized with the locale's field labels.
+ * @param id Body id matching `public/data/<locale>/<id>.json`, or a
+ *   registry id (`star-NNNNNN`, `exoplanet-NNNNNN`, `dso-NNNNNN`).
  * @param locale Active locale code — defaults to the store's current.
+ * @param labels Optional label map for registry synthesis (component's
+ *   merged translations); the English snapshot fills any gaps.
  * @returns The parsed dossier or null on fetch/parse failure.
  */
-export function fetchDossier(id: string, locale?: string | null): Promise<SFDossier | null> {
+export function fetchDossier(
+  id: string,
+  locale?: string | null,
+  labels?: Record<string, unknown> | null
+): Promise<SFDossier | null> {
   const code = dossierLocale(locale ?? store.getters.getLang())
 
   const key = `${code}:${id}`
@@ -75,11 +175,24 @@ export function fetchDossier(id: string, locale?: string | null): Promise<SFDoss
   let pending = _cache.get(key)
 
   if (!pending) {
-    pending = fetchJson(`${SF_DATA_BASE}/${code}/${id}.json`, id).then(
-      (d) =>
-        d ??
-        (code === LOCALES.EN ? null : fetchJson(`${SF_DATA_BASE}/${LOCALES.EN}/${id}.json`, id))
-    )
+    if (isRegistryId(id)) {
+      const parsed = id.split('-')[0]
+
+      const t: Record<string, unknown> = {
+        ...(FALLBACK_PAGES[TRANSLATION_KEYS.STAR_FIELD] as Record<string, unknown>),
+        ...(labels ?? {}),
+      }
+
+      pending = loadRegistryRecord(id).then((rec) =>
+        rec ? synthRegistryDossier(rec, parsed, t) : null
+      )
+    } else {
+      pending = fetchJson(`${SF_DATA_BASE}/${code}/${id}.json`, id).then(
+        (d) =>
+          d ??
+          (code === LOCALES.EN ? null : fetchJson(`${SF_DATA_BASE}/${LOCALES.EN}/${id}.json`, id))
+      )
+    }
 
     _cache.set(key, pending)
   }
@@ -113,7 +226,7 @@ export function loadDossier(c: StarField, id: string): void {
 
   c._updateDom()
 
-  fetchDossier(id).then((file) => {
+  fetchDossier(id, null, c.translations).then((file) => {
     if (c._selectedId !== id) return
 
     c._dossierLoading = false

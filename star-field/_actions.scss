@@ -1,0 +1,30 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_actions.scss — the bottom-right action cluster (screenshot /
+//  overview buttons) and the shared sf-btn control style.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+.#{$_B_SF}-actions {
+  position: absolute;
+  right: to-rem($space-xl);
+  bottom: to-rem($space-xl);
+  z-index: 30;
+  display: flex;
+  gap: to-rem($space-sm);
+}
+
+.#{$_B_SF}-btn {
+  @extend %LK_LINK;
+
+  font-family: var(--font-mono);
+  font-size: to-rem($space-lg);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba($color-white, 0.85);
+  background: rgba($color-black, 0.4);
+  backdrop-filter: blur(to-rem($space-xs));
+  border: 1px solid rgba($color-white, 0.14);
+  border-radius: var(--radius-sm);
+  padding: to-rem($space-sm) to-rem($space-lg);
+  cursor: pointer;
+}

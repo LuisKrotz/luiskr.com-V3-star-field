@@ -13,10 +13,77 @@
  * `public/data/<id>.json` and lazy-loads on approach/selection.
  */
 
-import { SF_COLORS } from '@core/tokens/starfield/params.js'
+import { SF_COLORS, SF_SCALE, SF_SPIRAL, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
 import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { sfChartDist, sfGalacticPos } from './scale.js'
 import type { SFBodyDef } from './types.js'
+
+/**
+ * Galactic-coordinate placement — every deep-sky body lands on its real
+ * galactic (l, b) direction at the multi-tier compressed distance, in the
+ * same tilted frame the Milky Way particle disc and the deep-field cloud
+ * render. Directions stay astronomically true; only radii compress.
+ * @param l Galactic longitude in degrees.
+ * @param b Galactic latitude in degrees.
+ * @param dLy Heliocentric distance in light-years.
+ * @returns `[x, y, z]` chart position in scene units.
+ */
+const gpos = (l: number, b: number, dLy: number): [number, number, number] =>
+  sfGalacticPos(l, b, dLy, SF_SCALE.MW_TILT)
+
+/**
+ * Neighborhood-band placement — bodies inside ~3 000 ly compress to
+ * sub-unit chart radii (Proxima's 4.2 ly → 0.04 units, inside the
+ * exaggerated solar system), so near objects keep their true galactic
+ * direction but ride a monotonic legibility band between
+ * NEIGHBORHOOD_INNER and INNER+BAND units. Beyond the band the honest
+ * compressed radius takes over, so distant bodies stay truthful.
+ * @param l Galactic longitude in degrees.
+ * @param b Galactic latitude in degrees.
+ * @param dLy Heliocentric distance in light-years.
+ * @returns `[x, y, z]` chart position in scene units.
+ */
+const nbr = (l: number, b: number, dLy: number): [number, number, number] => {
+  const honest = sfChartDist(dLy)
+
+  const bandEdge = SF_SCALE.NEIGHBORHOOD_INNER + SF_SCALE.NEIGHBORHOOD_BAND
+
+  if (honest >= bandEdge) return gpos(l, b, dLy)
+
+  const [x, y, z] = gpos(l, b, dLy)
+
+  const n = Math.hypot(x, y, z)
+
+  if (!n) return [0, 0, 0]
+
+  const r = SF_SCALE.NEIGHBORHOOD_INNER + Math.min(honest, SF_SCALE.NEIGHBORHOOD_BAND)
+
+  return [(x / n) * r, (y / n) * r, (z / n) * r]
+}
+
+/**
+ * Milky Way disc center — the Sun sits at the scene origin and its true
+ * 26 700-ly galactocentric distance lands the disc center 267 units
+ * down −X (the `sfGalacticVec` axis map puts l=0 at −X), so the solar
+ * system renders embedded inside the disc at its real half-radius ring
+ * instead of floating beside a face-on photo.
+ */
+const MW_CENTER: [number, number, number] = [-SF_STAR_CLOUD.SUN_GC_LY / SF_SCALE.GALACTIC_LY, 0, 0]
+
+/** Milky Way disc radius in chart units — 52 000 ly at the galactic tier. */
+const MW_RADIUS = SF_SCALE.MW_DISC_LY / SF_SCALE.GALACTIC_LY
+
+/**
+ * Andromeda's real galactic coordinates — shared by the M31 def and the
+ * Local Group shell, whose boundary centers on the MW↔M31 midpoint.
+ */
+const M31_L = 121.17
+const M31_B = -21.57
+const M31_LY = 2537000
+
+/** Andromeda's compressed chart position — ~11.9k units toward l=121°. */
+const M31_POS = gpos(M31_L, M31_B, M31_LY)
 
 /**
  * Solar-system bodies — compressed orbits so all eight planets fit inside
@@ -76,6 +143,10 @@ const SOLAR: SFBodyDef[] = [
     tilt: 0.41,
     dist: '1 AU',
     texture: SF_TEXTURES.EARTH_DAY,
+    normalTexture: SF_TEXTURES.EARTH_NORMAL,
+    emissiveTexture: SF_TEXTURES.EARTH_NIGHT,
+    cloudTexture: SF_TEXTURES.EARTH_CLOUDS,
+    bumpTexture: SF_TEXTURES.EARTH_ELEVATION,
     ring: true,
     phase: 3.1,
     cycle: { period: 90 },
@@ -404,8 +475,11 @@ const SOLAR: SFBodyDef[] = [
 ]
 
 /**
- * Milky Way neighborhood — famous nearby systems placed on the mid-field
- * galactic plane; `satellites` dress each system with orbiting companions.
+ * Milky Way neighborhood — famous nearby systems at their real galactic
+ * (l, b, distance) coordinates through `nbr`: the honest multi-tier
+ * compression collapses sub-3000-ly distances to sub-unit radii, so near
+ * stars ride the monotonic neighborhood band instead of collapsing onto
+ * the Sun. `satellites` dress each system with orbiting companions.
  */
 const MILKY_WAY: SFBodyDef[] = [
   {
@@ -414,7 +488,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3,
-    pos: [290, 18, 60],
+    pos: nbr(313.94, -1.93, 4.246),
     dist: '4.246 ly',
     color: SF_COLORS.PROXIMA_STAR,
     satellites: [{ radius: 0.7, orbit: 7, speed: 1.4, color: SF_COLORS.PROXIMA_PLANET }],
@@ -425,7 +499,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3.4,
-    pos: [330, -8, -110],
+    pos: nbr(315.73, -0.68, 4.37),
     dist: '4.37 ly',
     color: SF_COLORS.ALPHA_STAR,
     satellites: [{ radius: 2.4, orbit: 9, speed: 0.5, color: SF_COLORS.ALPHA_COMPANION }],
@@ -436,7 +510,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 4,
-    pos: [380, 40, 90],
+    pos: nbr(227.23, -8.89, 8.6),
     dist: '8.6 ly',
     color: SF_COLORS.SIRIUS,
     spin: 0.3,
@@ -447,7 +521,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3.8,
-    pos: [420, 70, -60],
+    pos: nbr(67.45, 19.24, 25.04),
     dist: '25 ly',
     color: SF_COLORS.VEGA,
     spin: 0.4,
@@ -458,7 +532,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 6.5,
-    pos: [460, -30, -160],
+    pos: nbr(199.79, -9.0, 548),
     dist: '548 ly',
     color: SF_COLORS.BETELGEUSE,
     spin: 0.1,
@@ -470,7 +544,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 1.6,
-    pos: [350, -55, 170],
+    pos: nbr(74.9, -60.4, 40.7),
     dist: '40.7 ly',
     color: SF_COLORS.TRAPPIST_STAR,
     satellites: [
@@ -480,23 +554,12 @@ const MILKY_WAY: SFBodyDef[] = [
     ],
   },
   {
-    id: 'sagittarius-a',
-    name: 'Sagittarius A*',
-    kind: SF_KINDS.BLACK_HOLE,
-    group: SF_GROUPS.MILKY_WAY,
-    radius: 4,
-    pos: [0, 10, -480],
-    dist: '26 000 ly',
-    color: SF_COLORS.SAGITTARIUS_A,
-    pulse: { period: 2.4, amp: 0.05 },
-  },
-  {
     id: 'barnard-star',
     name: "Barnard's Star",
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 2.2,
-    pos: [255, -40, 150],
+    pos: nbr(31.01, 14.06, 5.96),
     dist: '5.96 ly',
     color: SF_COLORS.BARNARD_STAR,
     spin: 0.2,
@@ -507,7 +570,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 2.9,
-    pos: [300, 55, -40],
+    pos: nbr(195.84, -48.05, 10.5),
     dist: '10.5 ly',
     color: SF_COLORS.EPS_ERI,
     satellites: [{ radius: 0.55, orbit: 6, speed: 1.2, color: SF_COLORS.EPS_ERI_PLANET }],
@@ -518,7 +581,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 2.7,
-    pos: [270, 65, 130],
+    pos: nbr(173.1, -73.44, 11.9),
     dist: '11.9 ly',
     color: SF_COLORS.TAU_CETI,
     satellites: [
@@ -532,7 +595,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 4.6,
-    pos: [360, 95, 30],
+    pos: nbr(15.07, 69.11, 36.7),
     dist: '36.7 ly',
     color: SF_COLORS.ARCTURUS,
     spin: 0.15,
@@ -543,7 +606,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3,
-    pos: [440, -15, 60],
+    pos: nbr(92.9, -30.8, 50.9),
     dist: '50.9 ly',
     color: SF_COLORS.PEGASI_STAR,
     satellites: [{ radius: 0.9, orbit: 5, speed: 2.6, color: SF_COLORS.PEGASI_PLANET }],
@@ -554,7 +617,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 5,
-    pos: [430, 50, -140],
+    pos: nbr(180.97, -20.35, 65),
     dist: '65 ly',
     color: SF_COLORS.ALDEBARAN,
     spin: 0.1,
@@ -565,7 +628,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3.9,
-    pos: [400, -70, -80],
+    pos: nbr(162.6, 4.57, 42.9),
     dist: '42.9 ly',
     color: SF_COLORS.CAPELLA,
     spin: 0.25,
@@ -576,7 +639,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 4.2,
-    pos: [480, -80, 120],
+    pos: nbr(261.21, -25.3, 310),
     dist: '310 ly',
     color: SF_COLORS.CANOPUS,
     spin: 0.2,
@@ -587,7 +650,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3.6,
-    pos: [320, 120, -180],
+    pos: nbr(123.28, 26.46, 447),
     dist: '447 ly',
     color: SF_COLORS.POLARIS,
     spin: 0.2,
@@ -598,7 +661,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 7,
-    pos: [380, -90, -220],
+    pos: nbr(351.95, 15.06, 550),
     dist: '550 ly',
     color: SF_COLORS.ANTARES,
     spin: 0.08,
@@ -609,7 +672,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 5.5,
-    pos: [510, 30, -240],
+    pos: nbr(209.24, -25.25, 863),
     dist: '863 ly',
     color: SF_COLORS.RIGEL,
     spin: 0.15,
@@ -620,7 +683,7 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.STAR,
     group: SF_GROUPS.MILKY_WAY,
     radius: 5.2,
-    pos: [450, 110, 180],
+    pos: nbr(84.28, 1.99, 2615),
     dist: '2 615 ly',
     color: SF_COLORS.DENEB,
     spin: 0.15,
@@ -631,14 +694,19 @@ const MILKY_WAY: SFBodyDef[] = [
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 3.1,
-    pos: [520, 60, 40],
+    pos: nbr(79.41, 11.72, 1800),
     dist: '1 800 ly',
     color: SF_COLORS.KEPLER_STAR,
     satellites: [{ radius: 0.6, orbit: 6.5, speed: 0.8, color: SF_COLORS.KEPLER_PLANET }],
   },
 ]
 
-/** Nebulae — billboard sprites with procedural glow, mid-far field. */
+/**
+ * Nebulae + globular clusters — billboard sprites at real galactic (l, b,
+ * distance); objects under ~3 000 ly ride the neighborhood band while
+ * far-field members (Tarantula in the LMC, Omega Centauri in the halo)
+ * land at their true compressed radii.
+ */
 const NEBULAE: SFBodyDef[] = [
   {
     id: 'orion-nebula',
@@ -646,8 +714,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 34,
-    pos: [480, 40, -280],
+    pos: nbr(209.01, -19.38, 1344),
     dist: '1 344 ly',
+    texture: SF_TEXTURES.NEBULA_ORION,
     color: SF_COLORS.ORION_NEBULA,
   },
   {
@@ -656,8 +725,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 40,
-    pos: [-520, 80, -300],
+    pos: nbr(16.97, 0.8, 7000),
     dist: '7 000 ly',
+    texture: SF_TEXTURES.NEBULA_EAGLE,
     color: SF_COLORS.EAGLE_NEBULA,
   },
   {
@@ -666,8 +736,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 30,
-    pos: [-450, -60, 380],
+    pos: nbr(184.56, -5.78, 6500),
     dist: '6 500 ly',
+    texture: SF_TEXTURES.NEBULA_CRAB,
     color: SF_COLORS.CRAB_NEBULA,
     pulse: { period: 1.6, amp: 0.08 },
   },
@@ -677,8 +748,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 26,
-    pos: [560, -20, 320],
+    pos: nbr(36.07, -57.17, 655),
     dist: '655 ly',
+    texture: SF_TEXTURES.NEBULA_HELIX,
     color: SF_COLORS.HELIX_NEBULA,
   },
   {
@@ -687,8 +759,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.CLUSTER,
     group: SF_GROUPS.NEBULAE,
     radius: 22,
-    pos: [420, 130, -200],
+    pos: nbr(166.64, -23.46, 444),
     dist: '444 ly',
+    texture: SF_TEXTURES.CLUSTER_PLEIADES,
     color: SF_COLORS.PLEIADES,
   },
   {
@@ -697,8 +770,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 20,
-    pos: [-380, 140, 200],
-    dist: '2 500 ly',
+    pos: nbr(63.13, 13.81, 2566),
+    dist: '2 566 ly',
+    texture: SF_TEXTURES.NEBULA_RING,
     color: SF_COLORS.RING_NEBULA,
   },
   {
@@ -707,8 +781,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 24,
-    pos: [500, -50, -320],
+    pos: nbr(206.86, -16.7, 1375),
     dist: '1 375 ly',
+    texture: SF_TEXTURES.NEBULA_HORSEHEAD,
     color: SF_COLORS.HORSEHEAD,
   },
   {
@@ -717,8 +792,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 38,
-    pos: [-300, -110, -420],
+    pos: nbr(5.96, -1.23, 4100),
     dist: '4 100 ly',
+    texture: SF_TEXTURES.NEBULA_LAGOON,
     color: SF_COLORS.LAGOON,
   },
   {
@@ -727,8 +803,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 44,
-    pos: [140, -130, -480],
+    pos: nbr(287.6, -0.69, 8500),
     dist: '8 500 ly',
+    texture: SF_TEXTURES.NEBULA_CARINA,
     color: SF_COLORS.CARINA,
   },
   {
@@ -737,8 +814,9 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.NEBULA,
     group: SF_GROUPS.NEBULAE,
     radius: 48,
-    pos: [-640, -160, 420],
+    pos: gpos(279.46, -31.67, 161000),
     dist: '161 000 ly',
+    texture: SF_TEXTURES.NEBULA_TARANTULA,
     color: SF_COLORS.TARANTULA,
   },
   {
@@ -747,36 +825,94 @@ const NEBULAE: SFBodyDef[] = [
     kind: SF_KINDS.CLUSTER,
     group: SF_GROUPS.NEBULAE,
     radius: 26,
-    pos: [-180, 160, -500],
+    pos: gpos(309.1, 15.0, 17090),
     dist: '17 090 ly',
+    texture: SF_TEXTURES.CLUSTER_OMEGA,
     color: SF_COLORS.OMEGA_CEN,
+  },
+  {
+    id: '47-tucanae',
+    name: '47 Tucanae',
+    kind: SF_KINDS.CLUSTER,
+    group: SF_GROUPS.NEBULAE,
+    radius: 24,
+    pos: gpos(305.89, -44.89, 14500),
+    dist: '14 500 ly',
+    color: SF_COLORS.OMEGA_CEN,
+  },
+  {
+    id: 'm13-hercules',
+    name: 'Great Hercules Cluster',
+    kind: SF_KINDS.CLUSTER,
+    group: SF_GROUPS.NEBULAE,
+    radius: 22,
+    pos: gpos(59.01, 40.91, 22200),
+    dist: '22 200 ly',
+    color: SF_COLORS.PLEIADES,
   },
 ]
 
-/** External galaxies — far-field sprite discs on the outer ring. */
+/**
+ * The three grand spirals — the Milky Way renders as a seeded volumetric
+ * particle galaxy (never a face-on photo: we are inside it), centered at
+ * MW_CENTER so the Sun lands on its true 0.51 galactocentric ring with a
+ * heliocentric exclusion bubble keeping disc particles off the solar
+ * system. Sagittarius A* parents onto the disc center so its accretion
+ * composite inherits the galactic tilt. Andromeda and Triangulum land at
+ * their true (l, b) directions on Local-Group-tier distances (~11.9k /
+ * ~12.8k units).
+ */
 const GALAXIES: SFBodyDef[] = [
   {
     id: 'milky-way',
     name: 'Milky Way',
     kind: SF_KINDS.GALAXY,
     group: SF_GROUPS.GALAXIES,
-    radius: 240,
-    pos: [-420, -120, -300],
+    radius: MW_RADIUS,
+    pos: MW_CENTER,
     dist: '26 673 ly',
-    spiralDisc: { count: 1000000 },
+    // Volumetric disc — 400k seeded stars + a spherical stellar halo and a
+    // thickened disc so the galaxy reads as a 3-D object from inside;
+    // the bubble keeps particles out of the solar system's volume.
+    spiralDisc: {
+      count: 400000,
+      volumetric: true,
+      thick: 1.8,
+      halo: 0.05,
+      bubble: SF_SPIRAL.SUN_BUBBLE,
+    },
     color: SF_COLORS.MILKY_WAY,
-    tilt: 0.35,
+    tilt: SF_SCALE.MW_TILT,
     spin: 0.02,
+  },
+  {
+    // Catalog-ordered AFTER milky-way so the parent anchor resolves at
+    // build time; [0,0,0] in the disc's local frame is the exact galactic
+    // center — the composite inherits the disc tilt, so the accretion
+    // plane lies on the galactic plane and the jets point at the poles.
+    id: 'sagittarius-a',
+    name: 'Sagittarius A*',
+    kind: SF_KINDS.BLACK_HOLE,
+    group: SF_GROUPS.MILKY_WAY,
+    radius: 12,
+    pos: [0, 0, 0],
+    parent: 'milky-way',
+    dist: '26 673 ly',
+    color: SF_COLORS.SAGITTARIUS_A,
+    jets: true,
+    spin: 0.6,
+    pulse: { period: 2.4, amp: 0.05 },
   },
   {
     id: 'andromeda',
     name: 'Andromeda Galaxy',
     kind: SF_KINDS.GALAXY,
     group: SF_GROUPS.GALAXIES,
-    radius: 420,
-    pos: [-1400, 300, -900],
+    radius: 1100,
+    pos: M31_POS,
     dist: '2.537 Mly',
-    spiralDisc: { count: 800000 },
+    spiralDisc: { count: 800000, halo: 0.08 },
+    texture: SF_TEXTURES.GALAXY_ANDROMEDA,
     color: SF_COLORS.ANDROMEDA,
     tilt: 0.55,
     spin: 0.015,
@@ -786,20 +922,35 @@ const GALAXIES: SFBodyDef[] = [
     name: 'Triangulum Galaxy',
     kind: SF_KINDS.GALAXY,
     group: SF_GROUPS.GALAXIES,
-    radius: 80,
-    pos: [-1250, -140, 700],
+    radius: 300,
+    pos: gpos(133.61, -31.33, 2730000),
     dist: '2.73 Mly',
+    spiralDisc: { count: 120000 },
+    texture: SF_TEXTURES.GALAXY_TRIANGULUM,
     color: SF_COLORS.TRIANGULUM,
     tilt: 0.8,
   },
+]
+
+/**
+ * Local Group dwarf + satellite galaxies — the ~30 small members that
+ * orbit the Milky Way and Andromeda, placed at real galactic (l, b,
+ * distance) through `gpos`. Milky Way satellites inside ~1 Mly stay on
+ * the honest galactic tier (LMC ~1 630, SagDEG ~810 units); the M31
+ * subgroup and the scattered dIrrs land on the Local-Group tier beyond
+ * ~10k units. Drawn as seeded elliptical point smudges — warm for the
+ * old-population spheroidals, cool for the star-forming irregulars.
+ */
+const LOCAL_GROUP: SFBodyDef[] = [
   {
     id: 'lmc',
     name: 'Large Magellanic Cloud',
     kind: SF_KINDS.GALAXY,
-    group: SF_GROUPS.GALAXIES,
-    radius: 45,
-    pos: [-700, -220, 500],
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 160,
+    pos: gpos(280.47, -32.89, 163000),
     dist: '163 000 ly',
+    texture: SF_TEXTURES.GALAXY_LMC,
     color: SF_COLORS.LMC,
     tilt: 0.7,
   },
@@ -807,34 +958,506 @@ const GALAXIES: SFBodyDef[] = [
     id: 'smc',
     name: 'Small Magellanic Cloud',
     kind: SF_KINDS.GALAXY,
-    group: SF_GROUPS.GALAXIES,
-    radius: 30,
-    pos: [-760, -120, 420],
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 95,
+    pos: gpos(302.81, -44.33, 200000),
     dist: '200 000 ly',
+    texture: SF_TEXTURES.GALAXY_SMC,
     color: SF_COLORS.SMC,
     tilt: 1.0,
   },
   {
+    id: 'sagittarius-dwarf',
+    name: 'Sagittarius Dwarf Galaxy',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 50,
+    pos: gpos(5.61, -14.09, 81000),
+    dist: '81 000 ly',
+    spiralDisc: { count: 9000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'fornax-dwarf',
+    name: 'Fornax Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 35,
+    pos: gpos(237.1, -65.7, 455000),
+    dist: '455 000 ly',
+    spiralDisc: { count: 6000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'sculptor-dwarf',
+    name: 'Sculptor Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 28,
+    pos: gpos(287.54, -83.16, 290000),
+    dist: '290 000 ly',
+    spiralDisc: { count: 5000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'carina-dwarf',
+    name: 'Carina Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 30,
+    pos: gpos(260.11, -22.22, 330000),
+    dist: '330 000 ly',
+    spiralDisc: { count: 5000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'draco-dwarf',
+    name: 'Draco Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 32,
+    pos: gpos(86.37, 34.72, 260000),
+    dist: '260 000 ly',
+    spiralDisc: { count: 4000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'ursa-minor-dwarf',
+    name: 'Ursa Minor Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 30,
+    pos: gpos(104.95, 44.8, 225000),
+    dist: '225 000 ly',
+    spiralDisc: { count: 4000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'sextans-dwarf',
+    name: 'Sextans Dwarf Spheroidal',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 50,
+    pos: gpos(243.5, 42.27, 290000),
+    dist: '290 000 ly',
+    spiralDisc: { count: 4500, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'uma-1-dwarf',
+    name: 'Ursa Major I Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 13,
+    pos: gpos(152.45, 37.44, 330000),
+    dist: '330 000 ly',
+    spiralDisc: { count: 2000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'uma-2-dwarf',
+    name: 'Ursa Major II Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 9,
+    pos: gpos(152.97, 40.9, 105000),
+    dist: '105 000 ly',
+    spiralDisc: { count: 1600, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'bootes-dwarf',
+    name: 'Boötes I Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 10,
+    pos: gpos(358.1, 69.64, 197000),
+    dist: '197 000 ly',
+    spiralDisc: { count: 1600, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'leo-1-dwarf',
+    name: 'Leo I Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 26,
+    pos: gpos(225.99, 49.11, 820000),
+    dist: '820 000 ly',
+    spiralDisc: { count: 4000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'leo-2-dwarf',
+    name: 'Leo II Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 19,
+    pos: gpos(220.17, 67.23, 690000),
+    dist: '690 000 ly',
+    spiralDisc: { count: 3500, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
     id: 'm32',
     name: 'Messier 32',
-    kind: SF_KINDS.GALAXY,
-    group: SF_GROUPS.GALAXIES,
-    radius: 20,
-    pos: [-1290, 220, -830],
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 22,
+    pos: gpos(121.16, -21.97, 2650000),
     dist: '2.65 Mly',
+    spiralDisc: { count: 3500, elliptical: true },
     color: SF_COLORS.M32,
-    tilt: 0.5,
   },
   {
     id: 'm110',
     name: 'Messier 110',
-    kind: SF_KINDS.GALAXY,
-    group: SF_GROUPS.GALAXIES,
-    radius: 34,
-    pos: [-1520, 340, -1010],
-    dist: '2.67 Mly',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 50,
+    pos: gpos(121.03, -21.87, 2690000),
+    dist: '2.69 Mly',
+    spiralDisc: { count: 5000, elliptical: true },
     color: SF_COLORS.M110,
-    tilt: 0.9,
+  },
+  {
+    id: 'ngc-147',
+    name: 'NGC 147',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 38,
+    pos: gpos(119.82, -14.25, 2530000),
+    dist: '2.53 Mly',
+    spiralDisc: { count: 4500, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'ngc-185',
+    name: 'NGC 185',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 32,
+    pos: gpos(120.79, -14.48, 2020000),
+    dist: '2.02 Mly',
+    spiralDisc: { count: 4000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'andromeda-1',
+    name: 'Andromeda I',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 20,
+    pos: gpos(121.72, -24.86, 2550000),
+    dist: '2.55 Mly',
+    spiralDisc: { count: 2500, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'andromeda-2',
+    name: 'Andromeda II',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 16,
+    pos: gpos(128.94, -29.19, 2140000),
+    dist: '2.14 Mly',
+    spiralDisc: { count: 2000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'andromeda-3',
+    name: 'Andromeda III',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 15,
+    pos: gpos(119.33, -26.23, 2440000),
+    dist: '2.44 Mly',
+    spiralDisc: { count: 2000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'ic-10',
+    name: 'IC 10',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 42,
+    pos: gpos(118.95, -3.34, 2300000),
+    dist: '2.3 Mly',
+    spiralDisc: { count: 5000, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'ngc-6822',
+    name: "Barnard's Galaxy",
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 48,
+    pos: gpos(25.34, -18.39, 1630000),
+    dist: '1.63 Mly',
+    spiralDisc: { count: 5500, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'ic-1613',
+    name: 'IC 1613',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 44,
+    pos: gpos(129.77, -60.56, 2360000),
+    dist: '2.36 Mly',
+    spiralDisc: { count: 5000, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'leo-a',
+    name: 'Leo A',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 26,
+    pos: gpos(196.9, 52.4, 2600000),
+    dist: '2.6 Mly',
+    spiralDisc: { count: 3000, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'phoenix-dwarf',
+    name: 'Phoenix Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 15,
+    pos: gpos(272.16, -68.95, 1440000),
+    dist: '1.44 Mly',
+    spiralDisc: { count: 2500, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'cetus-dwarf',
+    name: 'Cetus Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 22,
+    pos: gpos(101.09, -72.86, 2460000),
+    dist: '2.46 Mly',
+    spiralDisc: { count: 3000, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'tucana-dwarf',
+    name: 'Tucana Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 16,
+    pos: gpos(322.9, -47.37, 2900000),
+    dist: '2.9 Mly',
+    spiralDisc: { count: 2500, elliptical: true },
+    color: SF_COLORS.DWARF_SPH,
+  },
+  {
+    id: 'wlm',
+    name: 'WLM Galaxy',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 36,
+    pos: gpos(75.85, -73.63, 3040000),
+    dist: '3.04 Mly',
+    spiralDisc: { count: 4000, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'pegasus-dwarf',
+    name: 'Pegasus Dwarf Irregular',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 30,
+    pos: gpos(94.83, -43.54, 3000000),
+    dist: '3.0 Mly',
+    spiralDisc: { count: 3500, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'sagdig',
+    name: 'SagDIG',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 30,
+    pos: gpos(21.06, -16.28, 3450000),
+    dist: '3.45 Mly',
+    spiralDisc: { count: 3500, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'aquarius-dwarf',
+    name: 'Aquarius Dwarf',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 25,
+    pos: gpos(34.04, -31.33, 3000000),
+    dist: '3.0 Mly',
+    spiralDisc: { count: 3000, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'lgs-3',
+    name: 'LGS 3',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 18,
+    pos: gpos(126.77, -40.9, 2600000),
+    dist: '2.6 Mly',
+    spiralDisc: { count: 2500, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'sextans-a',
+    name: 'Sextans A',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 42,
+    pos: gpos(246.16, 39.87, 4400000),
+    dist: '4.4 Mly',
+    spiralDisc: { count: 5000, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+  {
+    id: 'sextans-b',
+    name: 'Sextans B',
+    kind: SF_KINDS.DWARF_GALAXY,
+    group: SF_GROUPS.LOCAL_GROUP,
+    radius: 36,
+    pos: gpos(233.2, 43.8, 4360000),
+    dist: '4.36 Mly',
+    spiralDisc: { count: 4500, elliptical: true },
+    color: SF_COLORS.DWARF_IRR,
+  },
+]
+
+/**
+ * Cosmic-hierarchy boundary structures — translucent shells + member
+ * speckle clouds marking the chart's nesting scales: the interstellar
+ * neighborhood around the Sun, the Local Group volume enclosing every
+ * dwarf, the named superclusters at their true directions on the cosmic
+ * tier, the Laniakea basin that contains them all, and the observable-
+ * universe rim clamped onto the far-field boundary. Never raycast —
+ * they are navigator/fly-to landmarks only.
+ */
+const HIERARCHY: SFBodyDef[] = [
+  {
+    id: 'interstellar-neighborhood',
+    name: 'Interstellar Neighborhood',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 460,
+    pos: [0, 0, 0],
+    dist: '~2 000 ly',
+    structure: { radius: 460 },
+    color: SF_COLORS.SHELL_LOCAL,
+  },
+  {
+    // The Local Group volume centers on the Milky Way ↔ Andromeda
+    // midpoint so the shell genuinely encloses both gravitational
+    // subgroups; the radius reaches past the farthest member
+    // (Sextans A at ~4.4 Mly ≈ 14.3k units).
+    id: 'local-group',
+    name: 'Local Group',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 17000,
+    pos: [
+      (MW_CENTER[0] + M31_POS[0]) / 2,
+      (MW_CENTER[1] + M31_POS[1]) / 2,
+      (MW_CENTER[2] + M31_POS[2]) / 2,
+    ],
+    dist: '~10 Mly wide',
+    structure: { radius: 17000, speckles: 400 },
+    color: SF_COLORS.SHELL_LOCAL,
+  },
+  {
+    id: 'virgo-supercluster',
+    name: 'Virgo Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 2600,
+    pos: gpos(283.8, 74.49, 53800000),
+    dist: '53.8 Mly',
+    structure: { radius: 2600, speckles: 1400 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'hydra-centaurus-supercluster',
+    name: 'Hydra–Centaurus Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 2800,
+    pos: gpos(289, 22, 175000000),
+    dist: '175 Mly',
+    structure: { radius: 2800, speckles: 1200 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'coma-supercluster',
+    name: 'Coma Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 3000,
+    pos: gpos(57.6, 88.0, 321000000),
+    dist: '321 Mly',
+    structure: { radius: 3000, speckles: 1200 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'perseus-pisces-supercluster',
+    name: 'Perseus–Pisces Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 2800,
+    pos: gpos(150.6, -13.3, 250000000),
+    dist: '250 Mly',
+    structure: { radius: 2800, speckles: 1200 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'shapley-supercluster',
+    name: 'Shapley Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 3800,
+    pos: gpos(312.3, 30.9, 650000000),
+    dist: '650 Mly',
+    structure: { radius: 3800, speckles: 1400 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'horologium-supercluster',
+    name: 'Horologium–Reticulum Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 3400,
+    pos: gpos(255, -60, 700000000),
+    dist: '700 Mly',
+    structure: { radius: 3400, speckles: 1200 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'laniakea',
+    name: 'Laniakea Supercluster',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: 34500,
+    pos: gpos(325.3, -7.2, 220000000),
+    dist: '~520 Mly wide',
+    structure: { radius: 34500, speckles: 1400 },
+    color: SF_COLORS.SHELL_SUPER,
+  },
+  {
+    id: 'observable-universe',
+    name: 'Observable Universe',
+    kind: SF_KINDS.STRUCTURE,
+    group: SF_GROUPS.HIERARCHY,
+    radius: SF_SCALE.COSMIC_CLAMP,
+    pos: [0, 0, 0],
+    dist: '46.5 Gly',
+    structure: { radius: SF_SCALE.COSMIC_CLAMP, speckles: 1400 },
+    color: SF_COLORS.SHELL_UNIVERSE,
   },
 ]
 
@@ -844,6 +1467,8 @@ export const SF_CATALOG: readonly SFBodyDef[] = Object.freeze([
   ...MILKY_WAY,
   ...NEBULAE,
   ...GALAXIES,
+  ...LOCAL_GROUP,
+  ...HIERARCHY,
 ])
 
 /** Ordered group keys for the navigator drawer sections. */
@@ -852,6 +1477,8 @@ export const SF_GROUP_ORDER: readonly string[] = Object.freeze([
   SF_GROUPS.MILKY_WAY,
   SF_GROUPS.NEBULAE,
   SF_GROUPS.GALAXIES,
+  SF_GROUPS.LOCAL_GROUP,
+  SF_GROUPS.HIERARCHY,
 ])
 
 /**

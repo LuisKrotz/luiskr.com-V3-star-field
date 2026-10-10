@@ -18,7 +18,12 @@ import { FALLBACK_PAGES } from '@core/locale/fallback.js'
 import { DATA_ATTRS } from '@core/tokens/attrs/data.js'
 import { h, Fragment } from '@core/jsx.js'
 import { appText } from '@core/locale/ui-text.js'
+import { SF_ASSET_BASE } from '@core/tokens/starfield/textures.js'
+import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
 import { SF_GROUP_ORDER, sfCatalogByGroup } from '../engine/catalog.js'
+import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { registryDist } from './dossier.js'
+import type { SFRegistryRecord } from '../engine/registry.js'
 import type { SFDossier } from '../engine/types.js'
 import type { StarField } from '../StarField.js'
 
@@ -41,6 +46,157 @@ function renderFacts(dossier: SFDossier) {
         </div>
       ))}
     </dl>
+  )
+}
+
+/**
+ * Resolves a dossier media `src` — absolute http(s) URLs (remote NASA /
+ * Commons streams) pass through untouched; relative paths join under the
+ * module's public-asset root (`/experiments/star-field/media/…`).
+ * @param src Media entry src from the dossier JSON.
+ * @returns The URL to hand to img/video/audio elements.
+ */
+function mediaUrl(src: string): string {
+  return src.startsWith(ATTR_VALUES.HTTP) ? src : `${SF_ASSET_BASE}/${src}`
+}
+
+/**
+ * Renders the dossier media gallery — images as captioned figures,
+ * videos with `preload="none"` so the heavy MP4s stream only on play,
+ * audio the same way (the real lazy-load contract for the multi-MB
+ * NASA recordings). Every asset keeps its NASA/ESA credit line.
+ */
+function renderMedia(dossier: SFDossier) {
+  const m = dossier.media
+
+  if (!m || (!m.images?.length && !m.videos?.length && !m.audio?.length)) return null
+
+  return (
+    <div className={SF_CLASSES.SF_MEDIA}>
+      {(m.images ?? []).map((img) => (
+        <figure key={img.src} className={SF_CLASSES.SF_MEDIA_FIG}>
+          <img
+            className={SF_CLASSES.SF_MEDIA_IMG}
+            src={mediaUrl(img.src)}
+            alt={img.caption ?? ATTR_VALUES.EMPTY}
+            loading={ATTR_VALUES.LAZY}
+          />
+          {(img.caption || img.credit) && (
+            <figcaption className={SF_CLASSES.SF_MEDIA_CAP}>
+              {img.caption}
+              {img.credit ? ` — ${img.credit}` : ATTR_VALUES.EMPTY}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+      {(m.videos ?? []).map((vid) => (
+        <figure key={vid.src} className={SF_CLASSES.SF_MEDIA_FIG}>
+          <video
+            className={SF_CLASSES.SF_MEDIA_VIDEO}
+            src={mediaUrl(vid.src)}
+            controls
+            preload={ATTR_VALUES.NONE}
+            playsInline
+            poster={vid.poster ? mediaUrl(vid.poster) : undefined}
+          />
+          {(vid.caption || vid.credit) && (
+            <figcaption className={SF_CLASSES.SF_MEDIA_CAP}>
+              {vid.caption}
+              {vid.credit ? ` — ${vid.credit}` : ATTR_VALUES.EMPTY}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+      {(m.audio ?? []).map((aud) => (
+        <figure key={aud.src} className={SF_CLASSES.SF_MEDIA_FIG}>
+          <audio
+            className={SF_CLASSES.SF_MEDIA_AUDIO}
+            src={mediaUrl(aud.src)}
+            controls
+            preload={ATTR_VALUES.NONE}
+          />
+          {(aud.caption || aud.credit) && (
+            <figcaption className={SF_CLASSES.SF_MEDIA_CAP}>
+              {aud.caption}
+              {aud.credit ? ` — ${aud.credit}` : ATTR_VALUES.EMPTY}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Renders the dossier's named prose sections — deep-history bodies carry
+ * titled subsections (formation, exploration, geology…) between the
+ * summary paragraph and the media gallery.
+ */
+function renderSections(dossier: SFDossier) {
+  if (!dossier.sections?.length) return null
+
+  return (
+    <div className={SF_CLASSES.SF_PANEL_SECTIONS}>
+      {dossier.sections.map((sec) => (
+        <section key={sec.title} className={SF_CLASSES.SF_PANEL_SEC}>
+          <h3 className={SF_CLASSES.SF_PANEL_SEC_TITLE}>{sec.title}</h3>
+          <p className={SF_CLASSES.SF_PANEL_SEC_BODY}>{sec.body}</p>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Renders the provenance signature — acquisition and translation ISO
+ * dates from the dossier `meta` block, so readers can audit when the
+ * data was pulled and this locale's text produced.
+ */
+function renderSignature(dossier: SFDossier, t: Record<string, unknown>) {
+  if (!dossier.meta) return null
+
+  return (
+    <p className={SF_CLASSES.SF_PANEL_SIG}>
+      {t.acquired}: {dossier.meta.acquired}
+      {CHAR_STRINGS.DOT_SEP} {t.translated}: {dossier.meta.translated}
+    </p>
+  )
+}
+
+/**
+ * One registry directory row — a real focusable button per catalogued
+ * object (the keyboard/AT path into all 139k bodies): display name,
+ * kind badge and distance from the shard record, selecting flies the
+ * camera to the rendered point and opens the synthesized dossier.
+ * @param host The StarField component.
+ * @param rec The registry record.
+ * @param t Locale label map.
+ */
+function RegistryRow({
+  host,
+  rec,
+  t,
+}: {
+  host: StarField
+  rec: SFRegistryRecord
+  t: Record<string, unknown>
+}) {
+  const kind = rec.i.split('-')[0]
+
+  return (
+    <li key={rec.i}>
+      <button
+        className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === rec.i ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+        type={FORM_ATTRS.BUTTON}
+        {...{ [DATA_ATTRS.DATA_BODY]: rec.i }}
+        onClick={() => host._selectBody(rec.i)}
+      >
+        {rec.n}
+        <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+          {[t[kind] || kind, registryDist(rec.d)].filter(Boolean).join(` ${CHAR_STRINGS.DOT_SEP} `)}
+        </span>
+      </button>
+    </li>
   )
 }
 
@@ -129,25 +285,107 @@ export function renderStarField(host: StarField) {
       >
         <div className={SF_CLASSES.SF_NAV_PANEL} id={NAV_PANEL_ID}>
           <h2 className={SF_CLASSES.SF_NAV_HEADING}>{t.explore}</h2>
-          {SF_GROUP_ORDER.map((groupKey) => (
-            <section key={groupKey} className={SF_CLASSES.SF_NAV_GROUP}>
-              <h3 className={SF_CLASSES.SF_NAV_GROUP_TITLE}>{t[groupKey] || groupKey}</h3>
-              <ul className={SF_CLASSES.SF_NAV_LIST}>
-                {(groups.get(groupKey) ?? []).map((def) => (
-                  <li key={def.id}>
-                    <button
-                      className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === def.id ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
-                      type={FORM_ATTRS.BUTTON}
-                      {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
-                      onClick={() => host._selectBody(def.id)}
-                    >
-                      {def.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+          <input
+            className={SF_CLASSES.SF_NAV_SEARCH}
+            type={FORM_ATTRS.SEARCH}
+            placeholder={t.search}
+            aria-label={t.search}
+            value={host._search}
+            onInput={(e: Event) => host._setSearch((e.target as HTMLInputElement).value)}
+          />
+          {SF_GROUP_ORDER.map((groupKey) => {
+            const defs = (groups.get(groupKey) ?? []).filter((def) => host._matchesSearch(def))
+
+            // Empty groups render their header while browsing (they may
+            // just be unloaded), but collapse away while a search
+            // filter is active so results stay scannable.
+            if (!defs.length && host._search.trim()) return null
+
+            return (
+              <section key={groupKey} className={SF_CLASSES.SF_NAV_GROUP}>
+                <h3 className={SF_CLASSES.SF_NAV_GROUP_TITLE}>{t[groupKey] || groupKey}</h3>
+                <ul className={SF_CLASSES.SF_NAV_LIST}>
+                  {defs.map((def) => (
+                    <li key={def.id}>
+                      <button
+                        className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === def.id ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+                        type={FORM_ATTRS.BUTTON}
+                        {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
+                        onClick={() => host._selectBody(def.id)}
+                      >
+                        {def.name}
+                        <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+                          {[t[def.kind] || def.kind, def.dist]
+                            .filter(Boolean)
+                            .join(` ${CHAR_STRINGS.DOT_SEP} `)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          })}
+
+          {/* Deep catalog — the 139k-object registry. With a query the
+              incremental shard search lists matches across all kinds;
+              without one, each kind shows its loaded records plus a
+              "load more" affordance (1,000 records per shard fetch). */}
+          {host._regManifest?.total != null && (
+            <section className={SF_CLASSES.SF_NAV_GROUP}>
+              <h3 className={SF_CLASSES.SF_NAV_GROUP_TITLE}>
+                {t.catalog}
+                <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+                  {` ${host._regManifest.total.toLocaleString()} ${t.records}`}
+                </span>
+              </h3>
+              {host._search.trim() ? (
+                <ul className={SF_CLASSES.SF_NAV_LIST}>
+                  {(host._regSearch ?? []).map((rec) => (
+                    <RegistryRow host={host} rec={rec} t={t} />
+                  ))}
+                  {host._regSearching && (
+                    <li className={SF_CLASSES.SF_NAV_ITEM_META}>{t.searching}</li>
+                  )}
+                </ul>
+              ) : (
+                SF_STAR_CLOUD.REGISTRY_KINDS.map((kind) => {
+                  const info = host._regManifest?.kinds?.[kind]
+
+                  if (!info?.shards) return null
+
+                  const loaded = host._regRecords.get(kind) ?? []
+
+                  const loadedShards = host._regLoaded.get(kind) ?? 0
+
+                  return (
+                    <div key={kind} className={SF_CLASSES.SF_NAV_GROUP}>
+                      <h4 className={SF_CLASSES.SF_NAV_GROUP_TITLE}>
+                        {t[kind] || kind}
+                        <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+                          {` ${info.count.toLocaleString()} ${t.records}`}
+                        </span>
+                      </h4>
+                      <ul className={SF_CLASSES.SF_NAV_LIST}>
+                        {loaded.map((rec) => (
+                          <RegistryRow host={host} rec={rec} t={t} />
+                        ))}
+                      </ul>
+                      {loadedShards < info.shards.length && (
+                        <button
+                          className={SF_CLASSES.SF_NAV_MORE}
+                          type={FORM_ATTRS.BUTTON}
+                          onClick={() => host._loadMoreRegistry(kind)}
+                        >
+                          {t.loadMore}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })
+              )}
             </section>
-          ))}
+          )}
         </div>
       </nav>
 
@@ -176,9 +414,12 @@ export function renderStarField(host: StarField) {
               <p className={SF_CLASSES.SF_PANEL_TAGLINE}>{dossier.tagline}</p>
               {renderFacts(dossier)}
               <p className={SF_CLASSES.SF_PANEL_HISTORY}>{dossier.history}</p>
+              {renderSections(dossier)}
+              {renderMedia(dossier)}
               <p className={SF_CLASSES.SF_PANEL_SOURCE}>
                 {t.source}: {dossier.source}
               </p>
+              {renderSignature(dossier, t)}
             </Fragment>
           )}
         </div>

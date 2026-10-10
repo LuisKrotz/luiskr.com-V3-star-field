@@ -1,0 +1,91 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_hud.scss — the HUD cluster: keyboard hint, aria-live
+//  announcements, and the hover tooltip (leader line + `{name} · {dist}`
+//  label) pinned to the picked body's projected screen position.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+.#{$_B_SF}-hud {
+  position: absolute;
+  top: $_NAV_INSET;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: to-rem($space-2xs);
+  pointer-events: none;
+  text-align: center;
+}
+
+.#{$_B_SF}-hint {
+  @extend .txt-sm;
+
+  color: rgba($color-white, 0.5);
+  letter-spacing: 0.08em;
+}
+
+.#{$_B_SF}-live {
+  @extend .ttl-xs;
+
+  color: rgba($color-white, 0.9);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  min-height: to-rem($space-lg);
+}
+
+// The root is a zero-size anchor translated by JS onto the body's projected
+// screen position; the line is a constant-geometry rotated hairline so no
+// JS angle math is needed — only the root translate runs per frame.
+.#{$_B_SF}-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 25;
+  pointer-events: none;
+
+  // The picked-body marker dot.
+  &::before {
+    content: '';
+    position: absolute;
+    width: to-rem($space-sm);
+    height: to-rem($space-sm);
+    left: -(to-rem($space-sm) / 2);
+    top: -(to-rem($space-sm) / 2);
+    border-radius: var(--radius-round);
+    border: 1px solid rgba($color-white, 0.8);
+    background: rgba($color-white, 0.15);
+  }
+
+  &-line {
+    position: absolute;
+    width: to-rem($space-3xl);
+    height: 1px;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    transform: rotate(-50deg);
+    background: rgba($color-white, 0.55);
+  }
+
+  &-label {
+    @extend .txt-sm;
+
+    position: absolute;
+    left: to-rem($space-2xl);
+    bottom: to-rem($space-2xl + $space-sm);
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba($color-white, 0.92);
+    background: rgba($color-black, 0.55);
+    backdrop-filter: blur(to-rem($space-xs));
+    border: 1px solid rgba($color-white, 0.16);
+    border-radius: var(--radius-sm);
+    padding: to-rem($space-sm) to-rem($space-md);
+  }
+}

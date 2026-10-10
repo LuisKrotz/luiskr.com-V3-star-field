@@ -164,16 +164,16 @@ describe('StarField component', () => {
 
     el._toggleNav()
 
-    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }))
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
 
     expect(el._navOpen).toBe(false)
 
     el._selectBody('earth')
-    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }))
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
 
     expect(el._selectedId).toBeNull()
 
-    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'x' }))
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'x', bubbles: true }))
 
     unmount(el)
   })
@@ -256,7 +256,7 @@ describe('StarField component', () => {
 
     await waitFor(() => el._sfReady === true)
 
-    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }))
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
 
     unmount(el)
 

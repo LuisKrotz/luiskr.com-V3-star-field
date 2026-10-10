@@ -123,3 +123,207 @@ describe('star dossier loader', () => {
     expect(c._dossier).toBe(body)
   })
 })
+
+describe('registry dossier synthesis', () => {
+  const regManifest = {
+    total: 3,
+    shardSize: 1000,
+    kinds: {
+      star: { count: 2, shards: ['star-000.json'] },
+      exoplanet: { count: 1, shards: ['exoplanet-000.json'] },
+      dso: { count: 1, shards: ['dso-000.json'] },
+    },
+  }
+
+  const regFetch = () =>
+    jest.fn(async (url) => {
+      const u = String(url)
+
+      if (u.endsWith('manifest.json')) return jsonRes(regManifest)
+      if (u.endsWith('star-000.json'))
+        return jsonRes([
+          { i: 'star-000000', n: 'Sirius', m: -1.4, d: 8.6, s: 'A1V', c: 'CMa', x: 1, y: 2, z: 3 },
+          { i: 'star-000001', n: 'Canopus', m: -0.7, d: 310, s: 'A9II', x: 4, y: 5, z: 6 },
+        ])
+      if (u.endsWith('exoplanet-000.json'))
+        return jsonRes([
+          {
+            i: 'exoplanet-000000',
+            n: 'Kepler-22 b',
+            h: 'Kepler-22',
+            d: 635,
+            s: 'G5',
+            y2: '2011',
+            x: 1,
+            y: 2,
+            z: 3,
+          },
+        ])
+      if (u.endsWith('dso-000.json'))
+        return jsonRes([
+          {
+            i: 'dso-000000',
+            n: 'Ring Nebula',
+            c: 'M57',
+            t: 'PN',
+            m: 8.8,
+            d: 2567,
+            r: -0.001,
+            x: 1,
+            y: 2,
+            z: 3,
+          },
+        ])
+
+      return { ok: false, status: 404 }
+    })
+
+  test('star records synthesize spectral facts from the shard', async () => {
+    globalThis.fetch = regFetch()
+
+    const d = await fetchDossier('star-000000', 'en', {
+      magnitude: 'Apparent magnitude',
+      registry_star: 'Catalogued star',
+      registry_star_about: 'HYG text',
+    })
+
+    expect(d?.name).toBe('Sirius')
+    expect(d?.kind).toBe('star')
+    expect(d?.tagline).toBe('Catalogued star')
+    expect(d?.history).toBe('HYG text')
+    expect(d?.source).toContain('HYG')
+    expect(d?.meta?.acquired).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+
+    const labels = d?.facts.map((f) => f.label)
+
+    expect(labels).toContain('Apparent magnitude')
+  })
+
+  test('exoplanet + dso records synthesize their own fact sets', async () => {
+    globalThis.fetch = regFetch()
+
+    const exo = await fetchDossier('exoplanet-000000', 'en', { hostStar: 'Host star' })
+    const dso = await fetchDossier('dso-000000', 'en', { designation: 'Designation' })
+
+    expect(exo?.kind).toBe('exoplanet')
+    expect(exo?.source).toContain('Exoplanet')
+    expect(exo?.facts.some((f) => f.value === 'Kepler-22')).toBe(true)
+    expect(dso?.kind).toBe('dso')
+    expect(dso?.source).toContain('OpenNGC')
+    expect(dso?.facts.some((f) => f.value === 'M57')).toBe(true)
+  })
+
+  test('unknown registry ids resolve null', async () => {
+    globalThis.fetch = regFetch()
+
+    expect(await fetchDossier('star-000007', 'en')).toBeNull()
+  })
+
+  test('loadDossier publishes synthesized records into the panel', async () => {
+    globalThis.fetch = regFetch()
+
+    const c = { _updateDom: jest.fn(), translations: { registry_star: 'Katalogstern' } }
+
+    loadDossier(c, 'star-000001')
+    await flush()
+
+    expect(c._dossier?.name).toBe('Canopus')
+    expect(c._dossier?.tagline).toBe('Katalogstern')
+    expect(c._dossierLoading).toBe(false)
+  })
+
+  test('registryDist formats ly and Mly bands', async () => {
+    const { registryDist } = await import('../../star/dossier.js')
+
+    expect(registryDist(undefined)).toBe('—')
+    expect(registryDist(8.6)).toBe('9 ly')
+    expect(registryDist(2500000)).toBe('2.5 Mly')
+  })
+
+  test('an empty label map falls back to raw keys and empty registry prose', async () => {
+    globalThis.fetch = regFetch()
+
+    // A fresh `de:` cache key re-synthesizes the record; explicit
+    // `undefined` values override the English defaults in the merged
+    // label map, forcing the `?? ''` prose fallbacks and the `?? key`
+    // fact-label fallback.
+    const d = await fetchDossier('star-000000', 'de', {
+      registry_star: undefined,
+      registry_star_about: undefined,
+      magnitude: undefined,
+    })
+
+    expect(d?.name).toBe('Sirius')
+    expect(d?.tagline).toBe('')
+    expect(d?.history).toBe('')
+    expect(d?.facts.some((f) => f.value === '-1.4')).toBe(true)
+    expect(d?.facts.some((f) => f.label === 'magnitude')).toBe(true)
+  })
+
+  test('a redshifted dso record emits the redshift fact', async () => {
+    globalThis.fetch = regFetch()
+
+    const d = await fetchDossier('dso-000000', 'en', {})
+
+    expect(d?.facts.some((f) => f.value === '-0.001')).toBe(true)
+  })
+})
+
+describe('locale dossier fallback', () => {
+  const fileFetch = (files, missing = []) =>
+    jest.fn(async (url) => {
+      const u = String(url)
+
+      for (const frag of missing) {
+        if (u.endsWith(frag)) return { ok: false, status: 404 }
+      }
+
+      for (const [frag, body] of Object.entries(files)) {
+        if (u.endsWith(frag)) return jsonRes(body)
+      }
+
+      return { ok: false, status: 404 }
+    })
+
+  test('a falsy locale code resolves through the English dossier folder', async () => {
+    const body = { id: 'mercury', name: 'Mercury' }
+
+    globalThis.fetch = fileFetch({ 'en/mercury.json': body })
+
+    expect(await fetchDossier('mercury', '')).toBe(body)
+  })
+
+  test('a missing locale file falls back to the English dossier', async () => {
+    const body = { id: 'neptune', name: 'Neptune' }
+
+    globalThis.fetch = fileFetch({ 'en/neptune.json': body }, ['de/neptune.json'])
+
+    expect(await fetchDossier('neptune', 'de')).toBe(body)
+  })
+
+  test('legacy locale aliases resolve to their modern folders', async () => {
+    const body = { id: 'uranus', name: 'Uranus' }
+    const f = fileFetch({ 'br/uranus.json': body })
+
+    globalThis.fetch = f
+
+    expect(await fetchDossier('uranus', 'pt')).toBe(body)
+    expect(f.mock.calls.some((c) => String(c[0]).endsWith('br/uranus.json'))).toBe(true)
+  })
+
+  test('applyDossierLocale re-loads the open panel for the new locale', async () => {
+    const { applyDossierLocale } = await import('../../star/dossier.js')
+    const body = { id: 'saturn', name: 'Saturne' }
+
+    // fetchDossier(null) reads the store's current lang — 'en' under test.
+    globalThis.fetch = fileFetch({ 'en/saturn.json': body })
+
+    const c = { _selectedId: 'saturn', _updateDom: jest.fn(), translations: null }
+
+    applyDossierLocale(c)
+    await flush()
+
+    expect(c._dossier).toBe(body)
+    expect(c._dossierLoading).toBe(false)
+  })
+})

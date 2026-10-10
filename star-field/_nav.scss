@@ -1,0 +1,150 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_nav.scss — the left-side body navigator drawer: toggle button,
+//  slide-in panel, grouped searchable body list, item meta, and the
+//  "show more" pagination button.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+.#{$_B_SF}-nav-toggle {
+  @extend %LK_LINK;
+
+  position: absolute;
+  bottom: to-rem($space-xl);
+  left: to-rem($space-xl);
+  z-index: 30;
+  font-family: var(--font-mono);
+  font-size: to-rem($space-lg);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba($color-white, 0.85);
+  background: rgba($color-black, 0.4);
+  backdrop-filter: blur(to-rem($space-xs));
+  border: 1px solid rgba($color-white, 0.14);
+  border-radius: var(--radius-sm);
+  padding: to-rem($space-sm) to-rem($space-lg);
+  cursor: pointer;
+}
+
+.#{$_B_SF}-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 40;
+  width: min(#{to-rem($space-7xl)}, 84vw);
+  translate: -100% 0;
+  transition: translate 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+
+  &--open {
+    translate: 0 0;
+    pointer-events: auto;
+  }
+
+  &-panel {
+    height: 100%;
+    overflow-y: auto;
+    padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xl);
+    background: rgba($color-black, 0.72);
+    backdrop-filter: blur(to-rem($space-md));
+    border-right: 1px solid rgba($color-white, 0.1);
+  }
+
+  &-heading {
+    @extend .ttl-xs;
+
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba($color-white, 0.45);
+    margin: 0 0 to-rem($space-xl);
+  }
+
+  &-group {
+    margin-bottom: to-rem($space-xl);
+  }
+
+  &-group-title {
+    @extend .txt-xs;
+
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba($color-white, 0.55);
+    margin: 0 0 to-rem($space-sm);
+  }
+
+  &-list {
+    @include reset-list;
+  }
+
+  &-item {
+    @extend %LK_LINK;
+
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: to-rem($space-lg);
+    color: rgba($color-white, 0.8);
+    background: none;
+    border: none;
+    padding: to-rem($space-sm) to-rem($space-xs);
+    cursor: pointer;
+
+    &--active {
+      color: var(--color-white-raw);
+    }
+  }
+}
+
+.#{$_B_SF}-nav-search {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: to-rem($space-lg);
+  color: rgba($color-white, 0.9);
+  background: rgba($color-white, 0.06);
+  border: 1px solid rgba($color-white, 0.16);
+  border-radius: var(--radius-sm);
+  padding: to-rem($space-sm) to-rem($space-md);
+  margin-bottom: to-rem($space-xl);
+  outline: none;
+
+  &::placeholder {
+    color: rgba($color-white, 0.38);
+  }
+
+  &:focus-visible {
+    border-color: rgba($color-white, 0.5);
+  }
+}
+
+.#{$_B_SF}-nav-item-meta {
+  @extend .txt-xs;
+
+  display: block;
+  color: rgba($color-white, 0.42);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: to-rem($space-2xs);
+}
+
+.#{$_B_SF}-nav-more {
+  @extend .txt-xs;
+
+  display: block;
+  width: 100%;
+  padding: to-rem($space-xs) to-rem($space-sm);
+  margin-top: to-rem($space-2xs);
+  color: var(--color-white-raw);
+  text-align: center;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background: rgba($color-white, 0.06);
+  border: var(--bw-1) solid rgba($color-white, 0.18);
+  border-radius: var(--radius-s);
+
+  &:hover,
+  &:focus-visible {
+    background: rgba($color-white, 0.14);
+  }
+}

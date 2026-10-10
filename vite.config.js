@@ -1,3 +1,4 @@
+/* istanbul ignore file -- build-time vite config; only consumed by the bundler, never exercised by tests */
 /**
  * @file experiments/star-field/vite.config.js
  * @description Library build for the `star-field` experiment. Emits
