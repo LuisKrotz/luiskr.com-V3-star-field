@@ -45,9 +45,17 @@ function makeSpeckles(
 
   const fillR = radius * SF_STRUCTURE.SPECKLE_FILL
 
+  // Galaxy clusters/superclusters are not uniform spheres — flatten along
+  // one axis and concentrate members toward the core so the speckle cloud
+  // reads as a flattened filament rather than a disco ball.
+  const flatten = SF_STRUCTURE.SPECKLE_FLATTEN
+  const concentrate = SF_STRUCTURE.SPECKLE_CONCENTRATE
+
   for (let i = 0; i < count; i++) {
-    // Uniform-volume scatter — cbrt(uniform) fills a sphere evenly.
-    const r = Math.cbrt(rand()) * fillR
+    const t = rand()
+
+    // pow(t, concentrate) biases members toward the center; 1.0 = uniform.
+    const r = Math.pow(t, concentrate) * fillR
 
     const u = rand() * 2 - 1
 
@@ -56,7 +64,7 @@ function makeSpeckles(
     const s = Math.sqrt(1 - u * u)
 
     pos[i * 3] = Math.cos(theta) * s * r
-    pos[i * 3 + 1] = u * r
+    pos[i * 3 + 1] = u * r * flatten
     pos[i * 3 + 2] = Math.sin(theta) * s * r
 
     const bright = SF_STRUCTURE.SPECKLE_DIM + rand() * (1 - SF_STRUCTURE.SPECKLE_DIM)
@@ -118,11 +126,18 @@ function makeShellMaterial(
 
   const tint = uniform(new THREE.Color(def.color ?? SF_COLORS.SHELL_LOCAL))
 
-  mat.colorNode = tint.mul(rim).mul(SF_STRUCTURE.SHELL_OPACITY)
+  const fade = uniform(1)
+
+  mat.colorNode = tint.mul(rim).mul(SF_STRUCTURE.SHELL_OPACITY).mul(fade)
   mat.transparent = true
   mat.side = THREE.FrontSide
   mat.blending = THREE.AdditiveBlending
   mat.depthWrite = false
+
+  // Expose the fade uniform so frame.ts can hide the shell when the
+  // camera is deep inside it — otherwise the far wall paints a bright
+  // bubble silhouette over the whole view.
+  mat.userData = { fade }
 
   return mat
 }
@@ -154,19 +169,35 @@ export function makeStructure(
 
   const radius = def.structure?.radius ?? def.radius
 
+  const shellMat = makeShellMaterial(THREE, deps, def)
+
   const shell = new THREE.Mesh(
     new THREE.SphereGeometry(radius, SF_STRUCTURE.SEGMENTS, SF_STRUCTURE.SEGMENTS / 2),
-    makeShellMaterial(THREE, deps, def)
+    shellMat
   )
 
   shell.raycast = () => undefined
 
   group.add(shell)
 
+  let speckleMat: THREE_NS.PointsMaterial | null = null
   const speckles = def.structure?.speckles ?? 0
 
   if (speckles > 0) {
-    group.add(makeSpeckles(THREE, def, radius, Math.min(speckles, SF_STRUCTURE.SPECKLE_COUNT)))
+    const points = makeSpeckles(THREE, def, radius, Math.min(speckles, SF_STRUCTURE.SPECKLE_COUNT))
+
+    speckleMat = points.material as THREE_NS.PointsMaterial
+
+    group.add(points)
+  }
+
+  // frame.ts reads radius and the shell fade uniform to hide the inside
+  // of each hierarchy bubble when the camera sits within it.
+  group.userData = {
+    isStructure: true,
+    radius,
+    fade: shellMat.userData?.fade,
+    speckleMat,
   }
 
   return group

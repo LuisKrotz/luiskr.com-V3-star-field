@@ -13,6 +13,8 @@ import {
   SF_LOD,
   SF_MOTION,
   SF_SCENE,
+  SF_SPIRAL,
+  SF_STRUCTURE,
 } from '@core/tokens/starfield/params.js'
 import { updateFly } from './fly.js'
 import type { SFState } from './types.js'
@@ -245,6 +247,94 @@ function updateLod(s: SFState): void {
 }
 
 /**
+ * Cosmic-hierarchy shell fade — hides the inside of every boundary bubble
+ * while the camera is deep within it. A huge fresnel shell viewed from
+ * the interior paints a bright silhouette over the whole sky (the giant
+ * cream-ball bug), so each structure's shell ramps to visible only once
+ * the camera has pulled back to 1.25–1.7× its radius.
+ * @param s Engine state.
+ */
+function updateStructures(s: SFState): void {
+  if (!s.camera) return
+
+  const cam = s.camera.position
+
+  for (const node of s.nodes.values()) {
+    if (node.def.kind !== 'structure') continue
+
+    const p = anchorWorldPos(node.mesh)
+
+    if (!p) continue
+
+    const d = Math.hypot(cam.x - p.x, cam.y - p.y, cam.z - p.z)
+    const r = node.def.structure?.radius ?? node.def.radius
+
+    // 0 when deep inside, 1 once the camera has pulled back past the shell.
+    const fade = smoothstep(r * SF_STRUCTURE.FADE_IN, r * SF_STRUCTURE.FADE_OUT, d)
+
+    const fadeUniform = node.mesh.userData?.fade
+
+    if (fadeUniform) fadeUniform.value = fade
+
+    const speckleMat = node.mesh.userData?.speckleMat as { opacity?: number } | null
+
+    if (speckleMat) {
+      // Keep a whisper of member galaxies visible from the inside, ramp
+      // to full opacity when the shell itself is visible.
+      speckleMat.opacity = SF_STRUCTURE.SPECKLE_OPACITY * (0.45 + 0.55 * fade)
+    }
+  }
+}
+
+/**
+ * Volumetric galaxy cloud fade — the Milky Way's particle disc is
+ * viewed from inside. Without distance attenuation the hundreds of
+ * thousands of additive points stack into an opaque glowing ball that
+ * swallows the view; fade them down while the camera is embedded, and
+ * ramp up as the camera pulls back far enough to read the disc as a
+ * whole. Only volumetric clouds carry the marker.
+ * @param s Engine state.
+ */
+function updateGalaxyClouds(s: SFState): void {
+  if (!s.camera) return
+
+  const cam = s.camera.position
+
+  for (const node of s.nodes.values()) {
+    if (!node.def.spiralDisc?.volumetric) continue
+
+    const p = anchorWorldPos(node.mesh)
+
+    if (!p) continue
+
+    const dx = cam.x - p.x
+    const dy = cam.y - p.y
+    const dz = cam.z - p.z
+    const dist = Math.hypot(dx, dy, dz)
+    const r = node.def.radius
+
+    // Fade 0 while deep inside the disc, ramp to 1 once outside ~0.85r.
+    // Squaring the smoothstep keeps the interior much darker so the
+    // embedded Milky Way reads as a faint band, not an opaque glowing ball.
+    const fade = smoothstep(r * 0.25, r * 0.85, dist) ** 2
+
+    const points = node.mesh.children.find((c) => c.userData?.volumetric) as
+      { material?: { opacity?: number } } | undefined
+
+    if (points?.material) {
+      points.material.opacity = SF_SPIRAL.VOLUMETRIC_OPACITY * (0.2 + 0.8 * fade)
+    }
+  }
+}
+
+/** Local smoothstep helper — mirrors GLSL, no dependency on three.js. */
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
+
+  return t * t * (3 - 2 * t)
+}
+
+/**
  * Orbit-guide edge fade — each ring's opacity follows the view angle so
  * a guide seen edge-on dissolves instead of cutting a hard straight
  * line through its body. The math is zero-alloc: `matrixWorld` is
@@ -372,6 +462,10 @@ export function tickStar(s: SFState, now?: number): void {
   checkApproach(s)
 
   updateLod(s)
+
+  updateStructures(s)
+
+  updateGalaxyClouds(s)
 
   updateRings(s)
 
