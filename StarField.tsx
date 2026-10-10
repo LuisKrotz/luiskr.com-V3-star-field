@@ -25,8 +25,17 @@ import { dismissStarLoader, initStarFieldEngine, updateStarLoader } from './star
 import { applyStarTranslations, loadStarTranslations } from './star/i18n.js'
 import { applyDossierLocale, fetchDossier, loadDossier } from './star/dossier.js'
 import { sfCatalogByGroup } from './engine/catalog.js'
+import {
+  ensureRegistryManifest,
+  isRegistryId,
+  loadRegistryShard,
+  searchRegistry,
+} from './engine/registry.js'
+import type { SFRegistryManifest, SFRegistryRecord } from './engine/registry.js'
 import { SF_KEYS } from '@core/tokens/starfield/params.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
+import router from '@core/router/router.js'
+import type { RouteDescriptor } from '@core/router/types.js'
 import type { SFDossier } from './engine/types.js'
 import sfStyles from './star-field.scss?inline'
 
@@ -44,17 +53,12 @@ const _NAME_BY_ID = new Map(
 const _TIP_BY_ID = new Map(
   [...sfCatalogByGroup().values()]
     .flat()
-    .map((def): [string, string] => [
-      def.id,
-      def.dist ? `${def.name} ${CHAR_STRINGS.DOT_SEP} ${def.dist}` : def.name,
-    ])
+    .map((def): [string, string] => [def.id, `${def.name} ${CHAR_STRINGS.DOT_SEP} ${def.dist}`])
 )
 
 /** Pre-built id → distance-label lookup for tooltip upgrades. */
 const _DIST_BY_ID = new Map(
-  [...sfCatalogByGroup().values()]
-    .flat()
-    .map((def): [string, string] => [def.id, def.dist ?? CHAR_STRINGS.EMPTY])
+  [...sfCatalogByGroup().values()].flat().map((def): [string, string] => [def.id, def.dist])
 )
 
 /**
@@ -78,6 +82,7 @@ export class StarField extends BaseComponent {
   _sfReady = false // first usable frame delivered — loader dismisses
   _sfFailed = false // engine boot failed — CSS fallback renders instead
   _navOpen = false // navigator drawer open state
+  _search = '' // navigator directory filter query
   _selectedId: string | null = null // dossier panel body id
   _dossier: SFDossier | null = null // locale dossier for the panel
   _dossierLoading = false // dossier fetch in flight — panel shows loading
@@ -85,6 +90,13 @@ export class StarField extends BaseComponent {
   _lastLocale: string | null = null // locale the labels were last fetched for
   translations: Record<string, unknown> | null = null // pages/star-field label node
   _onKeyDown: ((e: Event) => void) | null = null // Escape + arrow-keys handler
+  _regManifest: SFRegistryManifest | null = null // index manifest (kinds + counts)
+  _regLoading = false // manifest fetch in flight
+  _regLoaded = new Map<string, number>() // kind → shards fetched so far
+  _regRecords = new Map<string, SFRegistryRecord[]>() // kind → loaded records
+  _regSearch: SFRegistryRecord[] | null = null // active registry search results
+  _regSearching = false // registry search in flight
+  _regQuery = '' // last registry search query (stale-response guard)
 
   constructor() {
     super(sfStyles)
@@ -235,12 +247,112 @@ export class StarField extends BaseComponent {
     document.addEventListener(KEYBOARD_EVENTS.KEYDOWN, this._onKeyDown)
   }
 
-  /** Toggles the navigator drawer open/closed. */
+  /**
+   * Search-filter setter — re-renders the navigator list narrowed to
+   * bodies whose catalog name or id contains the query (case-folded),
+   * so 66+ bodies stay browsable. Non-trivial queries also fire the
+   * incremental registry search over the 139k catalogue; the query
+   * guard keeps a slow earlier response from overwriting a newer one.
+   * @param q Raw input value from the drawer search field.
+   */
+
+  _setSearch(q: string) {
+    this._search = q
+
+    this._ensureRegistry()
+
+    const query = q.trim()
+
+    this._regQuery = query
+
+    if (!query) {
+      this._regSearch = null
+      this._regSearching = false
+
+      this._updateDom()
+
+      return
+    }
+
+    this._regSearching = true
+
+    void searchRegistry(query).then((recs) => {
+      if (this._regQuery !== query) return
+
+      this._regSearch = recs
+      this._regSearching = false
+
+      this._updateDom()
+    })
+  }
+
+  /**
+   * Lazily resolves the registry manifest — fired the first time the
+   * drawer opens or a search starts, so the 139k index metadata costs
+   * nothing for users who never browse the catalogue.
+   */
+
+  _ensureRegistry() {
+    if (this._regManifest || this._regLoading) return
+
+    this._regLoading = true
+
+    void ensureRegistryManifest().then((manifest) => {
+      this._regManifest = manifest
+      this._regLoading = false
+
+      this._updateDom()
+    })
+  }
+
+  /**
+   * Incremental catalogue browsing — fetches the next 1,000-record
+   * shard for a kind and appends it to the drawer's loaded list. Each
+   * shard is one ~100 KB fetch; records accumulate so "load more"
+   * never refetches earlier pages.
+   * @param kind Registry kind (`star`/`exoplanet`/`dso`).
+   */
+
+  _loadMoreRegistry(kind: string) {
+    const loaded = this._regLoaded.get(kind) ?? 0
+
+    const shards = this._regManifest?.kinds[kind]?.shards.length ?? 0
+
+    if (loaded >= shards) return
+
+    this._regLoaded.set(kind, loaded + 1)
+
+    void loadRegistryShard(kind, loaded).then((recs) => {
+      if (!recs) return
+
+      const list = this._regRecords.get(kind) ?? []
+
+      this._regRecords.set(kind, [...list, ...recs])
+
+      this._updateDom()
+    })
+  }
+
+  /** Opens the drawer and starts the manifest fetch in one gesture. */
 
   _toggleNav() {
     this._navOpen = !this._navOpen
 
+    if (this._navOpen) this._ensureRegistry()
+
     this._updateDom()
+  }
+
+  /**
+   * Drawer filter predicate — matches on catalog name or id; an empty
+   * query passes everything.
+   * @param def Catalog entry under test.
+   */
+
+  _matchesSearch(def: { id: string; name: string }): boolean {
+    const q = this._search.trim().toLowerCase()
+
+    return !q || def.name.toLowerCase().includes(q) || def.id.toLowerCase().includes(q)
   }
 
   /**
@@ -255,6 +367,8 @@ export class StarField extends BaseComponent {
     loadDossier(this, id)
 
     this._announce(id)
+
+    this._syncUrl(id)
   }
 
   /** Closes the dossier panel and clears the selection. */
@@ -266,7 +380,83 @@ export class StarField extends BaseComponent {
 
     this._dossierLoading = false
 
+    this._syncUrl(null)
+
     this._updateDom()
+  }
+
+  /**
+   * Current-route base path — the star-field URL minus a trailing
+   * `/<body>` segment, so deep-link navigation always composes from the
+   * chart root rather than stacking body segments.
+   * @returns The chart base path in the active locale.
+   */
+  _baseStarPath(): string {
+    const route = router.currentRoute
+
+    const path = route?.path ?? CHAR_STRINGS.EMPTY
+
+    const body = route?.params?.body
+
+    return body && path.endsWith(`${CHAR_STRINGS.SLASH}${body}`)
+      ? path.slice(0, -(body.length + 1))
+      : path
+  }
+
+  /**
+   * Keeps the address bar in sync with the selection — selecting pushes
+   * `…/<body>` so Back returns to the chart, closing returns to the base
+   * chart URL. Skips when the current route already carries the target
+   * so the param-change echo (`onRouteParamChange`) cannot loop.
+   * @param id Newly selected body id, or null after close.
+   */
+  _syncUrl(id: string | null): void {
+    const route = router.currentRoute
+
+    if (!route || route.view !== VIEW_TAGS.VIEW_STAR_FIELD) return
+
+    if ((route.params?.body ?? null) === id) return
+
+    const base = this._baseStarPath()
+
+    void router.handleNavigation(id ? `${base}${CHAR_STRINGS.SLASH}${id}` : base)
+  }
+
+  /**
+   * Router param echo — same-view navigation delivers the new descriptor
+   * here: a valid `body` param selects it (idempotent on repeat), its
+   * absence closes the panel. Unknown ids degrade to the plain chart so
+   * stale or hand-typed URLs never break the view.
+   * @param _route The destination descriptor (unused — reads
+   * `router.currentRoute` directly, see below).
+   */
+  onRouteParamChange(_route: RouteDescriptor | null): void {
+    // Read the authoritative current route, not the delivered
+    // descriptor: same-view pushes are async, so a stale echo from an
+    // earlier push (e.g. select→close racing) would otherwise
+    // re-select a body the user already dismissed.
+    const latest = router.currentRoute
+
+    const body = latest && latest.view === VIEW_TAGS.VIEW_STAR_FIELD ? latest.params?.body : null
+
+    if (body && (_NAME_BY_ID.has(body) || isRegistryId(body))) {
+      if (this._selectedId !== body) this._selectBody(body)
+
+      return
+    }
+
+    if (!body && this._selectedId) this._closePanel()
+  }
+
+  /**
+   * Deep-link entry — after the engine reports ready, selects the body
+   * named in the URL (flies the camera + opens the dossier). Falls back
+   * silently to the overview chart on unknown ids.
+   */
+  _applyDeepLink(): void {
+    const body = router.currentRoute?.params?.body
+
+    if (body && (_NAME_BY_ID.has(body) || isRegistryId(body))) this._selectBody(body)
   }
 
   /** Downloads the current frame as a PNG. */

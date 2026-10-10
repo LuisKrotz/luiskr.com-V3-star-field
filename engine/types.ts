@@ -46,6 +46,14 @@ export interface SFBodyDef {
   shellTexture?: string
   /** Shell is a flat ring disc (Saturn) rather than an atmosphere sphere. */
   shellRing?: boolean
+  /** Bump/relief map (Earth terrain shading) — lit-materials only. */
+  normalTexture?: string
+  /** Grayscale elevation map — bumpMap gives terrain real depth relief. */
+  bumpTexture?: string
+  /** Night-lights emissive map — glows only where the map is lit. */
+  emissiveTexture?: string
+  /** Cloud deck texture — extra translucent sphere one layer up. */
+  cloudTexture?: string
   /** Fixed scene position `[x,y,z]` for non-orbiting deep-sky objects. */
   pos?: [number, number, number]
   /**
@@ -53,8 +61,39 @@ export interface SFBodyDef {
    * a flat sprite. `count` is the star-particle target (capped by
    * `SF_SPIRAL.COUNT_MAX`, divided on mobile) standing in for the
    * galaxy's true stellar population; `arms` overrides the arm count.
+   * `volumetric` drops the photographic quad entirely (the Milky Way is
+   * viewed from inside — a face-on photo is geometrically false) and
+   * thickens the particle disc; `elliptical` fills a smooth spheroid
+   * for dwarf-spheroidal members that have no spiral structure.
    */
-  spiralDisc?: { count: number; arms?: number }
+  spiralDisc?: {
+    count: number
+    arms?: number
+    volumetric?: boolean
+    elliptical?: boolean
+    /** Disc-thickness multiplier on `SF_SPIRAL.THIN`. */
+    thick?: number
+    /** Spherical stellar-halo fraction (0–1) layered over the disc. */
+    halo?: number
+    /**
+     * Heliocentric exclusion bubble radius (chart units) — particles are
+     * resampled away from the Sun's position inside the disc so random
+     * disc stars never overlap the solar-system meshes (Milky Way only).
+     */
+    bubble?: number
+  }
+  /**
+   * Relativistic-jet cones on a black-hole body — bipolar additive
+   * cylinders along the disc normal sized by `SF_BH`.
+   */
+  jets?: boolean
+  /**
+   * Cosmic-hierarchy boundary — a faint translucent shell sphere of
+   * `radius` chart units plus an interior speckle cloud standing in for
+   * member galaxies. Structures are not raycast-pickable (their shell
+   * would swallow every pointer ray); the navigator still flies to them.
+   */
+  structure?: { radius: number; speckles?: number }
   /**
    * Luminosity pulse — slow breathing scale oscillation for variable
    * stars, pulsars and flaring cores; `period` in seconds, `amp` the
@@ -74,7 +113,7 @@ export interface SFBodyDef {
    * AU for Solar-System bodies, light-years for deep-sky objects. Units
    * are universal abbreviations so the string needs no translation.
    */
-  dist?: string
+  dist: string
   /**
    * Decorative non-pickable satellites (companion stars, exoplanets) —
    * orbit this body's mesh; purely visual, no dossier of their own.

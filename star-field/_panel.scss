@@ -1,0 +1,176 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_panel.scss — the right-side dossier info panel: slide-in card,
+//  header/tag/close, body, loading/tagline/history/source prose, facts
+//  definition list, prose sections, and provenance signature.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+// A readable floating card — constrained to a ~38rem column, inset below
+// the fixed nav chrome, and pinned to the same responsive gutter the site
+// grid uses so it never overlaps the logo/burger or bleeds off-canvas.
+.#{$_B_SF}-panel {
+  position: absolute;
+  top: $_NAV_INSET;
+  right: to-rem($gap-272);
+  bottom: to-rem($space-xl);
+  z-index: 40;
+  width: min(#{to-rem($space-8xl)}, 92vw);
+  translate: calc(100% + #{to-rem($space-4xl)}) 0;
+  transition: translate 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  background: rgba($color-black, 0.78);
+  backdrop-filter: blur(to-rem($space-md));
+  border: 1px solid rgba($color-white, 0.12);
+  border-radius: var(--radius-md);
+  color: rgba($color-white, 0.85);
+  overflow: hidden;
+
+  // Track the site's gutter at every grid step — mirrors %MAXAREA.
+  @include grid-steps() using ($step, $gap, $cols) {
+    right: to-rem($gap);
+  }
+
+  &--open {
+    translate: 0 0;
+    pointer-events: auto;
+  }
+
+  &-head {
+    display: flex;
+    align-items: center;
+    gap: to-rem($space-md);
+    padding: to-rem($space-xl) to-rem($space-xl) to-rem($space-lg);
+    border-bottom: 1px solid rgba($color-white, 0.08);
+  }
+
+  &-title {
+    @extend .ttl-sm;
+
+    margin: 0;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-white-raw);
+    flex: 1;
+  }
+
+  &-tag {
+    @extend .txt-sm;
+
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba($color-white, 0.5);
+    border: 1px solid rgba($color-white, 0.18);
+    border-radius: var(--radius-round);
+    padding: to-rem($space-2xs) to-rem($space-sm);
+  }
+
+  &-close {
+    font-family: var(--font-mono);
+    font-size: to-rem($space-xl);
+    color: rgba($color-white, 0.7);
+    background: none;
+    border: none;
+    padding: to-rem($space-2xs) to-rem($space-sm);
+    cursor: pointer;
+  }
+
+  &-body {
+    overflow-y: auto;
+    padding: to-rem($space-xl);
+    flex: 1;
+  }
+
+  &-loading {
+    @extend .txt-sm;
+
+    color: rgba($color-white, 0.5);
+    letter-spacing: 0.1em;
+  }
+
+  &-tagline {
+    @extend .txt-sm;
+
+    color: rgba($color-white, 0.75);
+    margin: 0 0 to-rem($space-xl);
+  }
+
+  &-history {
+    @extend .txt-sm;
+
+    line-height: 1.75;
+    color: rgba($color-white, 0.8);
+    margin: to-rem($space-xl) 0;
+  }
+
+  &-source {
+    @extend .txt-sm;
+
+    color: rgba($color-white, 0.4);
+    letter-spacing: 0.06em;
+  }
+}
+
+// Facts definition list — label/value rows.
+.#{$_B_SF}-facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: to-rem($space-2xs);
+}
+
+.#{$_B_SF}-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: to-rem($space-md);
+  padding: to-rem($space-xs) 0;
+  border-bottom: 1px solid rgba($color-white, 0.07);
+
+  &-key {
+    @extend .txt-sm;
+
+    color: rgba($color-white, 0.5);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+
+  &-val {
+    @extend .txt-sm;
+
+    color: rgba($color-white, 0.9);
+    text-align: right;
+    margin: 0;
+  }
+}
+
+// Dossier prose sections + provenance signature.
+.#{$_B_SF}-panel-sec {
+  margin-bottom: to-rem($space-lg);
+
+  &-title {
+    @extend .ttl-xs;
+
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba($color-white, 0.55);
+    margin: 0 0 to-rem($space-xs);
+  }
+
+  &-body {
+    @extend .txt-sm;
+
+    line-height: 1.75;
+    color: rgba($color-white, 0.78);
+    margin: 0;
+  }
+}
+
+.#{$_B_SF}-panel-sig {
+  @extend .txt-xs;
+
+  color: rgba($color-white, 0.35);
+  letter-spacing: 0.08em;
+  margin-top: to-rem($space-md);
+}

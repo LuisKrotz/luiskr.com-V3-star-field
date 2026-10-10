@@ -16,26 +16,54 @@ scripts.
 
 ## Layout
 
-| Path                  | Role                                                                |
-| --------------------- | ------------------------------------------------------------------- |
-| `StarField.tsx`       | Custom element facade — loader, drawer, dossier panel, keydown      |
-| `starfield-engine.ts` | `StarFieldEngine` — state bag + public API (init/select/screenshot) |
-| `star/`               | Component layer: `boot`, `render`, `i18n`, `dossier`                |
-| `engine/`             | three.js layer: `bootstrap`, `renderer-setup`, `scene`,             |
-|                       | `bodies-scene`, `frame`, `fly`, `picking`, `screenshot`, `state`,   |
-|                       | `catalog`, `types`                                                  |
-| `public/textures/`    | Planet/skybox textures (Solar System Scope CC-BY set)               |
-| `public/data/*.json`  | Per-body dossiers — fetched on approach/selection, cached           |
-| `tests/`              | Jest suites + `tests/coverage/starfield/**` tails — 100% gate       |
+| Path                    | Role                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| `StarField.tsx`         | Custom element facade — loader, drawer, dossier panel, keydown       |
+| `starfield-engine.ts`   | `StarFieldEngine` — state bag + public API (init/select/screenshot)  |
+| `star/`                 | Component layer: `boot`, `render`, `i18n`, `dossier`                 |
+| `engine/`               | three.js layer: `bootstrap`, `renderer-setup`, `scene`,              |
+|                         | `bodies-scene`, `spiral`, `star-cloud`, `registry`, `frame`, `fly`,  |
+|                         | `picking`, `screenshot`, `state`, `catalog`, `types`                 |
+| `engine/bodies/`        | Body renderers: `deep-sky` (photo billboards), `mask` (edge feather) |
+| `public/textures/`      | Planet maps + skybox + nebula/galaxy photography                     |
+| `public/data/<locale>/` | Per-locale dossiers — fetched on approach/selection, cached          |
+| `public/data/index/`    | 139k-record registry — manifest + packed shards for search/browse    |
+| `public/media/`         | Self-hosted NASA imagery/audio/video per body                        |
+| `tests/`                | Jest suites + `tests/coverage/starfield/**` tails — 100% gate        |
 
 ## Data model
 
 `engine/catalog.ts` is the sole body catalog (positions, radii, orbits,
-material recipes, groups). `public/data/<id>.json` ships the display
-dossier (`name`, `kind`, `tagline`, `facts[]`, `history`, `source`) — one
-file per body so the viewer only downloads facts when the camera
-approaches or a body is selected. `star/dossier.ts` dedupes in-flight and
-resolved fetches in one shared cache.
+material recipes, groups). `public/data/<locale>/<id>.json` ships the
+display dossier (`name`, `kind`, `tagline`, `facts[]`, `history`,
+`source`, `media`, `meta` provenance signature) — one file per body per
+locale so the viewer only downloads facts when the camera approaches or
+a body is selected, falling back to English when a locale file is
+absent. `star/dossier.ts` dedupes in-flight and resolved fetches in one
+shared `locale:id` cache.
+
+`public/data/index/` holds the deep-field registry — a `manifest.json`
+plus packed `star-*`/`exoplanet-*`/`dso-*` shards (~139k records).
+Records stream lazily for navigator search and per-kind "load more";
+selecting a registry id synthesizes a dossier from the record fields
+instead of fetching JSON.
+
+## Rendering
+
+- Solar bodies: texture-mapped spheres (`MeshStandardMaterial` under the
+  sun rig) with per-body detail layers — Earth carries day, normal,
+  night-emissive, specular, cloud-deck and elevation-bump maps; stars and
+  the Sun add an additive halo sprite.
+- Saturn's ring: `2k_saturn_ring_alpha.png` is a radial strip, so the
+  ring geometry's planar UVs are remapped radius→U (`bodies-scene.ts`)
+  to preserve the C/B/A bands and Cassini gap.
+- Nebulae/clusters: photographic billboards with a circular feather
+  mask (`engine/bodies/mask.ts`) so square frames dissolve into space;
+  procedural radial glows stand in when a photo is missing.
+- Galaxies: photo-textured tilted discs plus a sparkle-particle overlay
+  and additive core glow (`engine/spiral.ts`); the seeded procedural
+  particle disc remains as the fallback for unphotographed bodies.
+- All color textures are tagged `SRGBColorSpace` in `bootstrap.ts`.
 
 ## Accessibility
 
@@ -50,7 +78,16 @@ mouse/touch/pen.
 - Planet/moon/sun maps + Saturn ring: Solar System Scope texture set,
   [CC-BY 4.0](https://www.solarsystemscope.com/textures/).
 - Milky Way skybox: 8k equirect star panorama (same set).
+- Earth elevation bump map: NASA Visible Earth topography + bathymetry
+  (public domain, via Wikimedia Commons `Earth_dry_elevation.png`).
+- Nebula/cluster/galaxy photography: NASA/ESA/ESO (Hubble/JWST/Chandra)
+  and ESA Gaia mission imagery — public domain / CC-BY, hotlinked into
+  `public/textures/` at download time.
+- Face-on Milky Way map: ESA/Gaia all-sky artist impression.
+- Dossier media: self-hosted NASA/JPL imagery, audio and video under
+  `public/media/<body>/`.
 - Dossier facts/history paraphrased from NASA/JPL Solar System
-  Exploration, ESA, ESO and IAU publications — each JSON names its source.
+  Exploration, ESA, ESO and IAU publications — each JSON names its source
+  and signs an acquisition/translation date in `meta`.
 
 License: [MPL-2.0](https://github.com/LuisKrotz/luiskr.com-V3/blob/development/LICENSE)

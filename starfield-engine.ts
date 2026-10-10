@@ -17,9 +17,10 @@
  *   destroy()
  */
 import { POINTER_EVENTS, MOUSE_EVENTS, WINDOW_EVENTS } from '@core/tokens/events/dom.js'
-import { SF_CAMERA, SF_KEYS } from '@core/tokens/starfield/params.js'
+import { SF_CAMERA, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { isRegistryId, loadRegistryRecord, registryWorldPos } from './engine/registry.js'
 import { bootstrapStarField } from './engine/bootstrap.js'
-import { anchorWorldPos, tickStar } from './engine/frame.js'
+import { anchorWorldPos, rotateStarCamera, tickStar } from './engine/frame.js'
 import { startFly } from './engine/fly.js'
 import { takeStarScreenshot } from './engine/screenshot.js'
 import { createStarState, type SFEvents } from './engine/state.js'
@@ -91,13 +92,32 @@ export class StarFieldEngine {
   }
 
   /**
-   * Flies the camera to a catalog body. Called by the host for both nav
-   * picks and canvas raycast picks — `onSelect` is only fired by the
-   * pointer path (picking.ts) so selection never loops.
-   * @param id Catalog body id.
+   * Flies the camera to a body — catalog slugs resolve through the
+   * anchors map; registry ids (`star-NNNNNN`…) resolve through the
+   * shard index to their true heliocentric position. Called by the host
+   * for both nav picks and canvas raycast picks — `onSelect` is only
+   * fired by the pointer path (picking.ts) so selection never loops.
+   * @param id Catalog body id or registry id.
    */
   selectBody(id: string): void {
     const s = this.#s
+
+    if (isRegistryId(id)) {
+      s.selectedId = id
+
+      // Async shard resolve → fly — fire-and-forget with a selection
+      // guard so a fast second select can't have a slow first response
+      // hijack the camera.
+      void loadRegistryRecord(id).then((rec) => {
+        if (s.disposed || s.selectedId !== id || !rec || !s.camera) return
+
+        const p = registryWorldPos(s, rec)
+
+        if (p) startFly(s, p, SF_STAR_CLOUD.FLY_OFFSET)
+      })
+
+      return
+    }
 
     const anchor = s.anchors.get(id)
 
@@ -124,39 +144,7 @@ export class StarFieldEngine {
    * @param dPolar Polar delta in radians (down = -, up = +).
    */
   rotateView(dAzimuth: number, dPolar: number): void {
-    const s = this.#s
-
-    if (!s.camera || !s.controls) return
-
-    s.fly = null
-
-    const tgt = s.controls.target
-    const cam = s.camera.position
-
-    const ox = cam.x - tgt.x
-    const oy = cam.y - tgt.y
-    const oz = cam.z - tgt.z
-
-    const r = Math.hypot(ox, oy, oz)
-
-    if (!r) return
-
-    const phi = Math.min(
-      Math.PI - SF_KEYS.PHI_MIN,
-      Math.max(SF_KEYS.PHI_MIN, Math.acos(oy / r) - dPolar)
-    )
-
-    const theta = Math.atan2(ox, oz) + dAzimuth
-
-    const sinPhi = Math.sin(phi)
-
-    cam.set(
-      tgt.x + r * sinPhi * Math.sin(theta),
-      tgt.y + r * Math.cos(phi),
-      tgt.z + r * sinPhi * Math.cos(theta)
-    )
-
-    s.controls.update()
+    rotateStarCamera(this.#s, dAzimuth, dPolar)
   }
 
   /** Returns the camera to the overview pose — the whole-chart vantage. */

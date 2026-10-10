@@ -6,7 +6,13 @@
  * render), and the host-aware resize measurer — the canvas lives inside
  * the StarField shadow root so clientWidth comes from the host element.
  */
-import { SF_APPROACH, SF_COLORS, SF_LOD, SF_MOTION } from '@core/tokens/starfield/params.js'
+import {
+  SF_APPROACH,
+  SF_COLORS,
+  SF_KEYS,
+  SF_LOD,
+  SF_MOTION,
+} from '@core/tokens/starfield/params.js'
 import { updateFly } from './fly.js'
 import type { SFState } from './types.js'
 
@@ -62,9 +68,12 @@ export function anchorScreenPos(
     project?: (camera: unknown) => { x: number; y: number; z: number }
   }
 
-  if (typeof v.project !== 'function') return null
+  const project = v.project as
+    ((camera: unknown) => { x: number; y: number; z: number }) | undefined
 
-  const ndc = v.project(s.camera)
+  if (!project) return null
+
+  const ndc = project.call(v, s.camera)
 
   if (ndc.z > 1) return null
 
@@ -90,6 +99,58 @@ export function anchorWorldPos(anchor: {
   _scratch = _scratch || new Vec3()
 
   return anchor.getWorldPosition(_scratch as never)
+}
+
+/**
+ * Arrow-key orbit — rotates the camera around the controls target in
+ * screen-intuitive steps: left/right change azimuth, up/down change
+ * polar (clamped off the poles so the view can never flip over the top).
+ * Pure spherical math on the offset vector — no three types needed —
+ * and any running fly-to is cancelled so manual control always wins.
+ * The offset is converted to spherical coordinates (r, θ azimuth in the
+ * XZ plane, φ polar from +Y), the deltas are applied, then converted
+ * back to Cartesian around the target.
+ * @param s Engine state (camera + controls required; no-op before boot).
+ * @param dAzimuth Azimuth delta in radians (left = -, right = +).
+ * @param dPolar Polar delta in radians (down = -, up = +).
+ */
+export function rotateStarCamera(s: SFState, dAzimuth: number, dPolar: number): void {
+  if (!s.camera || !s.controls) return
+
+  s.fly = null
+
+  const tgt = s.controls.target
+  const cam = s.camera.position
+
+  // Spherical offset of the camera from the orbit target.
+  const ox = cam.x - tgt.x
+  const oy = cam.y - tgt.y
+  const oz = cam.z - tgt.z
+
+  const r = Math.hypot(ox, oy, oz)
+
+  // Degenerate camera-on-target — no direction to rotate around.
+  if (!r) return
+
+  // φ (polar angle from +Y): clamped just off the poles so acos/sin
+  // stay well-conditioned and the view can't flip over the zenith.
+  const phi = Math.min(
+    Math.PI - SF_KEYS.PHI_MIN,
+    Math.max(SF_KEYS.PHI_MIN, Math.acos(oy / r) - dPolar)
+  )
+
+  // θ (azimuth in the XZ plane, measured from +Z toward +X).
+  const theta = Math.atan2(ox, oz) + dAzimuth
+
+  const sinPhi = Math.sin(phi)
+
+  cam.set(
+    tgt.x + r * sinPhi * Math.sin(theta),
+    tgt.y + r * Math.cos(phi),
+    tgt.z + r * sinPhi * Math.cos(theta)
+  )
+
+  s.controls.update()
 }
 
 /**

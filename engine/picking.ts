@@ -9,15 +9,46 @@
  */
 import { MOUSE_EVENTS, POINTER_EVENTS } from '@core/tokens/events/dom.js'
 import type { SFState } from './types.js'
-import { SF_USER_BODY } from './bodies-scene.js'
+import { SF_USER_BODY, SF_USER_PROXY } from './bodies-scene.js'
 
 /** Max pointer travel (px) still counted as a click, not an orbit drag. */
 const CLICK_DRAG_PX = 8
 
 /**
+ * Walks a hit object up its ancestor chain until a `userData.bodyId`
+ * appears — raycast hits land on child detail (cloud shells, rings,
+ * halos, satellite pivots) that carry no id, so the owning body is the
+ * nearest tagged ancestor. Returns the id and whether the originally
+ * hit object was an oversized invisible pick proxy.
+ * @param object The raycast hit object.
+ * @returns `{ id, proxy }` or null when no ancestor carries a body id.
+ */
+function resolveHit(object: {
+  userData: Record<string, unknown>
+  parent?: unknown
+}): { id: string; proxy: boolean } | null {
+  const proxy = object.userData[SF_USER_PROXY] === true
+
+  let node = object as { userData: Record<string, unknown>; parent?: unknown } | undefined
+
+  while (node) {
+    const id = node.userData?.[SF_USER_BODY]
+
+    if (typeof id === 'string') return { id, proxy }
+
+    node = node.parent as { userData: Record<string, unknown>; parent?: unknown } | undefined
+  }
+
+  return null
+}
+
+/**
  * Raycasts pickables at a pointer position — converts client coords into
  * canvas-relative NDC, then intersects `s.pickables` recursively so shell
- * children resolve to their body's mesh via userData walk-up.
+ * children resolve to their body's mesh via userData walk-up. Hits that
+ * land on oversized invisible pick proxies lose to any real-mesh hit
+ * further down the ray, so clicking through a fat proxy bubble still
+ * selects the actual body underneath.
  * @returns The hit body id, or null.
  */
 function pickAt(s: SFState, clientX: number, clientY: number): string | null {
@@ -39,12 +70,22 @@ function pickAt(s: SFState, clientX: number, clientY: number): string | null {
   raycaster.setFromCamera(ndc, s.camera)
 
   const hits = raycaster.intersectObjects(s.pickables, true) as Array<{
-    object: { userData: Record<string, string>; parent?: unknown }
+    object: { userData: Record<string, unknown>; parent?: unknown }
   }>
 
-  const hit = hits?.[0]
+  let proxyId: string | null = null
 
-  return hit?.object?.userData?.[SF_USER_BODY] ?? null
+  for (const hit of hits ?? []) {
+    const resolved = hit?.object ? resolveHit(hit.object) : null
+
+    if (!resolved) continue
+
+    if (!resolved.proxy) return resolved.id
+
+    proxyId ??= resolved.id
+  }
+
+  return proxyId
 }
 
 /** Set by bootstrap — the lazily imported Raycaster class. */

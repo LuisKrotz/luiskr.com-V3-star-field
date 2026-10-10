@@ -27,6 +27,7 @@ jest.unstable_mockModule('../../../../starfield-engine.js', () => ({
       ev.onProgress('mock-stage', 42)
       ev.onHover('mars')
       ev.onHover(null)
+      ev.onHoverMove('mars', 12, 34)
       ev.onSelect('earth')
       ev.onApproach('moon')
       ev.onReady()
@@ -66,10 +67,21 @@ const makeHost = (overrides = {}) => {
     _dossierLoading: false,
     _liveText: '',
     _navOpen: false,
+    _search: '',
+    _regManifest: null,
+    _regLoaded: new Map(),
+    _regRecords: new Map(),
+    _regSearch: null,
+    _regSearching: false,
+    _regQuery: '',
+    _loadMoreRegistry: jest.fn(),
+    _ensureRegistry: jest.fn(),
     _getCanvasEl: jest.fn(() => null),
+    _applyDeepLink: jest.fn(),
     _updateLoader: jest.fn(),
     _selectBody: jest.fn(),
     _handleHover: jest.fn(),
+    _handleHoverMove: jest.fn(),
     _updateDom: jest.fn(),
     _dismissLoader: jest.fn(),
     $: jest.fn(() => null),
@@ -100,6 +112,7 @@ describe('star boot tails', () => {
     expect(c._updateLoader).toHaveBeenCalledWith('mock-stage', 42)
     expect(c._handleHover).toHaveBeenCalledWith('mars')
     expect(c._handleHover).toHaveBeenCalledWith(null)
+    expect(c._handleHoverMove).toHaveBeenCalledWith('mars', 12, 34)
     expect(c._selectBody).toHaveBeenCalledWith('earth')
     expect(mockCtl.reduced !== null).toBe(true)
     expect(c._dismissLoader).toHaveBeenCalled()

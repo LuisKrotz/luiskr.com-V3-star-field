@@ -718,6 +718,70 @@ describe('picking', () => {
 
     expect(s.hoverId).toBeNull()
   })
+
+  test('pickAt walks up to the tagged ancestor and real hits beat proxies', () => {
+    // Child hit (ring/cloud) — bodyId lives on the parent mesh.
+    const ring = { object: { userData: {}, parent: { userData: { [SF_USER_BODY]: 'saturn' } } } }
+    // Oversized proxy bubble — yields to a real-mesh hit down the ray.
+    const proxy = { object: { userData: { [SF_USER_BODY]: 'milky-way', pickProxy: true } } }
+    const pluto = { object: { userData: { [SF_USER_BODY]: 'pluto' } } }
+    // Hit with no tagged ancestor at all — resolves nothing.
+    const orphan = { object: { userData: {} } }
+
+    armPicking(makeRaycaster([proxy, pluto, orphan]))
+
+    const canvas = makeCanvas()
+
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 })
+
+    const s = makeState({
+      canvas,
+      camera: fakeCamera(),
+      pickables: [{}],
+      onSelect: jest.fn(),
+      onHover: jest.fn(),
+    })
+
+    bindPicking(s)
+
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
+    )
+
+    // The proxy is nearer but pluto's real mesh wins.
+    expect(s.hoverId).toBe('pluto')
+
+    // Proxy + untagged hits only → the proxy id surfaces.
+    armPicking(makeRaycaster([ring, orphan]))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
+    )
+
+    expect(s.hoverId).toBe('saturn')
+
+    armPicking(makeRaycaster([orphan, proxy]))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 6, clientY: 6 })
+    )
+
+    expect(s.hoverId).toBe('milky-way')
+
+    // Null hit list → `?? []` arm; sparse/object-less entries → falsy arm.
+    armPicking(makeRaycaster(null))
+    s.hoverId = null
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 7, clientY: 7 })
+    )
+
+    expect(s.hoverId).toBeNull()
+
+    armPicking(makeRaycaster([null, { object: null }]))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 8, clientY: 8 })
+    )
+
+    expect(s.hoverId).toBeNull()
+  })
 })
 
 describe('scene helpers', () => {

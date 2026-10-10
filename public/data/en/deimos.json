@@ -32,11 +32,20 @@
   "history": "Deimos is the smaller and outer of Mars's two moons — an irregular, dust-smoothed body probably captured from the asteroid belt or born from impact debris. Its thick regolith blanket softens its craters, giving it a lumpy, muted look unlike Phobos's battered face. It orbits just outside synchronous altitude, so from the Martian surface it drifts slowly east to west over almost three days. NASA's Mars Trek provides detailed shape models; no lander has yet touched it, but it remains a candidate staging point for crewed Mars missions.",
   "source": "NASA/JPL · NASA Mars Trek",
   "meta": {
-    "acquired": "2025-10-09",
-    "translated": "2025-10-09",
+    "acquired": "2026-10-09",
+    "translated": "2026-10-09",
     "locale": "en",
     "refs": [
       "NASA/JPL · NASA Mars Trek"
+    ]
+  },
+  "media": {
+    "images": [
+      {
+        "src": "media/deimos/img-1.jpg",
+        "caption": "Martian Eclipses: Deimos and Phobos",
+        "credit": "NASA"
+      }
     ]
   }
 }

@@ -76,12 +76,56 @@ describe('StarFieldEngine wiring tails', () => {
     expect(eng.failed).toBe(false)
 
     eng.selectBody('mars')
+    eng.rotateView(0.1, -0.1)
     eng.flyHome()
     eng.takeScreenshot()
     eng.setReducedMotion(true)
     eng.setReducedMotion(false)
 
     eng.destroy()
+  })
+
+  test('selectBody on a registry id resolves the shard but skips the fly without a Milky Way position', async () => {
+    const origFetch = globalThis.fetch
+
+    globalThis.fetch = jest.fn(async (url) => {
+      const u = String(url)
+
+      if (u.endsWith('manifest.json'))
+        return {
+          ok: true,
+          json: async () => ({
+            total: 1,
+            shardSize: 1000,
+            kinds: { star: { count: 1, shards: ['star-000.json'] } },
+          }),
+        }
+      if (u.endsWith('star-000.json'))
+        return {
+          ok: true,
+          json: async () => [{ i: 'star-000000', n: 'Sirius', x: 1, y: 2, z: 3 }],
+        }
+
+      return { ok: false, status: 404 }
+    })
+
+    try {
+      const ev = events()
+      const eng = new StarFieldEngine(makeCanvas(), ev)
+
+      await eng.init()
+
+      // The wiring mock never registers a 'milky-way' node, so
+      // registryWorldPos resolves null — the selection resolves but the
+      // camera stays put.
+      eng.selectBody('star-000000')
+
+      await new Promise((r) => setTimeout(r, 20))
+
+      eng.destroy()
+    } finally {
+      globalThis.fetch = origFetch
+    }
   })
 
   test('init() without a scene flags failed but still fires onReady', async () => {

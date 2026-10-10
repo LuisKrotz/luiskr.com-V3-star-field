@@ -38,6 +38,14 @@ const makeHost = (overrides = {}) =>
       _selectedId: null,
       _sfFailed: false,
       _sfReady: false,
+      _search: '',
+      _matchesSearch: () => true,
+      _regManifest: null,
+      _regLoaded: new Map(),
+      _regRecords: new Map(),
+      _regSearch: null,
+      _regSearching: false,
+      _loadMoreRegistry: jest.fn(),
       translations: null,
       _toggleNav: jest.fn(),
       _selectBody: jest.fn(),
@@ -77,6 +85,60 @@ describe('star render tails', () => {
     )
 
     expect(flat).toContain('oddity')
+  })
+
+  test('audio media renders caption/credit figcaption arms', () => {
+    const flat = flatText(
+      renderStarField(
+        makeHost({
+          _sfReady: true,
+          _selectedId: 'mock-body',
+          _dossier: {
+            name: 'Mock',
+            kind: 'planet',
+            tagline: 'x',
+            facts: [],
+            history: 'h',
+            source: 's',
+            media: {
+              audio: [
+                // caption only — `aud.caption || aud.credit` via caption
+                { src: 'media/mock/a.ogg', caption: 'Cap' },
+                // credit only — the `|| aud.credit` fallback arm +
+                // `aud.caption` falsy inside figcaption
+                { src: 'media/mock/b.ogg', credit: 'NASA' },
+                // neither — falsy figcaption arm
+                { src: 'media/mock/c.ogg' },
+              ],
+            },
+          },
+        })
+      )
+    )
+
+    expect(flat).toContain('Cap')
+    expect(flat).toContain('NASA')
+
+    // Images-only media — the `m.audio ?? []` empty-fallback arm.
+    const noAudio = flatText(
+      renderStarField(
+        makeHost({
+          _sfReady: true,
+          _selectedId: 'mock-body',
+          _dossier: {
+            name: 'Mock',
+            kind: 'planet',
+            tagline: 'x',
+            facts: [],
+            history: 'h',
+            source: 's',
+            media: { images: [{ src: 'media/mock/pic.jpg', caption: 'Pic' }] },
+          },
+        })
+      )
+    )
+
+    expect(noAudio).toContain('Pic')
   })
 
   test('a dossier without facts renders the defensive empty list', () => {

@@ -15,6 +15,10 @@ import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dataDir = path.join(moduleRoot, 'public', 'data')
+const enDir = path.join(dataDir, 'en')
+const LOCALE_DIRS = readdirSync(dataDir, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && e.name !== 'index')
+  .map((e) => e.name)
 
 const DOSSIER_KEYS = ['id', 'name', 'kind', 'tagline', 'facts', 'history', 'source']
 
@@ -35,10 +39,10 @@ describe('star-field module', () => {
     expect(customElements.get(VIEW_TAGS.VIEW_STAR_FIELD)).toBeDefined()
   })
 
-  it('catalog bodies each ship a dossier JSON, and vice versa', async () => {
+  it('catalog bodies each ship an English dossier JSON, and vice versa', async () => {
     const { SF_CATALOG } = await import('../engine/catalog.js')
 
-    const files = new Set(readdirSync(dataDir).filter((f) => f.endsWith('.json')))
+    const files = new Set(readdirSync(enDir).filter((f) => f.endsWith('.json')))
 
     for (const def of SF_CATALOG) {
       const file = `${def.id}.json`
@@ -53,11 +57,11 @@ describe('star-field module', () => {
     expect([...files]).toEqual([])
   })
 
-  it('dossier files carry the full SFDossier shape', async () => {
+  it('dossier files carry the full SFDossier shape + provenance signature', async () => {
     const { SF_CATALOG } = await import('../engine/catalog.js')
 
     for (const def of SF_CATALOG) {
-      const dossier = JSON.parse(readFileSync(path.join(dataDir, `${def.id}.json`), 'utf8'))
+      const dossier = JSON.parse(readFileSync(path.join(enDir, `${def.id}.json`), 'utf8'))
 
       for (const key of DOSSIER_KEYS) {
         expect(dossier[key]).toBeDefined()
@@ -69,6 +73,26 @@ describe('star-field module', () => {
       expect(dossier.facts.length).toBeGreaterThan(0)
       expect(typeof dossier.source).toBe('string')
       expect(dossier.source.length).toBeGreaterThan(0)
+      expect(dossier.meta?.acquired).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(dossier.meta?.translated).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    }
+  })
+
+  it('locale dossier files mirror the canonical shape', () => {
+    for (const loc of LOCALE_DIRS) {
+      if (loc === 'en') continue
+
+      const dir = path.join(dataDir, loc)
+
+      for (const file of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+        const dossier = JSON.parse(readFileSync(path.join(dir, file), 'utf8'))
+
+        for (const key of DOSSIER_KEYS) {
+          expect(dossier[key]).toBeDefined()
+        }
+
+        expect(dossier.meta?.locale).toBe(loc)
+      }
     }
   })
 

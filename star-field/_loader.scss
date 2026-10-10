@@ -1,0 +1,111 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_loader.scss — the boot loader overlay (spinner, percent,
+//  stage readout, progress bar) shown until the first rendered frame.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+@keyframes sf-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+// Boot loader overlay — stays up until the first rendered frame (or a
+// failed boot, when the fallback surface takes over).
+.#{$_B_SF}-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white-raw);
+  font-family: var(--font-mono);
+  pointer-events: auto;
+  overflow: hidden;
+  background-color: var(--bg-darkest);
+  transition:
+    opacity 0.8s ease-in-out,
+    filter 0.8s ease-in-out;
+
+  &-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at center,
+      rgba($color-blue, 0.35) 0%,
+      rgba($color-black, 0.9) 60%,
+      rgba($color-black, 1) 100%
+    );
+  }
+
+  &-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+  }
+
+  &-spinner {
+    width: to-rem($space-8xl);
+    height: to-rem($space-8xl);
+    border-radius: var(--radius-round);
+    border: 1px solid rgba($color-white, 0.1);
+    border-top-color: rgba($color-white, 0.8);
+    animation: sf-spin 8s linear infinite;
+    margin-bottom: to-rem($space-3xl);
+  }
+
+  &-percent {
+    @extend .ttl-md;
+
+    font-weight: 300;
+    letter-spacing: 0.1em;
+    color: rgba($color-white, 0.9);
+    margin-bottom: to-rem($space-lg);
+  }
+
+  &-sym {
+    @extend .txt-sm;
+
+    color: rgba($color-white, 0.4);
+    margin-left: to-rem($space-2xs);
+  }
+
+  &-title {
+    @extend .ttl-xs;
+
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba($color-white, 0.4);
+    margin-bottom: to-rem($space-xs);
+  }
+
+  &-msg {
+    @extend .txt-xs;
+
+    letter-spacing: 0.1em;
+    color: rgba($color-white, 0.8);
+    height: to-rem($space-lg);
+    line-height: to-rem($space-lg);
+  }
+
+  &-bar {
+    width: to-rem($space-10xl);
+    height: to-rem($space-2xs);
+    margin-top: to-rem($space-xl);
+    border-radius: var(--radius-round);
+    background: rgba($color-white, 0.12);
+    overflow: hidden;
+  }
+
+  &-bar-fill {
+    width: 0%;
+    height: 100%;
+    border-radius: var(--radius-round);
+    background: rgba($color-white, 0.85);
+    transition: width 0.3s ease-out;
+  }
+}

@@ -68,6 +68,8 @@ export function initStarFieldEngine(c: StarField): void {
 
       if (c._sfFailed) c._updateDom()
 
+      c._applyDeepLink()
+
       c._dismissLoader()
     },
   })

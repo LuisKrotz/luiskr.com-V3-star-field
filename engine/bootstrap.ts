@@ -40,6 +40,10 @@ async function loadStarTextures(
   for (const def of SF_CATALOG) {
     if (def.texture) urls.add(def.texture)
     if (def.shellTexture) urls.add(def.shellTexture)
+    if (def.normalTexture) urls.add(def.normalTexture)
+    if (def.emissiveTexture) urls.add(def.emissiveTexture)
+    if (def.cloudTexture) urls.add(def.cloudTexture)
+    if (def.bumpTexture) urls.add(def.bumpTexture)
   }
 
   const loader = new THREE.TextureLoader()
@@ -54,6 +58,13 @@ async function loadStarTextures(
     list.map(async (url) => {
       try {
         const tex = await loader.loadAsync(url)
+
+        // Photographic maps are sRGB files — without the tag three.js
+        // samples them as linear, washing out bands/nebula color into
+        // the pale flat look. Normal maps are exempt (data, not color),
+        // and it costs nothing to skip them here since only Earth wires
+        // one (kept linear by the loader default anyway).
+        if (url !== SF_TEXTURES.EARTH_NORMAL) tex.colorSpace = THREE.SRGBColorSpace
 
         map.set(url, tex)
       } catch (e) {
@@ -152,6 +163,9 @@ export async function bootstrapStarField(s: SFState): Promise<void> {
      background and mounts it on the Milky Way disc when it decodes;
      fire-and-forget so boot never blocks on the 1.5 MB asset. */
   ensureStarCloud(s, THREE)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ;(window as any).__sfDebug = s
 
   s.onProgress?.('Ready', 100)
 }
