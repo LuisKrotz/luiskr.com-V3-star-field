@@ -205,7 +205,7 @@ function makeStarPoints(
   col: Float32Array,
   sizePx: number,
   glowTex: THREE_NS.Texture | undefined,
-  volumetric = false
+  volumetric: boolean
 ): THREE_NS.Points {
   const geo = new THREE.BufferGeometry()
 
