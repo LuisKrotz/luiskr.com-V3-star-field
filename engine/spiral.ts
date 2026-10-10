@@ -204,7 +204,8 @@ function makeStarPoints(
   pos: Float32Array,
   col: Float32Array,
   sizePx: number,
-  glowTex: THREE_NS.Texture | undefined
+  glowTex: THREE_NS.Texture | undefined,
+  volumetric = false
 ): THREE_NS.Points {
   const geo = new THREE.BufferGeometry()
 
@@ -220,7 +221,7 @@ function makeStarPoints(
       map: glowTex,
       vertexColors: true,
       transparent: true,
-      opacity: 0.9,
+      opacity: volumetric ? SF_SPIRAL.VOLUMETRIC_OPACITY : 0.9,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
@@ -228,6 +229,10 @@ function makeStarPoints(
   )
 
   const points = new THREE.Points(geo, mat)
+
+  // Volumetric clouds (Milky Way) need per-frame distance fade so they
+  // do not read as an opaque glowing ball while the camera is inside.
+  points.userData = { volumetric: volumetric }
 
   // Keep raycasts off the point cloud — the pick sphere handles hover.
   points.raycast = () => undefined
@@ -270,11 +275,9 @@ export function makeSpiralGalaxy(
   // Volumetric galaxies (the Milky Way — viewed from inside) never load
   // a photo quad: a face-on billboard is geometrically false for an
   // embedded observer, so the particle disc IS the body.
-  const photoTex = def.spiralDisc?.volumetric
-    ? undefined
-    : def.texture
-      ? texMap?.get?.(def.texture)
-      : undefined
+  const volumetric = Boolean(def.spiralDisc?.volumetric)
+
+  const photoTex = volumetric ? undefined : def.texture ? texMap?.get?.(def.texture) : undefined
 
   if (photoTex) {
     // Photographic path — masked disc carries the true imagery; the
@@ -286,7 +289,13 @@ export function makeSpiralGalaxy(
   // (resolved star-forming knots riding the imagery); in the fallback it
   // IS the galaxy body, so it takes the full particle budget. Always
   // seeded, so the speckle pattern is stable across visits.
-  const sparkleCount = photoTex ? Math.max(64, Math.floor(count * SF_DETAIL.SPARKLE_FRAC)) : count
+  // Volumetric galaxies (the Milky Way) are embedded in — keep counts
+  // modest so the cloud stays a faint stellar field, not opaque fog.
+  const effectiveCount = volumetric ? SF_SPIRAL.VOLUMETRIC_COUNT : count
+
+  const sparkleCount = photoTex
+    ? Math.max(64, Math.floor(effectiveCount * SF_DETAIL.SPARKLE_FRAC))
+    : effectiveCount
 
   const pos = new Float32Array(sparkleCount * 3)
 
@@ -329,8 +338,8 @@ export function makeSpiralGalaxy(
       rand,
       sparkleCount,
       arms,
-      def.spiralDisc?.thick,
-      def.spiralDisc?.halo,
+      volumetric ? SF_SPIRAL.VOLUMETRIC_THICK : def.spiralDisc?.thick,
+      volumetric ? SF_SPIRAL.VOLUMETRIC_HALO : def.spiralDisc?.halo,
       bubble
     )
   }
@@ -340,25 +349,27 @@ export function makeSpiralGalaxy(
     pos,
     col,
     photoTex ? SF_DETAIL.SPARKLE_PX : SF_SPIRAL.POINT_PX,
-    glowTex
+    glowTex,
+    volumetric
   )
 
   group.add(points)
 
+  // Core bloom sprite — for external galaxies it marks the bulge; for
+  // embedded volumetric galaxies (the Milky Way) it would sit in the
+  // viewer's lap and wash the whole frame, so shrink it to a whisper.
   const coreMat = new THREE.SpriteMaterial({
     map: glowTex,
     color: def.color ?? SF_COLORS.MILKY_WAY,
     transparent: true,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
-    // The photo already carries its own luminous core — the sprite only
-    // adds bloom on the fallback path; over imagery it stays a whisper.
-    opacity: photoTex ? SF_SPIRAL.CORE_PHOTO : SF_SPIRAL.CORE_GLOW,
+    opacity: volumetric ? 0.12 : photoTex ? SF_SPIRAL.CORE_PHOTO : SF_SPIRAL.CORE_GLOW,
   })
 
   const core = new THREE.Sprite(coreMat)
 
-  const coreSize = def.radius * 0.45
+  const coreSize = volumetric ? def.radius * 0.08 : def.radius * 0.45
 
   core.scale.set(coreSize, coreSize, 1)
 

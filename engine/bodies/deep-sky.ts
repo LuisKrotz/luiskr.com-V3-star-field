@@ -35,11 +35,12 @@ export function makeNebulaSprite(
   THREE: ThreeModule,
   def: SFBodyDef,
   texMap: TexMap,
-  glowTex: THREE_NS.Texture | undefined
+  glowTex: THREE_NS.Texture | undefined,
+  lobes = 0
 ): THREE_NS.Sprite {
   const photo = def.texture ? texMap.get(def.texture) : undefined
 
-  const masked = photo ? maskPhotoTexture(THREE, photo) : undefined
+  const masked = photo ? maskPhotoTexture(THREE, photo, { lobes, seed: def.id }) : undefined
 
   const mat = new THREE.SpriteMaterial(
     matParams({

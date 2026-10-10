@@ -417,7 +417,11 @@ export function buildStarBodies(
     let spinner: THREE_NS.Object3D | null = null
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
-      mesh = makeNebulaSprite(THREE, def, texMap, glowTex)
+      // Nebulae get an irregular wispy mask so they look like gas clouds;
+      // clusters keep the clean radial feather.
+      const lobes = def.kind === SF_KINDS.NEBULA ? 3 : 0
+
+      mesh = makeNebulaSprite(THREE, def, texMap, glowTex, lobes)
     } else if (def.kind === SF_KINDS.STRUCTURE) {
       // Hierarchy shells — a boundary sphere + member speckles; never
       // registered in `pickables` (a multi-thousand-unit shell would
