@@ -57,14 +57,14 @@
     left: -(to-rem($space-sm) / 2);
     top: -(to-rem($space-sm) / 2);
     border-radius: var(--radius-round);
-    border: 1px solid var(--sf-sky-ink-2);
+    border: var(--space-hairline) solid var(--sf-sky-ink-2);
     background: var(--sf-sky-faint);
   }
 
   &-line {
     position: absolute;
     width: to-rem($space-3xl);
-    height: 1px;
+    height: var(--space-hairline);
     left: 0;
     top: 0;
     transform-origin: 0 0;
@@ -75,6 +75,7 @@
   &-label {
     @extend .txt-sm;
 
+    font-weight: 500;
     position: absolute;
     left: to-rem($space-2xl);
     bottom: to-rem($space-2xl + $space-sm);
@@ -85,7 +86,7 @@
     color: var(--sf-ink);
     background: var(--sf-chrome);
     backdrop-filter: blur(to-rem($space-xs));
-    border: 1px solid var(--sf-line);
+    border: var(--space-hairline) solid var(--sf-line);
     border-radius: var(--radius-sm);
     padding: to-rem($space-sm) to-rem($space-md);
   }
