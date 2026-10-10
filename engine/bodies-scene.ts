@@ -36,12 +36,12 @@ export const SF_USER_PROXY = 'pickProxy'
  * pixels at the home camera, so a slightly larger transparent sphere
  * (riding inside `mesh` to inherit orbit position and spin) gives the
  * raycaster a usable target. Marked `SF_USER_PROXY` so a real-mesh hit
- * along the same ray always wins.
+ * along the same ray always wins; the caller stamps the body id on
+ * `userData` since the proxy is shared across kinds.
  * @param THREE The three.js module.
- * @param def Catalog entry (body id stamped on `userData`).
  * @returns The invisible proxy mesh.
  */
-function makePickProxy(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Object3D {
+function makePickProxy(THREE: ThreeModule): THREE_NS.Object3D {
   const proxy = new THREE.Mesh(
     new THREE.SphereGeometry(SF_DETAIL.PICK_MIN, 8, 6),
     new THREE.MeshBasicMaterial({ visible: false })
@@ -459,7 +459,7 @@ export function buildStarBodies(
       // they stay clickable at the home zoom; the bubble is a proxy — a
       // real-mesh hit along the same ray still wins in `pickAt`.
       if (def.radius < SF_DETAIL.PICK_MIN) {
-        pickMesh = makePickProxy(THREE, def)
+        pickMesh = makePickProxy(THREE)
 
         mesh.add(pickMesh)
       }
