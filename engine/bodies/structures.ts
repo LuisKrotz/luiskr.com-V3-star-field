@@ -45,27 +45,44 @@ function makeSpeckles(
 
   const fillR = radius * SF_STRUCTURE.SPECKLE_FILL
 
-  // Galaxy clusters/superclusters are not uniform spheres — flatten along
-  // one axis and concentrate members toward the core so the speckle cloud
-  // reads as a flattened filament rather than a disco ball.
-  const flatten = SF_STRUCTURE.SPECKLE_FLATTEN
-  const concentrate = SF_STRUCTURE.SPECKLE_CONCENTRATE
+  // Galaxy clusters/superclusters are not spheres — they are knotted
+  // filaments/sheets. Build a seeded principal axis and 2–3 density
+  // knots along it; each member is scattered gaussian around a knot so
+  // the cloud reads as a beaded thread, not a disco ball.
+  const au = rand() * 2 - 1
+  const ath = rand() * Math.PI * 2
+  const as = Math.sqrt(1 - au * au)
+  const axis = [Math.cos(ath) * as, au, Math.sin(ath) * as]
+
+  // Perpendicular basis for the lateral scatter.
+  const p1 = [axis[1], -axis[0], 0]
+  const p1len = Math.max(Math.hypot(p1[0], p1[1]), 1e-9)
+  const lat1 = [p1[0] / p1len, p1[1] / p1len, 0]
+  const lat2 = [
+    axis[1] * lat1[2] - axis[2] * lat1[1],
+    axis[2] * lat1[0] - axis[0] * lat1[2],
+    axis[0] * lat1[1] - axis[1] * lat1[0],
+  ]
+
+  const knots = 2 + Math.floor(rand() * 2)
+  const knotAt: number[] = []
+
+  for (let k = 0; k < knots; k++) {
+    // Knots spread along the axis — jittered so no two structures match.
+    knotAt.push((k / Math.max(knots - 1, 1) - 0.5) * fillR * (0.9 + rand() * 0.5))
+  }
+
+  const g = () => (rand() + rand() + rand() - 1.5) * fillR * 0.14
 
   for (let i = 0; i < count; i++) {
-    const t = rand()
+    const ki = Math.floor(rand() * knots)
+    const along = knotAt[ki] + g() * 1.6
+    const l1 = g()
+    const l2 = g() * SF_STRUCTURE.SPECKLE_FLATTEN
 
-    // pow(t, concentrate) biases members toward the center; 1.0 = uniform.
-    const r = Math.pow(t, concentrate) * fillR
-
-    const u = rand() * 2 - 1
-
-    const theta = rand() * Math.PI * 2
-
-    const s = Math.sqrt(1 - u * u)
-
-    pos[i * 3] = Math.cos(theta) * s * r
-    pos[i * 3 + 1] = u * r * flatten
-    pos[i * 3 + 2] = Math.sin(theta) * s * r
+    pos[i * 3] = axis[0] * along + lat1[0] * l1 + lat2[0] * l2
+    pos[i * 3 + 1] = axis[1] * along + lat1[1] * l1 + lat2[1] * l2
+    pos[i * 3 + 2] = axis[2] * along + lat1[2] * l1 + lat2[2] * l2
 
     const bright = SF_STRUCTURE.SPECKLE_DIM + rand() * (1 - SF_STRUCTURE.SPECKLE_DIM)
 

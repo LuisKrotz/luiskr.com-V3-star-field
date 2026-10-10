@@ -355,6 +355,66 @@ export function makeSpiralGalaxy(
 
   group.add(points)
 
+  // Dust lanes — volumetric galaxies only. Soft dark occluders ride the
+  // gaps between spiral arms with NORMAL blending so they absorb the
+  // lit disc behind them; this is the Great Rift down the Milky Way's
+  // band, the feature that makes an embedded galaxy read as dusty.
+  if (volumetric) {
+    const dpos = new Float32Array(SF_SPIRAL.DUST_COUNT * 3)
+
+    const dcol = new Float32Array(SF_SPIRAL.DUST_COUNT * 3)
+
+    for (let i = 0; i < SF_SPIRAL.DUST_COUNT; i++) {
+      const r =
+        (SF_SPIRAL.DUST_R_MIN + (SF_SPIRAL.DUST_R_MAX - SF_SPIRAL.DUST_R_MIN) * Math.sqrt(rand())) *
+        def.radius
+
+      // Lanes hug the arm gaps — half an arm period off the star arms.
+      const arm = i % arms
+      const base = (r / def.radius) * SF_SPIRAL.WIND + ((arm + 0.5) * Math.PI * 2) / arms
+      const angle = base + (rand() - 0.5) * 0.3
+
+      const y =
+        (rand() + rand() - 1) * def.radius * SF_SPIRAL.THIN * SF_SPIRAL.VOLUMETRIC_THICK * 0.4
+
+      dpos[i * 3] = Math.cos(angle) * r
+      dpos[i * 3 + 1] = y
+      dpos[i * 3 + 2] = Math.sin(angle) * r
+
+      // Near-black with slight warm cast — interstellar dust reddens.
+      dcol[i * 3] = 0.02
+      dcol[i * 3 + 1] = 0.012
+      dcol[i * 3 + 2] = 0.008
+    }
+
+    const dgeo = new THREE.BufferGeometry()
+
+    dgeo.setAttribute('position', new THREE.BufferAttribute(dpos, 3))
+    dgeo.setAttribute('color', new THREE.BufferAttribute(dcol, 3))
+    dgeo.setAttribute(
+      'uv',
+      new THREE.BufferAttribute(new Float32Array(SF_SPIRAL.DUST_COUNT * 2), 2)
+    )
+
+    const dmat = new THREE.PointsMaterial(
+      matParams({
+        size: SF_SPIRAL.DUST_PX,
+        map: glowTex,
+        vertexColors: true,
+        transparent: true,
+        opacity: SF_SPIRAL.DUST_OPACITY,
+        depthWrite: false,
+        sizeAttenuation: true,
+      })
+    )
+
+    const dust = new THREE.Points(dgeo, dmat)
+
+    dust.raycast = () => undefined
+
+    group.add(dust)
+  }
+
   // Core bloom sprite — for external galaxies it marks the bulge; for
   // embedded volumetric galaxies (the Milky Way) it would sit in the
   // viewer's lap and wash the whole frame, so shrink it to a whisper.

@@ -37,9 +37,16 @@ const ctxProto = () => window.HTMLCanvasElement.prototype
 const fake2d = () => ({
   drawImage: jest.fn(),
   createRadialGradient: () => ({ addColorStop: jest.fn() }),
+  createLinearGradient: () => ({ addColorStop: jest.fn() }),
   fillStyle: '',
+  strokeStyle: '',
+  lineWidth: 0,
   globalCompositeOperation: '',
   fillRect: jest.fn(),
+  beginPath: jest.fn(),
+  moveTo: jest.fn(),
+  lineTo: jest.fn(),
+  stroke: jest.fn(),
 })
 
 /**

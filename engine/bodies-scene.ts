@@ -15,7 +15,9 @@ import { makeGalaxyDisc, makeNebulaSprite } from './bodies/deep-sky.js'
 import { makeBlackHole } from './bodies/black-hole.js'
 import { makeStructure } from './bodies/structures.js'
 import { makeBelt } from './bodies/belt.js'
+import { coronaFor, surfaceFor } from './bodies/procedural.js'
 import { matParams } from './materials.js'
+import { lcg, seedFrom } from './rand.js'
 import type { SFBodyDef, SFNode, SFNodeDeps, SFState } from './types.js'
 
 type ThreeModule = typeof import('three')
@@ -144,7 +146,10 @@ function makeSphere(
 
   const mat = new THREE.MeshStandardMaterial(
     matParams({
-      map: texMap.get(def.texture ?? ''),
+      // No photo map → seeded procedural surface (mottle/bands/craters)
+      // so untextured moons, dwarf planets and exoplanets read as real
+      // worlds instead of flat tinted balls.
+      map: texMap.get(def.texture ?? '') ?? surfaceFor(THREE, def),
       color: def.color,
     })
   )
@@ -515,8 +520,44 @@ export function buildStarBodies(
 
     // Luminous bodies glow past their limb — the halo rides on the pivot
     // (not `detail`) so a distant star still reads as a light source.
+    let corona: SFNode['corona']
+
     if (def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM) {
       mesh.add(makeStarHalo(THREE, def, glowTex))
+
+      // Corona sprite — seeded streamers + flare knots that rotate and
+      // breathe in updateFx, so stars read as live suns rather than a
+      // static lit disc with a glow blob behind it.
+      const coronaTex = coronaFor(THREE, def)
+
+      if (coronaTex) {
+        const cm = new THREE.SpriteMaterial(
+          matParams({
+            map: coronaTex,
+            color: def.color ?? SF_COLORS.SUN_LIGHT,
+            transparent: true,
+            opacity: 0.7,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+          })
+        )
+
+        const coronaSprite = new THREE.Sprite(cm)
+
+        const csize = def.radius * SF_DETAIL.HALO_SCALE * 1.4
+
+        coronaSprite.scale.set(csize, csize, 1)
+
+        mesh.add(coronaSprite)
+
+        const crand = lcg(seedFrom(`${def.id}:spin`))
+
+        corona = {
+          material: cm as unknown as { rotation: number; opacity: number },
+          rate: 0.1 + crand() * 0.25,
+          phase: crand() * Math.PI * 2,
+        }
+      }
     }
 
     const satPivots = makeSatellites(THREE, deps, def, mesh)
@@ -537,7 +578,7 @@ export function buildStarBodies(
       detail.push(ring)
     }
 
-    const node: SFNode = { def, pivot, mesh, spinner: spinner ?? mesh, satPivots, detail }
+    const node: SFNode = { def, pivot, mesh, spinner: spinner ?? mesh, satPivots, detail, corona }
 
     s.nodes.set(def.id, node)
     s.anchors.set(def.id, mesh)
