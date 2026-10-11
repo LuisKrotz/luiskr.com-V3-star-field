@@ -147,6 +147,15 @@ export class StarFieldEngine {
     rotateStarCamera(this.#s, dAzimuth, dPolar)
   }
 
+  /**
+   * Releases the selection without moving the camera — stops the
+   * per-frame orbit-follow when the dossier panel closes, so the chart
+   * is no longer glued to the body the user dismissed.
+   */
+  deselect(): void {
+    this.#s.selectedId = null
+  }
+
   /** Returns the camera to the overview pose — the whole-chart vantage. */
   flyHome(): void {
     const s = this.#s

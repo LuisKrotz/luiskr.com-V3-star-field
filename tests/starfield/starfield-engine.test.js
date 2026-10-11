@@ -197,10 +197,22 @@ describe('StarFieldEngine', () => {
 
     expect(() => {
       engine.selectBody('mars')
+      engine.deselect()
       engine.flyHome()
       engine.setReducedMotion(true)
       engine.setReducedMotion(false)
     }).not.toThrow()
+
+    engine.destroy()
+  })
+
+  test('deselect releases the selection without moving the camera', async () => {
+    const engine = new StarFieldEngine(makeCanvas())
+
+    await engine.init()
+
+    engine.selectBody('mars')
+    engine.deselect()
 
     engine.destroy()
   })
