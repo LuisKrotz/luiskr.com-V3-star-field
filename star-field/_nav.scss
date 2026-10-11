@@ -115,6 +115,13 @@
     box-shadow: var(--shadow-card-hover);
   }
 
+  &-head {
+    display: flex;
+    align-items: center;
+    gap: to-rem($space-md);
+    margin: 0 0 to-rem($space-xl);
+  }
+
   &-heading {
     @extend .ttl-xs;
 
@@ -122,7 +129,25 @@
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--sf-ink-strong);
-    margin: 0 0 to-rem($space-xl);
+    margin: 0;
+    flex: 1;
+  }
+
+  // In-drawer dismiss — the dossier panel's close, ported to the nav card
+  // so pointer users never hunt for the toggle (Escape still works).
+  &-close {
+    @extend %RESETBTN;
+
+    font-family: var(--font-mono);
+    font-size: to-rem($space-xl);
+    color: var(--sf-ink);
+    padding: to-rem($space-2xs) to-rem($space-sm);
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--sf-ink-strong);
+    }
   }
 
   &-group {

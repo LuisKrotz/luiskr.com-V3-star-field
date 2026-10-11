@@ -385,6 +385,8 @@ export class StarField extends BaseComponent {
 
     this._dossierLoading = false
 
+    this._engine?.deselect()
+
     this._syncUrl(null)
 
     this._updateDom()

@@ -1,12 +1,19 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  star-field/_loader.scss — the boot loader overlay (spinner, percent,
-//  stage readout, progress bar) shown until the first rendered frame.
+//  star-field/_loader.scss — the sci-fi system boot loader overlay — spin
+//  keyframes, dual rings, counter, stage readout (same contract as the
+//  earth playground's sp-loader).
 //  Imported by star-field.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
-@keyframes sf-spin {
+@keyframes sf-spin-cw {
   to {
     rotate: 360deg;
+  }
+}
+
+@keyframes sf-spin-ccw {
+  to {
+    rotate: -360deg;
   }
 }
 
@@ -40,6 +47,21 @@
     );
   }
 
+  &-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba($color-white, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba($color-white, 0.03) 1px, transparent 1px);
+    background-size: to-rem($space-4xl) to-rem($space-4xl);
+    -webkit-mask-image: radial-gradient(
+      ellipse 60% 60% at 50% 50%,
+      var(--bg-dark) 70%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, var(--bg-dark) 70%, transparent 100%);
+  }
+
   &-content {
     position: relative;
     display: flex;
@@ -48,13 +70,39 @@
     z-index: 10;
   }
 
-  &-spinner {
+  &-spinner-outer {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% calc(-50% - #{to-rem($space-4xl)});
     width: to-rem($space-8xl);
     height: to-rem($space-8xl);
     border-radius: var(--radius-round);
     border: 1px solid rgba($color-white, 0.1);
     border-top-color: rgba($color-white, 0.8);
-    animation: sf-spin 8s linear infinite;
+    border-right-color: rgba($color-white, 0.3);
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+    animation: sf-spin-cw 8s linear infinite;
+  }
+
+  &-spinner-inner {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% calc(-50% - #{to-rem($space-4xl)});
+    width: to-rem($space-9xl);
+    height: to-rem($space-9xl);
+    border-radius: var(--radius-round);
+    border: 1px solid rgba($color-white, 0.05);
+    border-bottom-color: rgba($color-white, 0.4);
+    animation: sf-spin-ccw 12s linear infinite;
+  }
+
+  &-counter {
+    width: to-rem($space-4xl);
+    height: to-rem($space-4xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     margin-bottom: to-rem($space-3xl);
   }
 
@@ -64,7 +112,6 @@
     font-weight: 300;
     letter-spacing: 0.1em;
     color: rgba($color-white, 0.9);
-    margin-bottom: to-rem($space-lg);
   }
 
   &-sym {
@@ -93,19 +140,21 @@
   }
 
   &-bar {
-    width: to-rem($space-10xl);
-    height: to-rem($space-2xs);
-    margin-top: to-rem($space-xl);
-    border-radius: var(--radius-round);
-    background: rgba($color-white, 0.12);
+    width: to-rem($space-9xl);
+    height: 1px;
+    background-color: rgba($color-white, 0.1);
+    margin-top: to-rem($space-md);
+    position: relative;
     overflow: hidden;
-  }
 
-  &-bar-fill {
-    width: 0%;
-    height: 100%;
-    border-radius: var(--radius-round);
-    background: rgba($color-white, 0.85);
-    transition: width 0.3s ease-out;
+    &-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      background-color: rgba($color-white, 0.8);
+      transition: width 0.2s ease-out;
+    }
   }
 }

@@ -346,6 +346,40 @@ function updateGalaxyClouds(s: SFState): void {
   }
 }
 
+/**
+ * Orbit-follow — while a catalog body is selected and no fly tween is
+ * running, the camera rides with the body: the anchor's new world
+ * position is diffed against the controls target, then BOTH the target
+ * and the camera translate by that delta, so the user's orbit/zoom
+ * offset is preserved while the body keeps moving (a clicked planet
+ * never drifts out of frame mid-orbit). Registry ids carry no anchor —
+ * they are static shard points — and are skipped.
+ * @param s Engine state.
+ */
+function followSelected(s: SFState): void {
+  if (s.fly || !s.selectedId || !s.camera || !s.controls) return
+
+  const anchor = s.anchors.get(s.selectedId)
+
+  if (!anchor?.getWorldPosition) return
+
+  const p = anchorWorldPos(anchor)
+
+  const tgt = s.controls.target
+
+  const dx = p.x - tgt.x
+  const dy = p.y - tgt.y
+  const dz = p.z - tgt.z
+
+  if (!dx && !dy && !dz) return
+
+  tgt.set(tgt.x + dx, tgt.y + dy, tgt.z + dz)
+
+  const cam = s.camera.position
+
+  cam.set(cam.x + dx, cam.y + dy, cam.z + dz)
+}
+
 /** Local smoothstep helper — mirrors GLSL, no dependency on three.js. */
 function smoothstep(edge0: number, edge1: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
@@ -476,6 +510,8 @@ function tickFrame(s: SFState, now?: number): void {
   }
 
   updateFly(s)
+
+  followSelected(s)
 
   checkApproach(s)
 

@@ -82,6 +82,11 @@ describe('star render', () => {
     toggle.click()
 
     expect(host._toggleNav).toHaveBeenCalled()
+
+    // In-drawer close button also routes to _toggleNav.
+    root.querySelector(`.${SF_CLASSES.SF_NAV_CLOSE}`).click()
+
+    expect(host._toggleNav).toHaveBeenCalledTimes(2)
   })
 
   test('nav body buttons route clicks to _selectBody', () => {

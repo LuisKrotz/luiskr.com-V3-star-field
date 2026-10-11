@@ -227,16 +227,21 @@ export function renderStarField(host: StarField) {
       )}
 
       {/* Boot loader — dismissed on the first rendered frame (or on a
-          failed boot, when the fallback takes over). */}
+          failed boot, when the fallback takes over). Same sci-fi system
+          boot structure as the earth playground loader. */}
       {!host._sfReady && (
         <div className={SF_CLASSES.SF_LOADER}>
           <div className={SF_CLASSES.SF_LOADER_GLOW} />
+          <div className={SF_CLASSES.SF_LOADER_GRID} />
           <div className={SF_CLASSES.SF_LOADER_CONTENT}>
-            <div className={SF_CLASSES.SF_LOADER_SPINNER} />
-            <span className={SF_CLASSES.SF_LOADER_PERCENT}>
-              <span className={SF_CLASSES.SF_LOADER_VAL}>0</span>
-              <span className={SF_CLASSES.SF_LOADER_SYM}>%</span>
-            </span>
+            <div className={SF_CLASSES.SF_LOADER_SPINNER_OUTER} />
+            <div className={SF_CLASSES.SF_LOADER_SPINNER_INNER} />
+            <div className={SF_CLASSES.SF_LOADER_COUNTER}>
+              <span className={SF_CLASSES.SF_LOADER_PERCENT}>
+                <span className={SF_CLASSES.SF_LOADER_VAL}>0</span>
+                <span className={SF_CLASSES.SF_LOADER_SYM}>%</span>
+              </span>
+            </div>
             <div className={SF_CLASSES.SF_LOADER_TITLE}>{t.systemBoot}</div>
             <div className={SF_CLASSES.SF_LOADER_MSG}>
               {appText(LOADER_UI_KEYS.LOADER_INIT_WEBGPU)}
@@ -288,7 +293,17 @@ export function renderStarField(host: StarField) {
         role={ARIA_ATTRS.ROLE_NAVIGATION}
       >
         <div className={SF_CLASSES.SF_NAV_PANEL} id={NAV_PANEL_ID}>
-          <h2 className={SF_CLASSES.SF_NAV_HEADING}>{t.explore}</h2>
+          <div className={SF_CLASSES.SF_NAV_HEAD}>
+            <h2 className={SF_CLASSES.SF_NAV_HEADING}>{t.explore}</h2>
+            <button
+              className={SF_CLASSES.SF_NAV_CLOSE}
+              type={FORM_ATTRS.BUTTON}
+              aria-label={appText(NAV_UI_KEYS.CLOSE)}
+              onClick={() => host._toggleNav()}
+            >
+              ✕
+            </button>
+          </div>
           <input
             className={SF_CLASSES.SF_NAV_SEARCH}
             type={FORM_ATTRS.SEARCH}
