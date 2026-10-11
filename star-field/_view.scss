@@ -68,8 +68,10 @@
   }
 }
 
-// Static deep-space fallback — mounted when the engine can't boot
-// (WebGL disallowed/unavailable, init failure, reduced-motion).
+// Static deep-space fallback — a 2D-painted starfield canvas mounted when
+// the engine can't boot (WebGL disallowed/unavailable, init failure,
+// reduced-motion). `color` doubles as the star ink — the painter reads it
+// via getComputedStyle so the field follows the theme tokens.
 .#{$_B_SF}-fallback {
   position: absolute;
   inset: 0;
@@ -77,6 +79,8 @@
   height: 100%;
   z-index: 0;
   pointer-events: none;
+  display: block;
+  color: var(--sf-sky-ink-2);
   background:
     radial-gradient(
       ellipse 70% 45% at 30% 40%,

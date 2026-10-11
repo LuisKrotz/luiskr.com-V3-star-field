@@ -319,6 +319,8 @@ export interface SFState {
    * its leader line follow orbiting bodies without DOM thrash.
    */
   onHoverMove?: (bodyId: string, x: number, y: number) => void
+  /** Fires once when a frame throws — host swaps to the 2D fallback. */
+  onLost?: () => void
 }
 
 /** Per-body runtime node — pivot (orbit rotation), mesh, and its def. */

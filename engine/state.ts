@@ -16,6 +16,11 @@ export interface SFEvents {
   onApproach?: SFBodyFn
   onHover?: (bodyId: string | null) => void
   onHoverMove?: (bodyId: string, x: number, y: number) => void
+  /**
+   * Fired once when a frame throws — the render loop stops and the host
+   * swaps in the 2D fallback instead of leaving a dead canvas.
+   */
+  onLost?: () => void
 }
 
 /**
@@ -61,5 +66,6 @@ export function createStarState(canvas: HTMLCanvasElement, events: SFEvents = {}
     onApproach: events.onApproach,
     onHover: events.onHover,
     onHoverMove: events.onHoverMove,
+    onLost: events.onLost,
   }
 }

@@ -81,6 +81,7 @@ export class StarField extends BaseComponent {
   _isInitializing = false // re-entrancy guard while init() is in flight
   _sfReady = false // first usable frame delivered — loader dismisses
   _sfFailed = false // engine boot failed — CSS fallback renders instead
+  _fallbackDispose: (() => void) | null = null // 2D fallback resize-observer cleanup
   _navOpen = false // navigator drawer open state
   _search = '' // navigator directory filter query
   _selectedId: string | null = null // dossier panel body id
@@ -162,6 +163,10 @@ export class StarField extends BaseComponent {
     this._sfReady = false
 
     this._sfFailed = false
+
+    this._fallbackDispose?.()
+
+    this._fallbackDispose = null
 
     if (this._onKeyDown) {
       document.removeEventListener(KEYBOARD_EVENTS.KEYDOWN, this._onKeyDown)

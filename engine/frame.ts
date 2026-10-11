@@ -18,6 +18,7 @@ import {
 } from '@core/tokens/starfield/params.js'
 import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { updateFly } from './fly.js'
+import { devError } from '@core/devlog.js'
 import type { SFState } from './types.js'
 
 /** Lazily-armed Vector3 ctor — set by bootstrap after the three import. */
@@ -421,10 +422,36 @@ function trackHover(s: SFState): void {
  * @param now RAF timestamp in ms — falls back to performance.now.
  */
 export function tickStar(s: SFState, now?: number): void {
-  if (s.disposed || s.reduced) return
+  if (s.disposed || s.reduced || s.failed) return
 
   s.animId = requestAnimationFrame((t) => tickStar(s, t))
 
+  try {
+    tickFrame(s, now)
+  } catch (err) {
+    // A frame that throws (driver loss, shader fault) would otherwise keep
+    // rescheduling on a dead context — stop the loop, mark failed, and let
+    // the host swap in the 2D fallback starfield. cancelAnimationFrame is
+    // a spec'd no-op on a null/0 handle, so no guard is needed here.
+    cancelAnimationFrame(s.animId as number)
+
+    s.animId = null
+
+    s.failed = true
+
+    devError('[StarField] frame error:', err)
+
+    s.onLost?.()
+  }
+}
+
+/**
+ * The frame body — separated from tickStar so a throw in any update/render
+ * step is catchable at the self-rescheduling boundary.
+ * @param s Engine state.
+ * @param now RAF timestamp in ms — falls back to performance.now.
+ */
+function tickFrame(s: SFState, now?: number): void {
   const t = (now ?? performance.now()) / 1000
 
   const dt = Math.min(0.1, Math.max(0, t - s.lastT))

@@ -219,8 +219,12 @@ export function renderStarField(host: StarField) {
 
   return (
     <Fragment>
-      {/* CSS starfield fallback when the engine can't boot — never a dead canvas. */}
-      {host._sfFailed && <div className={SF_CLASSES.SF_FALLBACK} aria-hidden={ATTR_VALUES.TRUE} />}
+      {/* CSS+2D starfield fallback when the engine can't boot — the canvas
+          is painted by fallback-stars.ts (bound from star/boot.ts), never
+          a dead framebuffer. */}
+      {host._sfFailed && (
+        <canvas className={SF_CLASSES.SF_FALLBACK} aria-hidden={ATTR_VALUES.TRUE} />
+      )}
 
       {/* Boot loader — dismissed on the first rendered frame (or on a
           failed boot, when the fallback takes over). */}

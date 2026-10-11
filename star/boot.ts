@@ -15,6 +15,21 @@ import { StarFieldEngine } from '../starfield-engine.js'
 import { prefetchDossier } from './dossier.js'
 import type { StarField } from '../StarField.js'
 import { devError } from '@core/devlog.js'
+import { bindStarFallback } from '../engine/fallback-stars.js'
+
+/**
+ * Paints the 2D fallback starfield onto the freshly-rendered `.sf-fallback`
+ * canvas (must run after `_updateDom` has mounted it). Stores the disposer
+ * on the host so onDestroy can drop the resize observer.
+ * @param c The StarField element.
+ */
+function bindFallbackField(c: StarField): void {
+  c._fallbackDispose?.()
+
+  const el = c.$<HTMLCanvasElement>(`.${SF_CLASSES.SF_FALLBACK}`)
+
+  c._fallbackDispose = el ? bindStarFallback(el) : null
+}
 
 /**
  * Mirrors an engine progress event into the loader overlay — message,
@@ -55,6 +70,17 @@ export function initStarFieldEngine(c: StarField): void {
     onApproach: (id: string) => prefetchDossier(id),
     onHover: (id: string | null) => c._handleHover(id),
     onHoverMove: (id: string, x: number, y: number) => c._handleHoverMove(id, x, y),
+    onLost: () => {
+      // Mid-flight frame fault (driver loss, shader throw) — swap to the
+      // painted 2D starfield; the same surface a failed boot lands on.
+      c._sfFailed = true
+
+      c._canvasEl?.classList.add(STATE_CLASSES.IS_FALLBACK)
+
+      c._updateDom()
+
+      bindFallbackField(c)
+    },
     onReady: () => {
       c._isInitializing = false
 
@@ -66,7 +92,11 @@ export function initStarFieldEngine(c: StarField): void {
 
       c._engine?.setReducedMotion(store.getters.getReducedMotion())
 
-      if (c._sfFailed) c._updateDom()
+      if (c._sfFailed) {
+        c._updateDom()
+
+        bindFallbackField(c)
+      }
 
       c._applyDeepLink()
 
@@ -83,6 +113,8 @@ export function initStarFieldEngine(c: StarField): void {
     c._canvasEl?.classList.add(STATE_CLASSES.IS_FALLBACK)
 
     c._updateDom()
+
+    bindFallbackField(c)
 
     c._dismissLoader()
   })
