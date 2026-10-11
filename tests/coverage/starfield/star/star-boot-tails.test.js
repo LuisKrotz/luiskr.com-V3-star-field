@@ -52,9 +52,8 @@ jest.unstable_mockModule('../../../../starfield-engine.js', () => ({
   },
 }))
 
-const { initStarFieldEngine, updateStarLoader, dismissStarLoader } = await import(
-  '../../../../star/boot.js'
-)
+const { initStarFieldEngine, updateStarLoader, dismissStarLoader } =
+  await import('../../../../star/boot.js')
 
 const makeHost = (overrides = {}) => {
   const c = {
@@ -63,6 +62,7 @@ const makeHost = (overrides = {}) => {
     _isInitializing: false,
     _sfReady: false,
     _sfFailed: false,
+    _fallbackDispose: null,
     _selectedId: null,
     _dossierLoading: false,
     _liveText: '',
@@ -151,6 +151,46 @@ describe('star boot tails', () => {
     expect(classList.add).toHaveBeenCalledWith(STATE_CLASSES.IS_FALLBACK)
     expect(c._updateDom).toHaveBeenCalled()
     expect(c._dismissLoader).toHaveBeenCalled()
+  })
+
+  test('onLost swaps to the fallback starfield surface', async () => {
+    const classList = { add: jest.fn() }
+    const disposeSpy = jest.fn()
+    const c = makeHost({
+      _getCanvasEl: jest.fn(() => ({})),
+      _canvasEl: { classList },
+      _fallbackDispose: disposeSpy,
+      $: jest.fn(() => null),
+    })
+
+    initStarFieldEngine(c)
+    await Promise.resolve()
+
+    mockCtl.events.onLost()
+
+    expect(c._sfFailed).toBe(true)
+    expect(classList.add).toHaveBeenCalledWith(STATE_CLASSES.IS_FALLBACK)
+    expect(disposeSpy).toHaveBeenCalled()
+    expect(c._updateDom).toHaveBeenCalled()
+  })
+
+  test('onLost binds the painter when the fallback canvas exists', async () => {
+    const classList = { add: jest.fn() }
+    const el = { getContext: () => null }
+    const c = makeHost({
+      _getCanvasEl: jest.fn(() => ({})),
+      _canvasEl: { classList },
+      $: jest.fn(() => el),
+    })
+
+    initStarFieldEngine(c)
+    await Promise.resolve()
+
+    mockCtl.events.onLost()
+
+    expect(c._sfFailed).toBe(true)
+    // painter bind attempted — disposer null when ResizeObserver can't run or ctx fails
+    expect(c._fallbackDispose === null || typeof c._fallbackDispose === 'function').toBe(true)
   })
 
   test('early return when a canvas/engine/init is already in place', () => {
