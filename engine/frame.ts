@@ -498,6 +498,17 @@ function tickFrame(s: SFState, now?: number): void {
 
     if (def.orbit != null && def.speed) {
       node.pivot.rotation.y = (def.phase ?? 0) + s.t * SF_MOTION.ORBIT_SPEED * def.speed
+
+      // Eccentric orbits keep the uniform angular sweep (the chart is a
+      // stylized map, not an N-body solver) but modulate the mesh's
+      // radial distance along the conic — r = a(1−e²)/(1+e·cos θ),
+      // periapsis at the authored phase direction — so Halley-class
+      // comets visibly plunge in and coast out instead of circling.
+      if (def.ecc) {
+        const th = node.pivot.rotation.y - (def.phase ?? 0)
+
+        node.mesh.position.x = (def.orbit * (1 - def.ecc * def.ecc)) / (1 + def.ecc * Math.cos(th))
+      }
     }
 
     if (def.spin) {
@@ -506,6 +517,12 @@ function tickFrame(s: SFState, now?: number): void {
 
     for (const sat of node.satPivots) {
       sat.pivot.rotation.y = sat.phase + s.t * SF_MOTION.ORBIT_SPEED * sat.speed
+
+      if (sat.ecc) {
+        const th = sat.pivot.rotation.y - sat.phase
+
+        sat.mesh.position.x = (sat.orbit * (1 - sat.ecc * sat.ecc)) / (1 + sat.ecc * Math.cos(th))
+      }
     }
   }
 

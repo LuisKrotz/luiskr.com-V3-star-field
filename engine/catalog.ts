@@ -181,6 +181,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     bumpTexture: SF_TEXTURES.EARTH_ELEVATION,
     phase: 3.1,
     cycle: { period: 90 },
+    // ISS — the largest crewed object in low Earth orbit: a pin-prick
+    // satellite hugging the surface, lapping the planet fast enough to
+    // read as "artificial" against the Moon's stately sweep.
+    satellites: [{ radius: 0.07, orbit: 2.4, speed: 9, color: SF_COLORS.ISS, phase: 0.7 }],
   },
   {
     id: 'moon',
@@ -494,6 +498,24 @@ const SOLAR_RAW: SFBodyDef[] = [
     phase: 2.2,
   },
   {
+    // Halley's Comet — the chart's flagship eccentric body: `orbit` is the
+    // semi-major axis and `ecc` drives the conic radius in frame.ts, so it
+    // plunges to a Venus-ward periapsis (~0.59 AU) then coasts out past
+    // Neptune into the Kuiper edge (~35 AU) on a 75-year sweep.
+    id: 'halley',
+    name: "Halley's Comet",
+    kind: SF_KINDS.DWARF,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.2,
+    orbit: 85,
+    speed: 0.5,
+    ecc: 0.68,
+    spin: 0.8,
+    dist: '0.59–35.1 AU',
+    color: SF_COLORS.HALLEY,
+    phase: 4.4,
+  },
+  {
     id: 'asteroid-belt',
     name: 'Asteroid Belt',
     kind: SF_KINDS.BELT,
@@ -595,10 +617,18 @@ const MILKY_WAY: SFBodyDef[] = [
     pos: nbr(74.9, -60.4, 40.7),
     dist: '40.7 ly',
     color: SF_COLORS.TRAPPIST_STAR,
+    // All seven TRAPPIST-1 planets — the real resonant chain's periods
+    // (1.51, 2.42, 4.05, 6.10, 9.21, 12.35, 18.77 d) compress to seven
+    // near-packed orbits whose speeds fade outward like the genuine
+    // period ladder.
     satellites: [
-      { radius: 0.45, orbit: 4, speed: 1.8, color: SF_COLORS.TRAPPIST_PLANET },
-      { radius: 0.5, orbit: 6, speed: 1.3, color: SF_COLORS.TRAPPIST_PLANET, phase: 2.1 },
-      { radius: 0.55, orbit: 8, speed: 0.9, color: SF_COLORS.TRAPPIST_PLANET, phase: 4.2 },
+      { radius: 0.42, orbit: 4, speed: 2.6, color: SF_COLORS.TRAPPIST_PLANET },
+      { radius: 0.44, orbit: 5.2, speed: 1.6, color: SF_COLORS.TRAPPIST_PLANET, phase: 0.9 },
+      { radius: 0.46, orbit: 6.4, speed: 0.97, color: SF_COLORS.TRAPPIST_PLANET, phase: 2.1 },
+      { radius: 0.48, orbit: 7.8, speed: 0.64, color: SF_COLORS.TRAPPIST_PLANET, phase: 3.4 },
+      { radius: 0.5, orbit: 9.2, speed: 0.42, color: SF_COLORS.TRAPPIST_PLANET, phase: 4.6 },
+      { radius: 0.52, orbit: 10.8, speed: 0.31, color: SF_COLORS.TRAPPIST_PLANET, phase: 5.5 },
+      { radius: 0.55, orbit: 12.6, speed: 0.2, color: SF_COLORS.TRAPPIST_PLANET, phase: 1.2 },
     ],
   },
   {
