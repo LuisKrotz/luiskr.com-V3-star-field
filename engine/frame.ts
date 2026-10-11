@@ -12,7 +12,6 @@ import {
   SF_KEYS,
   SF_LOD,
   SF_MOTION,
-  SF_SCENE,
   SF_SPIRAL,
   SF_STRUCTURE,
 } from '@core/tokens/starfield/params.js'
