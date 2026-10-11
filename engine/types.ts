@@ -55,6 +55,14 @@ export interface SFBodyDef {
   spin?: number
   /** Starting angle on the orbit (radians). */
   phase?: number
+  /**
+   * Orbital eccentricity 0–1 — when set, the pivot still sweeps the
+   * angle uniformly but the mesh's radial distance follows the conic
+   * `r = a(1−e²)/(1+e·cos θ)` so the body draws a visible ellipse
+   * (Halley-type comets) instead of the default circle. `orbit` reads
+   * as the semi-major axis and `phase` as the periapsis longitude.
+   */
+  ecc?: number
   /** Axial tilt (radians). */
   tilt?: number
   /** SF_TEXTURES key material map — omit for procedural bodies. */
@@ -151,6 +159,9 @@ export interface SFBodyDef {
     color?: number
     texture?: string
     phase?: number
+    /** Same conic rule as `SFBodyDef.ecc` — radial distance modulates
+     *  around the circular pivot sweep. */
+    ecc?: number
   }>
 }
 
@@ -333,7 +344,16 @@ export interface SFNode {
   /** Spin target (mesh or its inner group) for self-rotation. */
   spinner: THREE_NS.Object3D
   /** Satellite pivots (decorative companions) — rotate per frame. */
-  satPivots: Array<{ pivot: THREE_NS.Object3D; speed: number; phase: number }>
+  satPivots: Array<{
+    pivot: THREE_NS.Object3D
+    /** Satellite mesh riding the pivot — modulated when `ecc` is set. */
+    mesh: THREE_NS.Object3D
+    speed: number
+    phase: number
+    /** Semi-major axis (chart units) + eccentricity for elliptical orbits. */
+    orbit: number
+    ecc?: number
+  }>
   /**
    * LOD-toggleable secondary geometry — atmosphere shells, ring discs,
    * satellite pivots; frame.ts hides these

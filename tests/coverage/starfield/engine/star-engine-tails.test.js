@@ -233,9 +233,7 @@ describe('bootstrapStarField', () => {
       await bootstrapStarField(s)
 
       expect(s.scene).toBeTruthy()
-      expect(
-        getDevLog().filter((e) => e.level === LOG_LEVELS.WARN).length
-      ).toBeGreaterThan(0)
+      expect(getDevLog().filter((e) => e.level === LOG_LEVELS.WARN).length).toBeGreaterThan(0)
 
       s.disposed = true
     } finally {
@@ -297,9 +295,7 @@ describe('bootstrapStarField', () => {
       await bootstrapStarField(s)
 
       expect(s.scene).toBeTruthy()
-      expect(
-        getDevLog().filter((e) => e.level === LOG_LEVELS.WARN).length
-      ).toBeGreaterThan(0)
+      expect(getDevLog().filter((e) => e.level === LOG_LEVELS.WARN).length).toBeGreaterThan(0)
 
       s.disposed = true
       s.renderer?.dispose?.()
@@ -469,6 +465,24 @@ describe('frame helpers', () => {
     tickStar(s, 2500)
     expect(node.pivot.rotation.y).toBeGreaterThan(0)
 
+    // eccentric body without phase → `def.phase ?? 0` inside the ecc arm
+    node.def.ecc = 0.5
+    node.mesh.position = { x: 0 }
+    tickStar(s, 3000)
+    expect(node.mesh.position.x).not.toBe(0)
+
+    // eccentric satellite → `if (sat.ecc)` arm
+    node.satPivots.push({
+      pivot: { rotation: { y: 0 } },
+      mesh: { position: { x: 0 } },
+      orbit: 4,
+      speed: 1,
+      phase: 0,
+      ecc: 0.5,
+    })
+    tickStar(s, 3500)
+    expect(node.satPivots[1].mesh.position.x).not.toBe(0)
+
     // disposed + reduced short-circuits
     s.disposed = true
     tickStar(s, 3000)
@@ -583,7 +597,6 @@ describe('frame helpers', () => {
 
     raf.mockRestore()
   })
-
 })
 
 describe('fly tween', () => {
@@ -629,7 +642,13 @@ describe('fly tween', () => {
     // controls-null arm — tween still lerps the camera position
     s.camera = fakeCamera()
     s.controls = null
-    s.fly = { t0: 0, fromPos: { x: 0, y: 0, z: 0 }, toPos: { x: 1, y: 1, z: 1 }, fromTgt: { x: 0, y: 0, z: 0 }, toTgt: { x: 1, y: 1, z: 1 } }
+    s.fly = {
+      t0: 0,
+      fromPos: { x: 0, y: 0, z: 0 },
+      toPos: { x: 1, y: 1, z: 1 },
+      fromTgt: { x: 0, y: 0, z: 0 },
+      toTgt: { x: 1, y: 1, z: 1 },
+    }
     updateFly(s)
 
     expect(s.camera.position.set).toHaveBeenCalled()
@@ -760,19 +779,27 @@ describe('picking', () => {
     const s = makeState({ canvas, pickables: [{}], onHover: jest.fn() })
 
     bindPicking(s)
-    canvas.dispatchEvent(new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 }))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
+    )
 
     expect(s.onHover).not.toHaveBeenCalled()
 
     s.camera = fakeCamera()
-    canvas.dispatchEvent(new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 }))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
+    )
 
     s.pickables = []
-    canvas.dispatchEvent(new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 }))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
+    )
 
     s.pickables = [{}]
     canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 10, height: 10 })
-    canvas.dispatchEvent(new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 }))
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
+    )
 
     expect(s.hoverId).toBeNull()
   })
@@ -918,7 +945,9 @@ describe('buildStarBodies', () => {
 
     // Every def lands as a node; structures + belts stay out of the
     // raycast set by design (giant shells/pebbles would eat pointer rays).
-    const pickable = SF_CATALOG.filter((d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT)
+    const pickable = SF_CATALOG.filter(
+      (d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT
+    )
 
     expect(s.nodes.size).toBe(SF_CATALOG.length)
     expect(s.pickables.length).toBe(pickable.length)
@@ -1017,7 +1046,14 @@ describe('buildStarBodies', () => {
       pos: [0, 4, 0],
       shellTexture: 'tex://haze',
     })
-    buildStarBodies({ ...s, nodes: new Map(), anchors: new Map(), pickables: [] }, three, NODE_DEPS, [defs[defs.length - 1]], new Map(), undefined)
+    buildStarBodies(
+      { ...s, nodes: new Map(), anchors: new Map(), pickables: [] },
+      three,
+      NODE_DEPS,
+      [defs[defs.length - 1]],
+      new Map(),
+      undefined
+    )
   })
 })
 
@@ -1034,7 +1070,9 @@ describe('takeStarScreenshot', () => {
     canvas.toBlob = jest.fn()
 
     const s = makeState({ canvas, renderer: { render: jest.fn() }, scene: {}, camera: {} })
-    const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const clickSpy = jest
+      .spyOn(window.HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
 
     await takeStarScreenshot(s)
     await flush(1100)
@@ -1056,7 +1094,9 @@ describe('takeStarScreenshot', () => {
     globalThis.URL.revokeObjectURL = jest.fn()
 
     const s = makeState({ canvas, renderer: { render: jest.fn() }, scene: {}, camera: {} })
-    const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const clickSpy = jest
+      .spyOn(window.HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
 
     await takeStarScreenshot(s)
     await flush(1100)
@@ -1074,7 +1114,9 @@ describe('takeStarScreenshot', () => {
     canvas.toBlob = (cb) => cb(null)
 
     const s = makeState({ canvas, renderer: { render: jest.fn() } })
-    const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const clickSpy = jest
+      .spyOn(window.HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
 
     await takeStarScreenshot(s)
     await flush(20)

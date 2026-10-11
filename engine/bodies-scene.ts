@@ -367,7 +367,14 @@ function makeSatellites(
 
     mesh.add(pivot)
 
-    satPivots.push({ pivot, speed: sat.speed, phase: sat.phase ?? 0 })
+    satPivots.push({
+      pivot,
+      mesh: sm,
+      speed: sat.speed,
+      phase: sat.phase ?? 0,
+      orbit: sat.orbit,
+      ecc: sat.ecc,
+    })
   }
 
   return satPivots
