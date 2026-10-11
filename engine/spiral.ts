@@ -430,7 +430,7 @@ export function makeSpiralGalaxy(
 
     geo.setAttribute('position', new THREE.BufferAttribute(op, 3))
     geo.setAttribute('color', new THREE.BufferAttribute(oc, 3))
-    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(op.length / 3), 2))
+    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((op.length / 3) * 2), 2))
 
     group.add(rotor)
   }
@@ -539,7 +539,7 @@ export function makeSpiralGalaxy(
 
       dgeo.setAttribute('position', new THREE.BufferAttribute(dop, 3))
       dgeo.setAttribute('color', new THREE.BufferAttribute(doc, 3))
-      dgeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(dop.length / 3), 2))
+      dgeo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((dop.length / 3) * 2), 2))
     }
 
     group.add(dust)
