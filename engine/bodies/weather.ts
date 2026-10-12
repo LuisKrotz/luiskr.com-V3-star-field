@@ -405,28 +405,15 @@ export function makeAurora(
     )
   ).mul(SF_AURORA.LAT_WOBBLE)
 
-  // Curtain rays — longitude striation: sin(lon·N) gives N pleats
-  // around the oval (seam-free for integer N since sin(±πN)=0), its
-  // phase jittered by low-freq noise so the rays waver like hanging
-  // drapes, sharpened by a power so bright cores separate from gaps.
-  const lon = TSL.atan(nMag.z, nMag.x)
-
+  // Fold jitter — noise on the magnetic sphere slides the curtain-fold
+  // phase along the oval so the ribbons curl and merge organically.
   const jag = fbm(
     vec3(
       nMag.x.mul(SF_AURORA.WOBBLE_FREQ * 2),
-      tN.mul(SF_AURORA.RAY_DRIFT),
+      tN.mul(SF_AURORA.FOLD_DRIFT),
       nMag.z.mul(SF_AURORA.WOBBLE_FREQ * 2)
     )
   )
-
-  const rays = lon
-    .mul(SF_AURORA.RAY_FREQ)
-    .add(jag.mul(SF_AURORA.RAY_JAG))
-    .add(tN.mul(SF_AURORA.RAY_DRIFT))
-    .sin()
-    .mul(0.5)
-    .add(0.5)
-    .pow(SF_AURORA.RAY_SHARP)
 
   // Arc breakup — one slow low-frequency sweep flares whole sectors of
   // the oval at a time (substorm brightening); high contrast lets dark
@@ -436,6 +423,19 @@ export function makeAurora(
       nMag.x.mul(SF_AURORA.ARC_FREQ),
       tN.mul(SF_AURORA.ARC_DRIFT),
       nMag.z.mul(SF_AURORA.ARC_FREQ)
+    )
+  )
+    .mul(0.5)
+    .add(0.5)
+
+  // Patchiness — a faster medium-scale mottle multiplies the arc mask
+  // so segments vary irregularly (patchy/torchy curls, not a smooth
+  // one-level ring).
+  const patch = fbm(
+    vec3(
+      nMag.x.mul(SF_AURORA.PATCH_FREQ),
+      tN.mul(SF_AURORA.PATCH_DRIFT),
+      nMag.z.mul(SF_AURORA.PATCH_FREQ)
     )
   )
     .mul(0.5)
@@ -470,13 +470,35 @@ export function makeAurora(
 
   // Single close-hugging shell — a second elevated ring read as arcs
   // floating off the limb, so the oval lives at SHELL_SCALE only. The
-  // curtain's altitude cue comes from ray striation instead.
+  // curtain's altitude cue comes from fold striation instead.
   const dLat = mLat.sub(float(cfg.lat ?? SF_AURORA.LAT0).add(wobble))
 
   const ring = dLat
     .mul(dLat)
     .mul(-0.5 / (SF_AURORA.OVAL_W * SF_AURORA.OVAL_W))
     .exp()
+
+  // Secondary parallel arc — real substorm ovals often run a fainter
+  // companion arc poleward of the main curtain.
+  const dLat2 = dLat.sub(SF_AURORA.ARC2_OFF)
+
+  const ring2 = dLat2
+    .mul(dLat2)
+    .mul(-0.5 / (SF_AURORA.OVAL_W * SF_AURORA.OVAL_W))
+    .exp()
+
+  // Folded curtains — striation runs ACROSS the band: the fold phase
+  // is the signed distance to the oval centerline, wiggled along the
+  // arc by `jag`, so the emission reads as woven ribbon filaments
+  // curling along the oval — never radial spokes.
+  const folds = dLat
+    .mul(SF_AURORA.FOLD_FREQ)
+    .add(jag.mul(SF_AURORA.FOLD_JAG))
+    .add(tN.mul(SF_AURORA.FOLD_DRIFT))
+    .sin()
+    .mul(0.5)
+    .add(0.5)
+    .pow(SF_AURORA.FOLD_SHARP)
 
   const geo = new THREE.SphereGeometry(
     def.radius * SF_AURORA.SHELL_SCALE,
@@ -493,14 +515,20 @@ export function makeAurora(
     (cfg.lat ?? SF_AURORA.LAT0) + SF_AURORA.OVAL_W * 2,
     mLat
   )
+    // The palette grade drifts subtly along the arc with the patch
+    // mottle — real curtains shift hue between segments (green cores,
+    // purple fringes, red tops) instead of laying down two flat zones.
+    .mul(patch.mul(0.4).add(0.8))
 
-  mat.colorNode = mix(vec3(lowC.r, lowC.g, lowC.b), vec3(topC.r, topC.g, topC.b), edgeK)
+  mat.colorNode = mix(vec3(lowC.r, lowC.g, lowC.b), vec3(topC.r, topC.g, topC.b), edgeK.clamp(0, 1))
 
   mat.transparent = true
 
   mat.opacityNode = ring
-    .mul(rays.mul(1 - SF_AURORA.RAY_FLOOR).add(SF_AURORA.RAY_FLOOR))
+    .add(ring2.mul(SF_AURORA.ARC2_GAIN))
+    .mul(folds.mul(1 - SF_AURORA.FOLD_FLOOR).add(SF_AURORA.FOLD_FLOOR))
     .mul(arcs.mul(SF_AURORA.ARC_GAIN).add(1 - SF_AURORA.ARC_GAIN))
+    .mul(patch.mul(SF_AURORA.PATCH_GAIN).add(1 - SF_AURORA.PATCH_GAIN))
     .mul(wN)
     .mul(night)
     .mul(hemi)
