@@ -353,7 +353,18 @@ export class StarField extends BaseComponent {
 
       this._regRecords.set(kind, [...list, ...recs])
 
+      // The re-render recreates the drawer DOM — carrying the panel's
+      // scroll offset across keeps "load more" from kicking the user
+      // back to the top of the list they were browsing.
+      const scrollTop = this.$(`.${SF_CLASSES.SF_NAV_PANEL}`)?.scrollTop ?? 0
+
       this._updateDom()
+
+      if (scrollTop > 0) {
+        const panel = this.$(`.${SF_CLASSES.SF_NAV_PANEL}`)
+
+        if (panel) panel.scrollTop = scrollTop
+      }
     })
   }
 

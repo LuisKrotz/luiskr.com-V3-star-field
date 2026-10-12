@@ -203,6 +203,64 @@ describe('StarField registry directory', () => {
     unmount(el)
   })
 
+  test('_loadMoreRegistry preserves the drawer scroll offset', async () => {
+    origFetch = globalThis.fetch
+    globalThis.fetch = regFetch()
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    el._navOpen = true
+    el._ensureRegistry()
+    await waitFor(() => el._regManifest !== null)
+
+    const panel = el.shadowRoot.querySelector(`.${SF_CLASSES.SF_NAV_PANEL}`)
+
+    panel.scrollTop = 321
+
+    el._loadMoreRegistry('star')
+    await waitFor(() => (el._regRecords.get('star') ?? []).length === 2)
+
+    // The re-render recreated the panel — the offset must be carried over.
+    const next = el.shadowRoot.querySelector(`.${SF_CLASSES.SF_NAV_PANEL}`)
+
+    expect(next).not.toBe(panel)
+    expect(next.scrollTop).toBe(321)
+
+    unmount(el)
+  })
+
+  test('_loadMoreRegistry tolerates the panel vanishing mid-render', async () => {
+    origFetch = globalThis.fetch
+    globalThis.fetch = regFetch()
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    el._navOpen = true
+    el._ensureRegistry()
+    await waitFor(() => el._regManifest !== null)
+
+    // First $ call reports a scrolled panel, second sees it gone —
+    // covers the guarded-restore arm when the drawer unmounts mid-load.
+    let calls = 0
+
+    const dollarSpy = jest.spyOn(el, '$').mockImplementation(() => {
+      calls += 1
+
+      return calls === 1 ? { scrollTop: 77 } : null
+    })
+
+    el._loadMoreRegistry('star')
+    await waitFor(() => (el._regRecords.get('star') ?? []).length === 2)
+
+    dollarSpy.mockRestore()
+
+    unmount(el)
+  })
+
   test('search results render under the catalog section while searching', async () => {
     origFetch = globalThis.fetch
     globalThis.fetch = regFetch()
