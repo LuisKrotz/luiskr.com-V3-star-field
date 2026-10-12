@@ -76,6 +76,50 @@ describe('StarFieldEngine', () => {
     expect(events.onReady).not.toHaveBeenCalled()
   })
 
+  test('destroy() disposes every scene geometry, material and texture slot', async () => {
+    const engine = new StarFieldEngine(makeCanvas())
+
+    await engine.init()
+
+    const geometry = { dispose: jest.fn() }
+    const texture = { isTexture: true, dispose: jest.fn() }
+    const plain = { notATexture: 1 }
+    const material = {
+      map: texture,
+      normalMap: texture,
+      label: plain,
+      empty: null,
+      halfTex: { isTexture: true },
+      dispose: jest.fn(),
+    }
+    const material2 = { dispose: jest.fn() }
+    const meshB = { geometry: { dispose: jest.fn() }, material: [material2] }
+    const meshC = { geometry: null }
+
+    // __sfDebug IS the live state — swap in a traversable scene stub.
+    window.__sfDebug.scene = {
+      traverse: (cb) => [{ geometry, material }, meshB, meshC].forEach(cb),
+    }
+
+    engine.destroy()
+
+    expect(geometry.dispose).toHaveBeenCalled()
+    expect(texture.dispose).toHaveBeenCalled()
+    expect(material.dispose).toHaveBeenCalled()
+    expect(material2.dispose).toHaveBeenCalled()
+    expect(meshB.geometry.dispose).toHaveBeenCalled()
+  })
+
+  test('destroy() tolerates a scene without traverse', async () => {
+    const engine = new StarFieldEngine(makeCanvas())
+
+    await engine.init()
+
+    window.__sfDebug.scene = {}
+
+    engine.destroy()
+  })
+
   test('setReducedMotion pauses and resumes the RAF loop', async () => {
     const engine = new StarFieldEngine(makeCanvas())
 
