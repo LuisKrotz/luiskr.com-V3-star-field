@@ -663,8 +663,14 @@ describe('day/night + axis-lock tails', () => {
     expect(planet.lock.rotation.z).toBeCloseTo(0.41)
     expect(planet.lock.children).toContain(planet.mesh)
 
-    // The moon keeps the legacy in-orbit tilt path — no lock.
-    expect(s.nodes.get('tilted-moon').lock).toBeUndefined()
+    // The moon is tidally locked — it gets the counter-rotating lock
+    // so the same face always points at its parent; its tilt lives on
+    // the mesh inside that frame.
+    const moon = s.nodes.get('tilted-moon')
+
+    expect(moon.lock).toBeInstanceOf(RecGroup)
+    expect(moon.lock.rotation.z).toBe(0)
+    expect(moon.lock.children).toContain(moon.mesh)
 
     // The day/night registry picked up the emissive+atmosphere body.
     expect(s.dayNight.length).toBe(1)
