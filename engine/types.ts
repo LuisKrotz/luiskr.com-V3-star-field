@@ -233,8 +233,9 @@ export interface SFBodyDef {
    */
   dist: string
   /**
-   * Decorative non-pickable satellites (companion stars, exoplanets) —
-   * orbit this body's mesh; purely visual, no dossier of their own.
+   * Companion satellites orbiting this body's mesh — decorative by
+   * default; an entry carrying `id`/`name` registers as a pickable
+   * dossier body (the ISS close to Earth).
    */
   satellites?: Array<{
     radius: number
@@ -243,6 +244,15 @@ export interface SFBodyDef {
     color?: number
     texture?: string
     phase?: number
+    /**
+     * Dossier-backed pick id — when set, the companion registers as a
+     * real node (anchor + pick proxy) so a close-up click resolves to a
+     * lazy `public/data/<locale>/<id>.json` dossier like any catalog
+     * body. Anonymous companions stay decorative and unpickable.
+     */
+    id?: string
+    /** Display name for the dossier-backed companion. */
+    name?: string
     /**
      * Crafted-station flag — renders the companion as a lit truss +
      * solar-panel model (the ISS silhouette) instead of the default

@@ -973,14 +973,19 @@ describe('buildStarBodies', () => {
 
     buildStarBodies(s, three, NODE_DEPS, SF_CATALOG, new Map(), undefined)
 
-    // Every def lands as a node; structures + belts stay out of the
-    // raycast set by design (giant shells/pebbles would eat pointer rays).
+    // Every def lands as a node, plus each dossier-backed satellite
+    // (the ISS); structures + belts stay out of the raycast set by
+    // design (giant shells/pebbles would eat pointer rays).
+    const satIds = SF_CATALOG.flatMap((d) =>
+      (d.satellites ?? []).filter((sat) => sat.id).map((sat) => sat.id)
+    )
     const pickable = SF_CATALOG.filter(
       (d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT
     )
 
-    expect(s.nodes.size).toBe(SF_CATALOG.length)
-    expect(s.pickables.length).toBe(pickable.length)
+    expect(s.nodes.size).toBe(SF_CATALOG.length + satIds.length)
+    expect(s.pickables.length).toBe(pickable.length + satIds.length)
+    expect(s.nodes.get('iss')?.def.kind).toBe(SF_KINDS.SATELLITE)
   })
 
   test('synthetic defs cover orbit/pos/parent/ring/shell edge arms', async () => {

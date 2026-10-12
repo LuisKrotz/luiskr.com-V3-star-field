@@ -45,11 +45,19 @@ describe('star-field module', () => {
     const files = new Set(readdirSync(enDir).filter((f) => f.endsWith('.json')))
 
     for (const def of SF_CATALOG) {
-      const file = `${def.id}.json`
+      expect(files.has(`${def.id}.json`)).toBe(true)
 
-      expect(files.has(file)).toBe(true)
+      files.delete(`${def.id}.json`)
 
-      files.delete(file)
+      // Dossier-backed satellites (the ISS) are not top-level catalog
+      // entries but still ship their own lazy JSON like any body.
+      for (const sat of def.satellites ?? []) {
+        if (!sat.id) continue
+
+        expect(files.has(`${sat.id}.json`)).toBe(true)
+
+        files.delete(`${sat.id}.json`)
+      }
     }
 
     // Every dossier on disk must be reachable through the catalog — an
