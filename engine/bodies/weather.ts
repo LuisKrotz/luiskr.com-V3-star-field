@@ -374,22 +374,32 @@ export function makeAurora(
     )
   ).mul(SF_AURORA.LAT_WOBBLE)
 
-  // Curtain rays — high-frequency fbm striation along the oval; the
-  // smoothstep thresholds separate bright pleats from dim gaps.
-  const rays = smoothstep(
-    SF_AURORA.RAY_LO,
-    SF_AURORA.RAY_HI,
-    fbm(
-      vec3(
-        nMag.x.mul(SF_AURORA.RAY_FREQ),
-        tN.mul(SF_AURORA.RAY_DRIFT),
-        nMag.z.mul(SF_AURORA.RAY_FREQ)
-      )
+  // Curtain rays — longitude striation: sin(lon·N) gives N pleats
+  // around the oval (seam-free for integer N since sin(±πN)=0), its
+  // phase jittered by low-freq noise so the rays waver like hanging
+  // drapes, sharpened by a power so bright cores separate from gaps.
+  const lon = TSL.atan(nMag.z, nMag.x)
+
+  const jag = fbm(
+    vec3(
+      nMag.x.mul(SF_AURORA.WOBBLE_FREQ * 2),
+      tN.mul(SF_AURORA.RAY_DRIFT),
+      nMag.z.mul(SF_AURORA.WOBBLE_FREQ * 2)
     )
   )
 
+  const rays = lon
+    .mul(SF_AURORA.RAY_FREQ)
+    .add(jag.mul(SF_AURORA.RAY_JAG))
+    .add(tN.mul(SF_AURORA.RAY_DRIFT))
+    .sin()
+    .mul(0.5)
+    .add(0.5)
+    .pow(SF_AURORA.RAY_SHARP)
+
   // Arc breakup — one slow low-frequency sweep flares whole sectors of
-  // the oval at a time (substorm brightening).
+  // the oval at a time (substorm brightening); high contrast lets dark
+  // sectors nearly vanish so a storm never washes the ring flat.
   const arcs = fbm(
     vec3(
       nMag.x.mul(SF_AURORA.ARC_FREQ),
@@ -424,13 +434,17 @@ export function makeAurora(
     [SF_AURORA.SHELL_SCALE, 0, 1],
     [SF_AURORA.SHELL_SCALE2, SF_AURORA.TOP_LIFT, SF_AURORA.TOP_FADE],
   ] as const) {
-    // Thin gaussian ring at the (wobbled) oval latitude — exp(-d²/w²).
+    // Thin gaussian ring at the (wobbled) oval latitude — exp(-d²/w²)
+    // squared so the oval edge falls off fast and curtains read as a
+    // crisp ring, not a smeared cap.
     const dLat = mLat.sub(float((cfg.lat ?? SF_AURORA.LAT0) + latLift).add(wobble))
 
-    const ring = dLat
+    const g = dLat
       .mul(dLat)
       .mul(-0.5 / (SF_AURORA.OVAL_W * SF_AURORA.OVAL_W))
       .exp()
+
+    const ring = g.mul(g)
 
     const geo = new THREE.SphereGeometry(
       def.radius * scale,
