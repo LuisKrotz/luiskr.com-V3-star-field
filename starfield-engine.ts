@@ -29,6 +29,7 @@ import { takeStarScreenshot } from './engine/screenshot.js'
 import { createStarState, type SFEvents } from './engine/state.js'
 import { disposeStarCloud } from './engine/star-cloud.js'
 import type { SFState } from './engine/types.js'
+import type * as THREE_NS from 'three'
 import { devError } from '@core/devlog.js'
 
 /**
@@ -273,6 +274,32 @@ export class StarFieldEngine {
 
     s.controls?.dispose()
 
+    // Scene-graph teardown — every body mesh, shell, sprite and belt
+    // instance carries GPU buffers (geometry) and uploaded textures that
+    // `renderer.dispose()` does NOT release; only per-object dispose
+    // returns them to the device. Traversal is generic: each material
+    // slot holding a texture gets `.dispose()`d (shared textures like
+    // glowTex tolerate repeat calls), then the material and geometry.
+    // Remounts (route away → back) previously leaked the whole scene.
+    s.scene?.traverse?.((o) => {
+      const m = o as THREE_NS.Mesh
+
+      m.geometry?.dispose?.()
+
+      const o2 = m as unknown as { material?: unknown }
+      const mats = Array.isArray(o2.material) ? o2.material : o2.material ? [o2.material] : []
+
+      for (const mm of mats as Array<Record<string, unknown> & { dispose?: () => void }>) {
+        for (const k in mm) {
+          const slot = mm[k] as { isTexture?: boolean; dispose?: () => void } | undefined
+
+          if (slot?.isTexture) slot.dispose?.()
+        }
+
+        mm.dispose?.()
+      }
+    })
+
     // Post chain first — its render targets + node graph reference the
     // renderer, so it must go before the renderer tears down its device.
     s.pipeline?.dispose()
@@ -283,6 +310,11 @@ export class StarFieldEngine {
 
     s.renderer = null
     s.scene = null
+
+    // The debug handle would keep the whole state graph (nodes, anchors,
+    // pickables, disposed GPU objects) reachable forever after teardown.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(window as any).__sfDebug = null
     s.camera = null
     s.controls = null
   }
