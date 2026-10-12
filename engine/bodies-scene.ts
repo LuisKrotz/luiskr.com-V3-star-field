@@ -226,15 +226,26 @@ export function buildStarBodies(
     // line → perpetual solstice, no seasons). The lock group carries the
     // tilt on rotation.z and counter-rotates on Y in tickFrame, keeping
     // the axis fixed in the parent frame so the terminator sweeps the
-    // hemispheres over the year — real seasons. Parent-mounted bodies
-    // (moons) keep the legacy in-orbit tilt: their spin is tidal anyway.
+    // hemispheres over the year — real seasons.
     const useAxisLock = !!(sphereTilt && def.orbit != null && !def.parent)
 
-    if (useAxisLock) {
+    // Tidal lock — every catalog moon is synchronously rotating (its
+    // day equals its year), so the mesh counter-rotates with the orbit
+    // pivot and the same face always points at the parent world. The
+    // shared `lock` group does it: tickFrame writes rotation.y =
+    // −pivot.rotation.y, and any moon tilt stays on the mesh inside.
+    const tidalLock = !!def.parent && def.orbit != null
+
+    if (useAxisLock || tidalLock) {
       lock = new THREE.Group()
-      lock.rotation.z = def.tilt as number
+
+      if (useAxisLock) lock.rotation.z = def.tilt as number
+
       pivot.add(lock)
+
       lock.add(mesh)
+
+      if (tidalLock && sphereTilt) mesh.rotation.z = def.tilt as number
     } else {
       pivot.add(mesh)
 
