@@ -42,8 +42,15 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 0.8,
     orbit: 24,
-    speed: 1.6,
+    // Period ratios are sqrt-compressed (see earth's entry) — Mercury
+    // laps the sun ~2× Earth's visual rate vs the real 4.15×.
+    speed: 2.04,
     spin: 0.02,
+    // 0.03° — Mercury's axis is the system's most upright.
+    tilt: 0.0006,
+    // 0.206 — the most eccentric planet; perihelion 0.31 AU,
+    // aphelion 0.47 AU.
+    ecc: 0.206,
     dist: '0.39 AU',
     texture: SF_TEXTURES.MERCURY,
     meteors: true,
@@ -56,13 +63,18 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 1.6,
     orbit: 31,
-    speed: 1.2,
+    speed: 1.27,
     // Retrograde and slow — the real Venus is the chart's only planet
     // whose sidereal day (243 d, backwards) outlasts its year (225 d).
     // spin −0.25·SPIN_SPEED = −0.03 rad/s vs orbit 1.2·ORBIT_SPEED =
     // 0.06 rad/s → a Venus "day" (~210 s) takes ~2× its "year" (~105 s),
     // and the negative sign keeps it turning against every sibling.
     spin: -0.25,
+    // Venus's formal obliquity is 177.4° — equivalently a 2.6° tilt
+    // with a retrograde day, which is what the negative spin already
+    // renders, so only the 2.6° residual is authored here.
+    tilt: 0.046,
+    ecc: 0.007,
     dist: '0.72 AU',
     texture: SF_TEXTURES.VENUS_SURFACE,
     shellTexture: SF_TEXTURES.VENUS_ATMOS,
@@ -75,9 +87,14 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 1.7,
     orbit: 39,
+    // Orbital speeds follow the real sidereal-period ranking —
+    // speed ∝ (365.25 d / P)^0.5 so Mercury sprints, the giants drift,
+    // and the ordering/pacing stays honest without Neptune freezing
+    // (real ratio Earth:Neptune is 165:1, illegible at chart scale).
     speed: 1.0,
     spin: 1.0,
     tilt: 0.41,
+    ecc: 0.017,
     dist: '1 AU',
     texture: SF_TEXTURES.EARTH_DAY,
     normalTexture: SF_TEXTURES.EARTH_NORMAL,
@@ -136,8 +153,11 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 1.1,
     orbit: 47,
-    speed: 0.8,
+    speed: 0.73,
     spin: 0.97,
+    // 25.2° — Mars seasons mirror Earth's, amplified by the orbit.
+    tilt: 0.44,
+    ecc: 0.093,
     dist: '1.52 AU',
     texture: SF_TEXTURES.MARS,
     phase: 4.4,
@@ -149,7 +169,9 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 0.35,
     orbit: 55,
-    speed: 0.65,
+    speed: 0.47,
+    tilt: 0.07,
+    ecc: 0.079,
     dist: '2.77 AU',
     // Dawn HAMO global mosaic (PIA20351) — real bright spots at Occator.
     texture: SF_TEXTURES.CERES,
@@ -163,8 +185,12 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 4.4,
     orbit: 66,
-    speed: 0.45,
+    speed: 0.29,
     spin: 2.4,
+    // 3.1° — Jupiter's axis is nearly upright, which is why its belts
+    // stay symmetric about the equator year-round.
+    tilt: 0.054,
+    ecc: 0.048,
     dist: '5.20 AU',
     texture: SF_TEXTURES.JUPITER,
     // Jovian auroras — the system's most powerful: tight, bright
@@ -185,9 +211,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 3.8,
     orbit: 82,
-    speed: 0.35,
+    speed: 0.18,
     spin: 2.2,
     tilt: 0.47,
+    ecc: 0.056,
     dist: '9.58 AU',
     texture: SF_TEXTURES.SATURN,
     shellTexture: SF_TEXTURES.SATURN_RING,
@@ -210,9 +237,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 2.6,
     orbit: 95,
-    speed: 0.28,
+    speed: 0.11,
     spin: -1.4,
     tilt: 1.71,
+    ecc: 0.046,
     dist: '19.2 AU',
     texture: SF_TEXTURES.URANUS,
     // Uranian auroras — the palest of the giants, teal curtains on a
@@ -233,8 +261,11 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 2.5,
     orbit: 106,
-    speed: 0.22,
+    speed: 0.078,
     spin: 1.5,
+    // 28.3° — a modest tilt, nothing like Uranus's rollover.
+    tilt: 0.49,
+    ecc: 0.01,
     dist: '30.1 AU',
     texture: SF_TEXTURES.NEPTUNE,
     // Neptunian auroras — faint violet-cyan curtains on a wildly offset
@@ -256,7 +287,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 0.5,
     orbit: 116,
-    speed: 0.15,
+    speed: 0.064,
+    // 119.6° — Pluto spins on its side like Uranus.
+    tilt: 2.09,
+    ecc: 0.249,
     dist: '39.5 AU',
     texture: SF_TEXTURES.PLUTO,
     phase: 1.5,
@@ -296,7 +330,9 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 0.32,
     orbit: 57,
-    speed: 0.7,
+    speed: 0.53,
+    tilt: 0.47,
+    ecc: 0.089,
     dist: '2.36 AU',
     texture: SF_TEXTURES.VESTA,
     meteors: true,
@@ -460,7 +496,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 0.12,
     orbit: 42,
-    speed: 1.1,
+    speed: 0.88,
+    ecc: 0.19,
     dist: '1.19 AU',
     texture: SF_TEXTURES.RYUGU,
     meteors: true,
@@ -473,7 +510,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     group: SF_GROUPS.SOLAR,
     radius: 0.11,
     orbit: 43.5,
-    speed: 1.05,
+    speed: 0.91,
+    ecc: 0.204,
     dist: '1.13 AU',
     texture: SF_TEXTURES.BENNU,
     meteors: true,

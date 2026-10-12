@@ -581,6 +581,15 @@ describe('day/night + axis-lock tails', () => {
         { anchor: anchorAt(0, 0, 0), dir },
         // Coincident body — the len>0 guard leaves the zero vector.
         { anchor: anchorAt(100, 0, 0), dir: dirVec() },
+        // Anchor spun 90° about Y — world +X reads as local +Z in the
+        // mesh frame so the day side sweeps the globe as it rotates.
+        {
+          anchor: {
+            ...anchorAt(0, 0, 0),
+            matrixWorld: { elements: [0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1] },
+          },
+          dir: dirVec(),
+        },
       ],
     }
 
@@ -590,6 +599,9 @@ describe('day/night + axis-lock tails', () => {
     expect(dir.y).toBeCloseTo(0)
     expect(dir.z).toBeCloseTo(0)
     expect(s.dayNight[1].dir).toEqual({ x: 0, y: 0, z: 0, set: expect.any(Function) })
+    expect(s.dayNight[2].dir.x).toBeCloseTo(0)
+    expect(s.dayNight[2].dir.y).toBeCloseTo(0)
+    expect(s.dayNight[2].dir.z).toBeCloseTo(1)
   })
 
   test('tilted orbiting bodies get an inertial lock; moons keep the mesh tilt', async () => {
