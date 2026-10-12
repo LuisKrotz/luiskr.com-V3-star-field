@@ -101,7 +101,18 @@ const SOLAR_RAW: SFBodyDef[] = [
     // a true close orbit and lapping the planet fast enough to read as
     // artificial against the Moon's stately sweep.
     satellites: [
-      { radius: 0.09, orbit: 1.3, speed: 9, color: SF_COLORS.ISS, phase: 0.7, station: true },
+      {
+        // A real pickable dossier body — clicking the station opens its
+        // fact sheet like any catalog world.
+        id: 'iss',
+        name: 'ISS',
+        radius: 0.09,
+        orbit: 2.05,
+        speed: 9,
+        color: SF_COLORS.ISS,
+        phase: 0.7,
+        station: true,
+      },
     ],
   },
   {

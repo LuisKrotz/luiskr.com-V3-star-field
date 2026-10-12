@@ -13,6 +13,7 @@ import { ensureStarCloud, disposeStarCloud } from '../../../../engine/star-cloud
 import { anchorScreenPos, armFrame, rotateStarCamera, tickStar } from '../../../../engine/frame.js'
 import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
+import { SF_KINDS } from '../../../../../../core/tokens/starfield/kinds.js'
 import * as THREE from 'three'
 import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu'
 import * as TSL from 'three/tsl'
@@ -452,7 +453,7 @@ describe('spiral + satellite arms', () => {
         orbit: 10,
         speed: 0.5,
         color: 0xff0000,
-        satellites: [{ id: 'probe-moon', name: 'Moon', radius: 0.4, orbit: 3, speed: 1 }],
+        satellites: [{ radius: 0.4, orbit: 3, speed: 1 }],
       },
       // Spiral galaxy def — s has no canvas → `?? 0` mobile-width arm.
       {
@@ -486,6 +487,51 @@ describe('spiral + satellite arms', () => {
     expect(s.nodes.get('probe-planet').satPivots[0].phase).toBe(0)
     expect(s.nodes.get('probe-galaxy')).toBeTruthy()
     expect(s.nodes.get('probe-elliptical')).toBeTruthy()
+  })
+
+  test('an id-carrying satellite registers as a pickable dossier body', () => {
+    const defs = [
+      {
+        id: 'probe-earth',
+        name: 'Probe Earth',
+        kind: 'planet',
+        group: 'solar',
+        radius: 2,
+        orbit: 10,
+        speed: 0.5,
+        satellites: [
+          { radius: 0.2, orbit: 4, speed: 2 },
+          {
+            id: 'probe-station',
+            name: 'Station',
+            radius: 0.1,
+            orbit: 3,
+            speed: 3,
+            station: true,
+          },
+        ],
+      },
+    ]
+
+    const s = {
+      scene: new THREE.Scene(),
+      nodes: new Map(),
+      anchors: new Map(),
+      pickables: [],
+      mwGroup: null,
+    }
+
+    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), undefined)
+
+    const sat = s.nodes.get('probe-station')
+
+    expect(sat).toBeTruthy()
+    expect(sat.def.kind).toBe(SF_KINDS.SATELLITE)
+    expect(sat.def.parent).toBe('probe-earth')
+    expect(s.anchors.get('probe-station')).toBe(sat.mesh)
+    expect(s.pickables.includes(sat.mesh)).toBe(true)
+    // Anonymous companion stays decorative — no node, no anchor.
+    expect(s.nodes.size).toBe(2)
   })
 })
 

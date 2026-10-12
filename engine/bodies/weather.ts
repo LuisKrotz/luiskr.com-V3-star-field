@@ -535,11 +535,27 @@ export function makeConstellation(THREE: ThreeModule, def: SFBodyDef): THREE_NS.
 
     const r = def.radius * cfg.orbit * (1 + (rand() - 0.5) * SF_CONSTELLATION.JITTER)
 
-    const inc = SF_CONSTELLATION.INCLINE
+    // Each glint flies its own plane — real constellations spread over
+    // several inclinations, so a per-satellite jitter turns what was a
+    // crisp halo ring into a loose shell of points around the planet.
+    const inc = SF_CONSTELLATION.INCLINE + (rand() - 0.5) * SF_CONSTELLATION.INCLINE_SPREAD
+
+    const ca = Math.cos(inc)
+    const sa = Math.sin(inc)
 
     pos[i * 3] = Math.cos(phi) * r
-    pos[i * 3 + 1] = Math.sin(phi) * r * Math.sin(inc) + (rand() - 0.5) * r * 0.02
-    pos[i * 3 + 2] = Math.sin(phi) * r * Math.cos(inc)
+    pos[i * 3 + 1] = Math.sin(phi) * r * sa + (rand() - 0.5) * r * 0.02
+    pos[i * 3 + 2] = Math.sin(phi) * r * ca
+
+    // Longitude-of-node scatter — rotate each orbit around the polar
+    // axis too, so the shell reads as a swarm, not a tilted ring.
+    const node = (rand() - 0.5) * SF_CONSTELLATION.INCLINE_SPREAD
+
+    const x = pos[i * 3]
+    const z = pos[i * 3 + 2]
+
+    pos[i * 3] = x * Math.cos(node) - z * Math.sin(node)
+    pos[i * 3 + 2] = x * Math.sin(node) + z * Math.cos(node)
   }
 
   const geo = new THREE.BufferGeometry()

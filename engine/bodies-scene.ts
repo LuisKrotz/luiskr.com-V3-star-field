@@ -355,6 +355,51 @@ export function buildStarBodies(
 
     detail.push(...satPivots.map((sat) => sat.pivot))
 
+    // Dossier-backed companions — a satellite carrying `id`/`name` (the
+    // ISS) registers as a real pickable body: the station model gets an
+    // invisible proxy bubble (a 5-core truss is untappable otherwise),
+    // an anchor for fly-to, and a minimal node so `pickAt`'s smallest-
+    // proxy compare and `selectBody`'s standoff resolve it like any
+    // catalog world. Its pivot stays driven by the HOST's satPivots —
+    // the synthesized node carries no orbit/speed so tickFrame leaves
+    // it alone, and `parent` keeps the galactic rider's hands off.
+    for (const [i, sat] of (vis.satellites ?? []).entries()) {
+      if (!sat.id) continue
+
+      const rec = satPivots[i]
+
+      if (!rec) continue
+
+      rec.mesh.userData[SF_USER_BODY] = sat.id
+
+      const proxy = makePickProxy(THREE, sat.radius)
+
+      proxy.userData[SF_USER_BODY] = sat.id
+
+      rec.mesh.add(proxy)
+
+      s.pickables.push(rec.mesh)
+
+      s.anchors.set(sat.id, rec.mesh)
+
+      s.nodes.set(sat.id, {
+        def: {
+          id: sat.id,
+          name: sat.name ?? sat.id,
+          kind: SF_KINDS.SATELLITE,
+          group: def.group,
+          radius: sat.radius,
+          parent: def.id,
+          dist: def.dist,
+        },
+        pivot: rec.pivot,
+        mesh: rec.mesh,
+        spinner: rec.mesh,
+        satPivots: [],
+        detail: [],
+      })
+    }
+
     // Belt hero rocks — the group joins the LOD detail list (far view
     // keeps only the particle annulus) and the pivots join satPivots so
     // tickFrame sweeps and tumbles them like every other companion.
