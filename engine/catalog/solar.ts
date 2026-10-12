@@ -89,8 +89,9 @@ const SOLAR_RAW: SFBodyDef[] = [
     // hurricanes, seasonal snow lines, volcanic ash + cloud shadows
     // (engine/bodies/weather.ts), fed by the shared fxTime uniform.
     weather: true,
-    // Boreal curtains — solar-wind-driven polar emission shell.
-    aurora: true,
+    // Boreal curtains — solar-wind-driven emission oval, magnetic-north
+    // only in this scene (south: false drops the australis counterpart).
+    aurora: { south: false },
     // Starlink-class LEO swarm — a point shell sweeping one inclined plane.
     constellation: { count: 56, orbit: 1.45 },
     phase: 3.1,

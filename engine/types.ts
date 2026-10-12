@@ -204,6 +204,8 @@ export interface SFBodyDef {
         tilt?: number
         lat?: number
         intensity?: number
+        /** False → boreal oval only (Earth); default shows both poles. */
+        south?: boolean
       }
   /**
    * Solar flares — limb prominence sprites on the photosphere edge that

@@ -124,7 +124,12 @@ function weatherField(TSL: TslNs, time: N, sunDirU: N, cloudTex: THREE_NS.Textur
     .mul(1 / Math.PI)
     .add(0.5)
 
-  const steer = texture(cloudTex, vec2(u, v)).r
+  // Mirror the longitude coordinate — the source cloud map isn't
+  // tileable, so a fold (u → 1−|2u−1|) removes the hard wrap seam
+  // down the meridian at the cost of mirroring half the map.
+  const uM = u.mul(2).sub(1).abs().oneMinus()
+
+  const steer = texture(cloudTex, vec2(uM, v)).r
 
   // Base cover — evolving fbm; the texture's real cloud distribution
   // biases which regions stay cloudy.
@@ -287,7 +292,7 @@ export function makeWeatherClouds(
     field.ash.clamp(0, 1)
   )
 
-  mat.opacityNode = field.dens.clamp(0, 1).mul(SF_DETAIL.CLOUD_OPACITY + 0.25)
+  mat.opacityNode = field.dens.clamp(0, 1).mul(SF_DETAIL.CLOUD_OPACITY)
 
   // Surface cloud shadow — same field, day side only. `colorNode`
   // REPLACES the material's map lookup entirely (it doesn't multiply
@@ -425,6 +430,12 @@ export function makeAurora(
         .add(SF_AURORA.DAY_FLOOR)
     : float(1)
 
+  // Hemisphere gate — bodies can restrict the oval to the magnetic
+  // north (Earth's boreal curtains); the mask fades the southern oval
+  // out across the magnetic equator.
+  const hemi: N =
+    cfg.south === false ? smoothstep(SF_AURORA.HEMI_LO, SF_AURORA.HEMI_HI, nMag.y) : float(1)
+
   const group = new THREE.Group()
 
   // Two shells — the lower ring is the bright curtain base; the higher
@@ -471,6 +482,7 @@ export function makeAurora(
       .mul(arcs.mul(SF_AURORA.ARC_GAIN).add(1 - SF_AURORA.ARC_GAIN))
       .mul(wN)
       .mul(night)
+      .mul(hemi)
       .mul(SF_AURORA.INTENSITY * gain * alphaMul)
       .clamp(0, 1)
 
