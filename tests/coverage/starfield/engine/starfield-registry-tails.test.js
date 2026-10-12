@@ -261,6 +261,29 @@ describe('StarField registry directory', () => {
     unmount(el)
   })
 
+  test('_loadMoreRegistry skips the restore when no panel existed', async () => {
+    origFetch = globalThis.fetch
+    globalThis.fetch = regFetch()
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    el._navOpen = true
+    el._ensureRegistry()
+    await waitFor(() => el._regManifest !== null)
+
+    // Panel query misses entirely — the `?? 0` arm means no restore runs.
+    const dollarSpy = jest.spyOn(el, '$').mockReturnValue(null)
+
+    el._loadMoreRegistry('star')
+    await waitFor(() => (el._regRecords.get('star') ?? []).length === 2)
+
+    dollarSpy.mockRestore()
+
+    unmount(el)
+  })
+
   test('search results render under the catalog section while searching', async () => {
     origFetch = globalThis.fetch
     globalThis.fetch = regFetch()
