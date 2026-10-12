@@ -466,17 +466,15 @@ export function makeAurora(
     [SF_AURORA.SHELL_SCALE, 0, 1],
     [SF_AURORA.SHELL_SCALE2, SF_AURORA.TOP_LIFT, SF_AURORA.TOP_FADE],
   ] as const) {
-    // Thin gaussian ring at the (wobbled) oval latitude — exp(-d²/w²)
-    // squared so the oval edge falls off fast and curtains read as a
-    // crisp ring, not a smeared cap.
+    // Thin gaussian ring at the (wobbled) oval latitude — a plain
+    // exp(-d²/2w²) falloff so the curtain feathers into the atmosphere
+    // instead of cutting hard against the surface.
     const dLat = mLat.sub(float((cfg.lat ?? SF_AURORA.LAT0) + latLift).add(wobble))
 
-    const g = dLat
+    const ring = dLat
       .mul(dLat)
       .mul(-0.5 / (SF_AURORA.OVAL_W * SF_AURORA.OVAL_W))
       .exp()
-
-    const ring = g.mul(g)
 
     const geo = new THREE.SphereGeometry(
       def.radius * scale,
