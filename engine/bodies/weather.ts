@@ -457,64 +457,52 @@ export function makeAurora(
   const hemi: N =
     cfg.south === false ? smoothstep(SF_AURORA.HEMI_LO, SF_AURORA.HEMI_HI, nMag.y) : float(1)
 
-  const group = new THREE.Group()
+  // Single close-hugging shell — a second elevated ring read as arcs
+  // floating off the limb, so the oval lives at SHELL_SCALE only. The
+  // curtain's altitude cue comes from ray striation instead.
+  const dLat = mLat.sub(float(cfg.lat ?? SF_AURORA.LAT0).add(wobble))
 
-  // Two shells — the lower ring is the bright curtain base; the higher
-  // shell carries the fainter poleward-shifted tops so arcs stand off
-  // the limb like real field-aligned curtains.
-  for (const [scale, latLift, alphaMul] of [
-    [SF_AURORA.SHELL_SCALE, 0, 1],
-    [SF_AURORA.SHELL_SCALE2, SF_AURORA.TOP_LIFT, SF_AURORA.TOP_FADE],
-  ] as const) {
-    // Thin gaussian ring at the (wobbled) oval latitude — a plain
-    // exp(-d²/2w²) falloff so the curtain feathers into the atmosphere
-    // instead of cutting hard against the surface.
-    const dLat = mLat.sub(float((cfg.lat ?? SF_AURORA.LAT0) + latLift).add(wobble))
+  const ring = dLat
+    .mul(dLat)
+    .mul(-0.5 / (SF_AURORA.OVAL_W * SF_AURORA.OVAL_W))
+    .exp()
 
-    const ring = dLat
-      .mul(dLat)
-      .mul(-0.5 / (SF_AURORA.OVAL_W * SF_AURORA.OVAL_W))
-      .exp()
+  const geo = new THREE.SphereGeometry(
+    def.radius * SF_AURORA.SHELL_SCALE,
+    SF_SCENE.SPHERE_SEGMENTS,
+    SF_SCENE.SPHERE_SEGMENTS / 2
+  )
 
-    const geo = new THREE.SphereGeometry(
-      def.radius * scale,
-      SF_SCENE.SPHERE_SEGMENTS,
-      SF_SCENE.SPHERE_SEGMENTS / 2
-    )
+  const mat = new deps.mats.MeshBasicNodeMaterial()
 
-    const mat = new deps.mats.MeshBasicNodeMaterial()
+  // Palette blend across the oval band — the lower-edge emission
+  // (red/violet on Earth) sits equatorward of the curtain top.
+  const edgeK = smoothstep(
+    (cfg.lat ?? SF_AURORA.LAT0) - SF_AURORA.OVAL_W * 2,
+    (cfg.lat ?? SF_AURORA.LAT0) + SF_AURORA.OVAL_W * 2,
+    mLat
+  )
 
-    // Palette blend across the oval band — the lower-edge emission
-    // (red/violet on Earth) sits equatorward of the curtain top.
-    const edgeK = smoothstep(
-      (cfg.lat ?? SF_AURORA.LAT0) - SF_AURORA.OVAL_W * 2,
-      (cfg.lat ?? SF_AURORA.LAT0) + SF_AURORA.OVAL_W * 2,
-      mLat
-    )
+  mat.colorNode = mix(vec3(lowC.r, lowC.g, lowC.b), vec3(topC.r, topC.g, topC.b), edgeK)
 
-    mat.colorNode = mix(vec3(lowC.r, lowC.g, lowC.b), vec3(topC.r, topC.g, topC.b), edgeK)
+  mat.transparent = true
 
-    mat.transparent = true
+  mat.opacityNode = ring
+    .mul(rays.mul(1 - SF_AURORA.RAY_FLOOR).add(SF_AURORA.RAY_FLOOR))
+    .mul(arcs.mul(SF_AURORA.ARC_GAIN).add(1 - SF_AURORA.ARC_GAIN))
+    .mul(wN)
+    .mul(night)
+    .mul(hemi)
+    .mul(SF_AURORA.INTENSITY * gain)
+    .clamp(0, 1)
 
-    mat.opacityNode = ring
-      .mul(rays.mul(1 - SF_AURORA.RAY_FLOOR).add(SF_AURORA.RAY_FLOOR))
-      .mul(arcs.mul(SF_AURORA.ARC_GAIN).add(1 - SF_AURORA.ARC_GAIN))
-      .mul(wN)
-      .mul(night)
-      .mul(hemi)
-      .mul(SF_AURORA.INTENSITY * gain * alphaMul)
-      .clamp(0, 1)
+  mat.blending = THREE.AdditiveBlending
 
-    mat.blending = THREE.AdditiveBlending
+  mat.depthWrite = false
 
-    mat.depthWrite = false
+  mat.side = THREE.DoubleSide
 
-    mat.side = THREE.DoubleSide
-
-    group.add(new THREE.Mesh(geo, mat))
-  }
-
-  return group
+  return new THREE.Mesh(geo, mat)
 }
 
 /**
