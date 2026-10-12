@@ -457,6 +457,12 @@ export function makeAurora(
   const hemi: N =
     cfg.south === false ? smoothstep(SF_AURORA.HEMI_LO, SF_AURORA.HEMI_HI, nMag.y) : float(1)
 
+  // Limb fade — |view-space normal z| is 1 looking straight down at the
+  // oval and 0 at grazing angles; powering it up kills the telltale
+  // arcs a shell ring draws ABOVE the silhouette so the emission only
+  // ever reads as a glow lying on the atmosphere.
+  const facing = TSL.normalView.z.abs().pow(SF_AURORA.LIMB_POW)
+
   // Single close-hugging shell — a second elevated ring read as arcs
   // floating off the limb, so the oval lives at SHELL_SCALE only. The
   // curtain's altitude cue comes from ray striation instead.
@@ -493,6 +499,7 @@ export function makeAurora(
     .mul(wN)
     .mul(night)
     .mul(hemi)
+    .mul(facing)
     .mul(SF_AURORA.INTENSITY * gain)
     .clamp(0, 1)
 
