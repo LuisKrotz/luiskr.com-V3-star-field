@@ -8,6 +8,8 @@
  * pen share one code path.
  */
 import { MOUSE_EVENTS, POINTER_EVENTS } from '@core/tokens/events/dom.js'
+import { INPUT_STRINGS } from '@core/tokens/strings/input.js'
+import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
 import type { SFState } from './types.js'
 import { SF_USER_BODY, SF_USER_PROXY } from './bodies-scene.js'
 
@@ -66,8 +68,9 @@ function chainVisible(object: { visible?: boolean; parent?: unknown } | null | u
  * canvas-relative NDC, then intersects `s.pickables` recursively so shell
  * children resolve to their body's mesh via userData walk-up. Hits that
  * land on oversized invisible pick proxies lose to any real-mesh hit
- * further down the ray, so clicking through a fat proxy bubble still
- * selects the actual body underneath.
+ * further down the ray, and between OVERLAPPING proxies the smallest
+ * authored radius wins — a moon's tight bubble beats the giant planet
+ * bubble it orbits inside (the Moon stays clickable over Earth).
  * @returns The hit body id, or null.
  */
 function pickAt(s: SFState, clientX: number, clientY: number): string | null {
@@ -93,6 +96,7 @@ function pickAt(s: SFState, clientX: number, clientY: number): string | null {
   }>
 
   let proxyId: string | null = null
+  let proxyR = Infinity
 
   for (const hit of hits ?? []) {
     if (!chainVisible(hit?.object)) continue
@@ -103,7 +107,15 @@ function pickAt(s: SFState, clientX: number, clientY: number): string | null {
 
     if (!resolved.proxy) return resolved.id
 
-    proxyId ??= resolved.id
+    // Smallest body wins among overlapping proxy bubbles — a moon's
+    // tight pick sphere must beat the host planet's giant one when the
+    // ray crosses both.
+    const r = s.nodes.get(resolved.id)?.def.radius ?? Number.MAX_VALUE
+
+    if (r < proxyR) {
+      proxyR = r
+      proxyId = resolved.id
+    }
   }
 
   return proxyId
@@ -165,6 +177,10 @@ export function bindPicking(s: SFState): void {
     const pe = e as PointerEvent
 
     const id = pickAt(s, pe.clientX, pe.clientY)
+
+    // Pickable → glove cursor; empty space → default. The canvas owns
+    // the style so OrbitControls' own cursor rules never fight it.
+    canvas.style.cursor = id ? INPUT_STRINGS.POINTER : CHAR_STRINGS.EMPTY
 
     if (id !== s.hoverId) {
       s.hoverId = id

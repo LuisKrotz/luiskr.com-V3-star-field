@@ -19,6 +19,7 @@
 import { POINTER_EVENTS, MOUSE_EVENTS, WINDOW_EVENTS } from '@core/tokens/events/dom.js'
 import { SF_BODY_IDS, SF_CAMERA, SF_STAR_CLOUD, SF_ZOOM } from '@core/tokens/starfield/params.js'
 import { isRegistryId, loadRegistryRecord, registryWorldPos } from './engine/registry.js'
+import { disposeRegistryBodies, ensureRegistryBody } from './engine/registry-body.js'
 import type { SFRegistryRecord } from './engine/registry.js'
 import { bootstrapStarField } from './engine/bootstrap.js'
 import { anchorWorldPos, rotateStarCamera, tickStar } from './engine/frame.js'
@@ -120,6 +121,12 @@ export class StarFieldEngine {
       // hijack the camera.
       void loadRegistryRecord(id).then((rec) => {
         if (s.disposed || s.selectedId !== id || !rec || !s.camera) return
+
+        // Materialize the record's real body — textured star disc,
+        // procedural exoplanet or DSO speckle cloud — at its catalogued
+        // position before the camera glides onto it, so the arrival
+        // lands on a resolved object, not an empty point of light.
+        ensureRegistryBody(s, rec)
 
         startFly(s, () => registryWorldPos(s, rec), SF_STAR_CLOUD.FLY_OFFSET)
       })
@@ -262,7 +269,15 @@ export class StarFieldEngine {
 
     disposeStarCloud(s)
 
+    disposeRegistryBodies(s)
+
     s.controls?.dispose()
+
+    // Post chain first — its render targets + node graph reference the
+    // renderer, so it must go before the renderer tears down its device.
+    s.pipeline?.dispose()
+
+    s.pipeline = null
 
     s.renderer?.dispose()
 

@@ -16,6 +16,9 @@ import type { SFRegistryRecord } from './registry.js'
 /** The TSL node-graph namespace (compiled to WGSL/GLSL by the renderer). */
 type TslNs = typeof import('three/tsl')
 
+/** The lazily-imported `three` module namespace. */
+type ThreeModule = typeof import('three')
+
 /**
  * Lazily-loaded node-material context — the renderer is WebGPURenderer
  * (WebGPU or forced-WebGL backend), whose node pipeline rejects classic
@@ -175,6 +178,53 @@ export interface SFBodyDef {
    */
   cycle?: { period: number }
   /**
+   * Procedural weather — replaces the static `cloudTexture` deck with
+   * the full `weather.ts` field: evolving coverage, jet streams, ITCZ
+   * monsoon band, hurricane vortices, seasonal snow lines, volcanic
+   * ash plumes and matching surface cloud shadows (Earth).
+   */
+  weather?: boolean
+  /**
+   * Aurora shell — a thin rayed emission OVAL centered on the magnetic
+   * pole (not the spin pole), driven by the shared solar-wind uniform
+   * so solar storms light every aurora-bearing body at once (Earth,
+   * Jupiter, Saturn, Neptune). Pass `true` for the default Earth-green
+   * oxygen palette, or a config object for per-body physics:
+   * `color`/`colorLow` are the curtain-top/lower-edge emissions,
+   * `tilt` the magnetic dipole's offset from the spin axis (radians —
+   * Neptune's is ~0.82 rad ≈ 47°), `lat` the oval's |lat| center and
+   * `intensity` a brightness multiplier (Jupiter > Earth > Saturn >
+   * Neptune, matching real emitted power).
+   */
+  aurora?:
+    | boolean
+    | {
+        color?: number
+        colorLow?: number
+        tilt?: number
+        lat?: number
+        intensity?: number
+      }
+  /**
+   * Solar flares — limb prominence sprites on the photosphere edge that
+   * breathe and stretch outward with the shared solar-wind cycle (Sun).
+   */
+  flares?: boolean
+  /**
+   * LEO constellation shell — `count` point glints sharing one inclined
+   * orbital plane at `orbit`× radius, sweeping as a unit (the Starlink
+   * swarm; `orbit` multiplies `def.radius`).
+   */
+  constellation?: { count: number; orbit: number }
+  /**
+   * Meteor strikes — airless cratered bodies still take impacts; a
+   * pooled flash sprite fires at a random surface point every
+   * `SF_METEOR.INTERVAL`-ish seconds (updateFx). For bodies whose
+   * dossier describes ongoing bombardment — the flash makes the
+   * crater record readable as a live process.
+   */
+  meteors?: boolean
+  /**
    * Authored distance label for the hover tooltip — semi-major axis in
    * AU for Solar-System bodies, light-years for deep-sky objects. Units
    * are universal abbreviations so the string needs no translation.
@@ -191,6 +241,13 @@ export interface SFBodyDef {
     color?: number
     texture?: string
     phase?: number
+    /**
+     * Crafted-station flag — renders the companion as a lit truss +
+     * solar-panel model (the ISS silhouette) instead of the default
+     * fresnel glow ball, so crewed orbiters read as built objects,
+     * not second moons.
+     */
+    station?: boolean
     /** Same conic rule as `SFBodyDef.ecc` — radial distance modulates
      *  around the circular pivot sweep. */
     ecc?: number
@@ -304,6 +361,13 @@ export interface SFState {
   canvas: HTMLCanvasElement | null
   /** three.js WebGPURenderer (WebGPU or forced-WebGL backend). */
   renderer: { render(...args: unknown[]): unknown; dispose(): void } | null
+  /**
+   * RenderPipeline post chain (scene → +bloom → vignette → film grain) —
+   * null when the pipeline failed to build or the backend rejected it;
+   * the frame loop falls back to `renderer.render(scene, camera)` in
+   * that case, losing post FX but never the scene.
+   */
+  pipeline: { render(...args: unknown[]): unknown; dispose(): void } | null
   scene: THREE_NS.Scene | null
   /**
    * Floating-origin world root — every catalog body, cloud and rider
@@ -343,6 +407,20 @@ export interface SFState {
   /** ids whose dossier was already prefetched — approach fires once. */
   approached: Set<string>
   /**
+   * Shared solar-wind uniform — `updateSolarWind` writes the 0–1+
+   * activity level each frame; aurora shells, the sun's flare sprites
+   * and the corona breathe with it so a storm visibly propagates from
+   * the Sun to every atmosphere-bearing planet. TSL uniform node
+   * (runtime `.value`), null until bootstrap creates it.
+   */
+  solarWind: { value: number } | null
+  /**
+   * Shared scene-time uniform (scene seconds) — the weather field,
+   * aurora curtains and any other TSL effect reads this instead of
+   * baking `s.t` so a single per-frame write animates every shader.
+   */
+  fxTime: { value: number } | null
+  /**
    * Real-star cloud Points (HYG catalogue field on the Milky Way disc)
    * — set by star-cloud.ts once the packed binary decodes; kept on
    * state so destroy() can dispose its geometry/material.
@@ -350,6 +428,23 @@ export interface SFState {
   starCloud: THREE_NS.Object3D | null
   /** Guard flag — the star-cloud fetch fires only once per boot. */
   starCloudLoading: boolean
+  /**
+   * Post-boot handles kept for lazy registry-body spawns — the deep
+   * catalog's 139k records are plain cloud points until selected, when
+   * `registry-body.ts` builds a real textured mesh on demand. Bootstrap
+   * stashes the three module, node-material deps and the shared glow
+   * sprite here so spawn code never re-imports lazily-loaded modules.
+   */
+  THREE: ThreeModule | null
+  deps: SFNodeDeps | null
+  /** Shared soft-disc sprite — registry halos reuse it, never own it. */
+  glowTex: THREE_NS.Texture | null
+  /**
+   * Spawned registry bodies (`star-NNNNNN`… → Object3D) mounted on the
+   * Sun's pivot — an LRU map capped at `SF_STAR_CLOUD.BODY_CACHE` so a
+   * long browsing session never accumulates 139k meshes.
+   */
+  registryBodies: Map<string, THREE_NS.Object3D>
   /** Active fly-to tween or null when controls are free. */
   fly: SFFly | null
   /** Active RAF id. */
@@ -444,6 +539,38 @@ export interface SFNode {
    * so the core laps the rim the way real rotation curves do.
    */
   rotor?: THREE_NS.Object3D
+  /**
+   * Cloud-deck shell — Earth's cloud sphere rides inside `mesh` so it
+   * inherits surface spin; with `def.weather` the deck is the
+   * procedural field (jets/storms/snow evolve in the shader via the
+   * shared `fxTime` uniform), and updateFx still adds its legacy
+   * differential drift for static-texture decks.
+   */
+  clouds?: THREE_NS.Object3D
+  /**
+   * Solar limb flares — prominence sprites from `makeSolarFlares`;
+   * updateFx scales/opacities them by `solarWind × sin⁴(t·rate+phase)`
+   * so eruptions breathe and spike outward when a storm hits.
+   */
+  flares?: Array<{
+    sprite: THREE_NS.Object3D
+    rate: number
+    phase: number
+    base: number
+  }>
+  /**
+   * Meteor flash pool — `SF_METEOR.POOL` sprites parented to the mesh,
+   * recycled across strikes so impact flashes never allocate per frame;
+   * `meteorNext` schedules the next strike (scene seconds).
+   */
+  meteorPool?: Array<{
+    sprite: THREE_NS.Object3D
+    /** Strike start time (scene seconds) — drives the fade curve. */
+    t0: number
+    active: boolean
+  }>
+  /** Next scheduled meteor strike time (scene seconds). */
+  meteorNext?: number
   /** Satellite pivots (decorative companions) — rotate per frame. */
   satPivots: Array<{
     pivot: THREE_NS.Object3D
@@ -454,6 +581,11 @@ export interface SFNode {
     /** Semi-major axis (chart units) + eccentricity for elliptical orbits. */
     orbit: number
     ecc?: number
+    /**
+     * Self-tumble rate — belt hero rocks spin their own mesh on top of
+     * the orbit sweep so debris reads as tumbling rubble, not rails.
+     */
+    spin?: number
   }>
   /**
    * LOD-toggleable secondary geometry — atmosphere shells, ring discs,

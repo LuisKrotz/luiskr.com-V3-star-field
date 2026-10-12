@@ -15,6 +15,8 @@
  *                       granulation + sunspot groups on active stars.
  *   `gas.ts`          — wispy nebula gas: seeded lobe union with dark
  *                       absorption wisps.
+ *   `spikes.ts`       — diffraction-spike starburst: hexagonal cross of
+ *                       soft elliptical rays + a faint second cross.
  *   `shared.ts`       — the common paint vocabulary (hex→rgba, blob,
  *                       canvas factory) the recipes share.
  *
@@ -28,3 +30,4 @@ export { coronaFor } from './procedural/corona.js'
 export { haloFor, pointGlowFor } from './procedural/halo.js'
 export { starSurfaceFor } from './procedural/star-surface.js'
 export { gasFor } from './procedural/gas.js'
+export { spikesFor } from './procedural/spikes.js'

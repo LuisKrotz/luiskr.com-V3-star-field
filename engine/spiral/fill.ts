@@ -67,6 +67,11 @@ export function fillSpiral(
 
   const barSin = Math.sin(barTilt)
 
+  // Disc-warp phase — perpendicular to the seeded bar axis (real warps
+  // sit roughly orthogonal to the bar); derived, not drawn, so the
+  // per-point RNG stream is untouched and worker parity is preserved.
+  const warpPhase = barTilt + Math.PI / 2
+
   for (let i = i0; i < i1; i++) {
     // Per-point stream — Fibonacci-hashed seed by absolute index makes
     // the fill chunkable across worker threads with identical output.
@@ -164,8 +169,18 @@ export function fillSpiral(
 
       const y = (rand() + rand() - 1) * radius * SF_SPIRAL.THIN * thick * (inBulge ? 3.2 : 1)
 
+      // Flare + warp — vertical spread grows with radius (the real disc
+      // thickens outward) and the outer ring bends out of the midplane
+      // (integral-sign warp, strongest at the rim where (r/R)² → 1).
+      const rn = Math.min(1, r / radius)
+
+      const yy = inBulge
+        ? y
+        : y * (1 + rn * SF_SPIRAL.DISC_FLARE) +
+          SF_SPIRAL.DISC_WARP * radius * rn * rn * Math.sin(angle - warpPhase)
+
       pos[i * 3] = Math.cos(angle) * r
-      pos[i * 3 + 1] = y
+      pos[i * 3 + 1] = yy
       pos[i * 3 + 2] = Math.sin(angle) * r
 
       // Galactic bar — bulge points elongate into a prolate spheroid

@@ -406,4 +406,18 @@ describe('navigator hints + instructions dismissal tails', () => {
 
     unmount(el)
   })
+
+  test('arrow key before engine boot is a no-op', () => {
+    const el = mount()
+
+    // Engine still null pre-boot (or after destroy) — the orbit keys
+    // must not throw or preventDefault into a dead delegate.
+    el._engine = null
+
+    el.dispatchEvent(new window.KeyboardEvent('keydown', { key: KEYS.ARROW_RIGHT, bubbles: true }))
+
+    expect(el._engine).toBeNull()
+
+    unmount(el)
+  })
 })
