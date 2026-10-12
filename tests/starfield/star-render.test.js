@@ -37,11 +37,17 @@ const makeHost = (overrides = {}) => ({
   _regSearch: null,
   _regSearching: false,
   _loadMoreRegistry: jest.fn(),
+  _setSearch: jest.fn(),
+  _hintBody: jest.fn(),
+  _clearHint: jest.fn(),
   _toggleNav: jest.fn(),
   _selectBody: jest.fn(),
   _closePanel: jest.fn(),
   _takeScreenshot: jest.fn(),
   _flyHome: jest.fn(),
+  _instructionsOpen: false,
+  _toggleInstructions: jest.fn(),
+  _closeInstructions: jest.fn(),
   ...overrides,
 })
 
@@ -139,11 +145,13 @@ describe('star render', () => {
   test('action buttons call screenshot and overview handlers', () => {
     const host = makeHost()
     const root = mount(host)
-    const [shot, home] = root.querySelectorAll(`.${SF_CLASSES.SF_BTN}`)
+    const [inst, shot, home] = root.querySelectorAll(`.${SF_CLASSES.SF_BTN}`)
 
+    inst.click()
     shot.click()
     home.click()
 
+    expect(host._toggleInstructions).toHaveBeenCalled()
     expect(host._takeScreenshot).toHaveBeenCalled()
     expect(host._flyHome).toHaveBeenCalled()
   })
@@ -161,5 +169,114 @@ describe('star render', () => {
     root.querySelector(`.${SF_CLASSES.SF_PANEL_CLOSE}`).click()
 
     expect(host._closePanel).toHaveBeenCalled()
+  })
+})
+
+describe('navigator hint events', () => {
+  test('catalog rows emit position hints on pointer and focus', () => {
+    const host = makeHost({ _navOpen: true })
+    const root = mount(host)
+    const btn = root.querySelector(`.${SF_CLASSES.SF_NAV_ITEM}`)
+
+    btn.dispatchEvent(new window.Event('mouseenter'))
+    expect(host._hintBody).toHaveBeenCalledWith('sun')
+
+    btn.dispatchEvent(new window.Event('mouseleave'))
+    expect(host._clearHint).toHaveBeenCalledTimes(1)
+
+    btn.dispatchEvent(new window.Event('focus'))
+    expect(host._hintBody).toHaveBeenCalledTimes(2)
+
+    btn.dispatchEvent(new window.Event('blur'))
+    expect(host._clearHint).toHaveBeenCalledTimes(2)
+  })
+
+  test('registry rows hint with their shard record and select on click', () => {
+    const rec = { i: 'star-000001', n: 'Proxima', x: 1, y: 2, z: 3, d: 4.2 }
+    const host = makeHost({
+      _navOpen: true,
+      _regManifest: {
+        total: 139000,
+        kinds: { star: { count: 100000, shards: ['a', 'b'] } },
+      },
+      _regLoaded: new Map([['star', 1]]),
+      _regRecords: new Map([['star', [rec]]]),
+    })
+    const root = mount(host)
+    const row = [...root.querySelectorAll(`.${SF_CLASSES.SF_NAV_ITEM}`)].find(
+      (n) => n.dataset.body === rec.i
+    )
+
+    expect(row).toBeTruthy()
+
+    row.dispatchEvent(new window.Event('mouseenter'))
+    expect(host._hintBody).toHaveBeenCalledWith(rec.i, rec)
+
+    row.dispatchEvent(new window.Event('mouseleave'))
+    row.dispatchEvent(new window.Event('focus'))
+    row.dispatchEvent(new window.Event('blur'))
+
+    expect(host._hintBody).toHaveBeenCalledTimes(2)
+    expect(host._clearHint).toHaveBeenCalledTimes(2)
+
+    row.click()
+    expect(host._selectBody).toHaveBeenCalledWith(rec.i)
+  })
+
+  test('the load-more button pages the next registry shard', () => {
+    const host = makeHost({
+      _navOpen: true,
+      _regManifest: {
+        total: 139000,
+        kinds: { star: { count: 2000, shards: ['a', 'b'] } },
+      },
+      _regLoaded: new Map([['star', 1]]),
+      _regRecords: new Map([['star', [{ i: 'star-000001', n: 'X', x: 0, y: 0, z: 0 }]]]),
+    })
+    const root = mount(host)
+    const more = root.querySelector(`.${SF_CLASSES.SF_NAV_MORE}`)
+
+    more.click()
+
+    expect(host._loadMoreRegistry).toHaveBeenCalledWith('star')
+  })
+
+  test('search input routes input events to _setSearch', () => {
+    const host = makeHost({ _navOpen: true })
+    const root = mount(host)
+    const input = root.querySelector(`.${SF_CLASSES.SF_NAV_SEARCH}`)
+
+    input.value = 'vega'
+    input.dispatchEvent(new window.Event('input'))
+
+    expect(host._setSearch).toHaveBeenCalledWith('vega')
+  })
+
+  test('search-mode rows render _regSearch results and the searching row', () => {
+    const rec = { i: 'star-000042', n: 'Vega', x: 0, y: 0, z: 0 }
+    const host = makeHost({
+      _navOpen: true,
+      _search: 'vega',
+      _regManifest: { total: 139000, kinds: {} },
+      _regSearch: [rec],
+      _regSearching: true,
+    })
+    const root = mount(host)
+    const row = [...root.querySelectorAll(`.${SF_CLASSES.SF_NAV_ITEM}`)].find(
+      (n) => n.dataset.body === rec.i
+    )
+
+    expect(row).toBeTruthy()
+    expect(row.textContent).toContain(rec.n)
+  })
+
+  test('the instructions close button routes to _closeInstructions', () => {
+    const host = makeHost({ _instructionsOpen: true })
+    const root = mount(host)
+    const close = root.querySelector(`.${SF_CLASSES.SF_INSTRUCTIONS_CLOSE}`)
+
+    close.click()
+
+    expect(host._closeInstructions).toHaveBeenCalled()
   })
 })

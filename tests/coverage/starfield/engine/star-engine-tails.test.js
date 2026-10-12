@@ -603,7 +603,7 @@ describe('fly tween', () => {
   test('startFly no-ops without a camera', () => {
     const s = makeState()
 
-    startFly(s, { x: 0, y: 0, z: 0 }, 10)
+    startFly(s, () => ({ x: 0, y: 0, z: 0 }), 10)
 
     expect(s.fly).toBeNull()
   })
@@ -611,26 +611,48 @@ describe('fly tween', () => {
   test('startFly uses the straight-above fallback when camera sits on target', () => {
     const s = makeState({ camera: fakeCamera() })
 
-    startFly(s, { x: 0, y: 0, z: 0 }, 10)
+    startFly(s, () => ({ x: 0, y: 0, z: 0 }), 10)
 
-    expect(s.fly.toPos.y).toBe(10)
+    expect(s.fly.offset.y).toBe(10)
     expect(s.fly.fromTgt).toBeTruthy()
   })
 
-  test('updateFly lerps and completes with the done callback', () => {
+  test('startFly no-ops when the anchor already resolved to null', () => {
+    const s = makeState({ camera: fakeCamera() })
+
+    startFly(s, () => null, 10)
+
+    expect(s.fly).toBeNull()
+  })
+
+  test('updateFly tracks a moving anchor and completes with the done callback', () => {
     const s = makeState({
       camera: fakeCamera(),
       controls: { target: { x: 0, y: 0, z: 0, set: jest.fn() } },
     })
     const done = jest.fn()
+    const live = { x: 0, y: 0, z: 0 }
 
     s.camera.position.x = 100
-    startFly(s, { x: 0, y: 0, z: 0 }, 20, done)
+    startFly(s, () => live, 20, done)
 
     updateFly(s)
 
     expect(s.camera.position.set).toHaveBeenCalled()
     expect(s.controls.target.set).toHaveBeenCalled()
+
+    // The anchor keeps moving mid-flight — the destination follows it.
+    live.x = 40
+    live.y = 5
+    updateFly(s)
+
+    expect(s.fly.last).toEqual(live)
+
+    // A dropped anchor freezes the destination at the last known spot.
+    s.fly.track = () => null
+    updateFly(s)
+
+    expect(s.fly.last).toEqual(live)
 
     // push t0 far into the past so the tween completes this frame
     s.fly.t0 = -1e9
@@ -645,9 +667,10 @@ describe('fly tween', () => {
     s.fly = {
       t0: 0,
       fromPos: { x: 0, y: 0, z: 0 },
-      toPos: { x: 1, y: 1, z: 1 },
+      offset: { x: 1, y: 1, z: 1 },
       fromTgt: { x: 0, y: 0, z: 0 },
-      toTgt: { x: 1, y: 1, z: 1 },
+      track: () => ({ x: 1, y: 1, z: 1 }),
+      last: { x: 1, y: 1, z: 1 },
     }
     updateFly(s)
 
@@ -655,7 +678,14 @@ describe('fly tween', () => {
 
     // no-fly + no-camera arms
     updateFly(s)
-    s.fly = { t0: 0, fromPos: {}, toPos: {}, fromTgt: {}, toTgt: {} }
+    s.fly = {
+      t0: 0,
+      fromPos: {},
+      offset: {},
+      fromTgt: {},
+      track: () => null,
+      last: { x: 0, y: 0, z: 0 },
+    }
     s.camera = null
     updateFly(s)
 

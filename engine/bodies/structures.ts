@@ -13,17 +13,77 @@
  * every child so `s.pickables` never even sees them.
  */
 import type * as THREE_NS from 'three'
-import { SF_COLORS, SF_STRUCTURE } from '@core/tokens/starfield/params.js'
+import { SF_COLORS, SF_SPIRAL, SF_STRUCTURE } from '@core/tokens/starfield/params.js'
+import { WASM_ACTIONS, fillField } from '../fill-worker.js'
 import { lcg, seedFrom } from '../rand.js'
 import type { SFBodyDef, SFNodeDeps } from '../types.js'
 
 type ThreeModule = typeof import('three')
 
 /**
- * Member-galaxy speckle cloud — seeded uniform-sphere scatter inside
+ * Fills one index range of a member-galaxy speckle cloud — the
+ * filament preamble (principal axis + density knots) is drawn once by
+ * the caller from a sequential `lcg(seed)` stream and passed in, while
+ * member points draw from per-point Fibonacci-hashed streams so the
+ * fill partitions identically across the worker pool.
+ * @param pos xyz buffer — indexes [i0·3, i1·3) written.
+ * @param col rgb buffer (same range).
+ * @param seed Body seed.
+ * @param fillR Speckle fill radius (radius×SPECKLE_FILL).
+ * @param count Total member count.
+ * @param axis Seeded filament axis unit vector.
+ * @param lat1 First perpendicular basis vector.
+ * @param lat2 Second perpendicular basis vector.
+ * @param knotAt Knot offsets along the axis.
+ * @param tint RGB tint triple.
+ * @param i0 Range start (0 for the local fill).
+ * @param i1 Range end (count for the local fill).
+ */
+function fillSpeckles(
+  pos: Float32Array,
+  col: Float32Array,
+  seed: number,
+  fillR: number,
+  count: number,
+  axis: number[],
+  lat1: number[],
+  lat2: number[],
+  knotAt: number[],
+  tint: [number, number, number],
+  i0 = 0,
+  i1 = count
+): void {
+  const knots = knotAt.length
+
+  for (let i = i0; i < i1; i++) {
+    const rand = lcg((seed ^ Math.imul(i + 1, SF_SPIRAL.SEED_STEP)) >>> 0)
+
+    const g = () => (rand() + rand() + rand() - 1.5) * fillR * 0.14
+
+    const ki = Math.floor(rand() * knots)
+    const along = knotAt[ki] + g() * 1.6
+    const l1 = g()
+    const l2 = g() * SF_STRUCTURE.SPECKLE_FLATTEN
+
+    pos[i * 3] = axis[0] * along + lat1[0] * l1 + lat2[0] * l2
+    pos[i * 3 + 1] = axis[1] * along + lat1[1] * l1 + lat2[1] * l2
+    pos[i * 3 + 2] = axis[2] * along + lat1[2] * l1 + lat2[2] * l2
+
+    const bright = SF_STRUCTURE.SPECKLE_DIM + rand() * (1 - SF_STRUCTURE.SPECKLE_DIM)
+
+    col[i * 3] = tint[0] * bright
+    col[i * 3 + 1] = tint[1] * bright
+    col[i * 3 + 2] = tint[2] * bright
+  }
+}
+
+/**
+ * Member-galaxy speckle cloud — seeded filament scatter inside
  * `SPECKLE_FILL` of the shell radius so members keep off the boundary
  * skin. Brightness jitters per point so the cloud reads as a galaxy
  * field rather than noise static; additive tiny points, never pickable.
+ * The fill dispatches chunked through the WASM worker pool; the local
+ * path below is the bit-identical fallback.
  * @param THREE The three.js module.
  * @param def Catalog entry (id seeds the scatter).
  * @param radius Speckle volume radius in chart units.
@@ -39,9 +99,13 @@ function makeSpeckles(
 
   const col = new Float32Array(count * 3)
 
-  const rand = lcg(seedFrom(def.id))
+  const seed = seedFrom(def.id)
 
-  const tint = new THREE.Color(def.color ?? SF_COLORS.SPECKLE)
+  const rand = lcg(seed)
+
+  const tintC = new THREE.Color(def.color ?? SF_COLORS.SPECKLE)
+
+  const tint: [number, number, number] = [tintC.r, tintC.g, tintC.b]
 
   const fillR = radius * SF_STRUCTURE.SPECKLE_FILL
 
@@ -64,7 +128,9 @@ function makeSpeckles(
     axis[0] * lat1[1] - axis[1] * lat1[0],
   ]
 
-  const knots = 2 + Math.floor(rand() * 2)
+  // 1–3 knots — a single-knot structure is one elongated clump, two+
+  // read as a beaded filament; the draw keeps every structure unique.
+  const knots = 1 + Math.floor(rand() * 3)
   const knotAt: number[] = []
 
   for (let k = 0; k < knots; k++) {
@@ -72,29 +138,7 @@ function makeSpeckles(
     knotAt.push((k / Math.max(knots - 1, 1) - 0.5) * fillR * (0.9 + rand() * 0.5))
   }
 
-  const g = () => (rand() + rand() + rand() - 1.5) * fillR * 0.14
-
-  for (let i = 0; i < count; i++) {
-    const ki = Math.floor(rand() * knots)
-    const along = knotAt[ki] + g() * 1.6
-    const l1 = g()
-    const l2 = g() * SF_STRUCTURE.SPECKLE_FLATTEN
-
-    pos[i * 3] = axis[0] * along + lat1[0] * l1 + lat2[0] * l2
-    pos[i * 3 + 1] = axis[1] * along + lat1[1] * l1 + lat2[1] * l2
-    pos[i * 3 + 2] = axis[2] * along + lat1[2] * l1 + lat2[2] * l2
-
-    const bright = SF_STRUCTURE.SPECKLE_DIM + rand() * (1 - SF_STRUCTURE.SPECKLE_DIM)
-
-    col[i * 3] = tint.r * bright
-    col[i * 3 + 1] = tint.g * bright
-    col[i * 3 + 2] = tint.b * bright
-  }
-
   const geo = new THREE.BufferGeometry()
-
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-  geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
 
   const mat = new THREE.PointsMaterial({
     size: SF_STRUCTURE.SPECKLE_PX,
@@ -109,6 +153,36 @@ function makeSpeckles(
   const points = new THREE.Points(geo, mat)
 
   points.raycast = () => undefined
+
+  // Worker fill — the preamble ships as plain data (axis/knots/tint) so
+  // the worker only repeats the per-point scatter, chunked by index.
+  fillField(
+    WASM_ACTIONS.SF_FILL_SPECKLES,
+    {
+      seed,
+      radius,
+      count,
+      axis,
+      lat1,
+      lat2,
+      knotAt,
+      tint,
+      p: { ...SF_STRUCTURE, SEED_STEP: SF_SPIRAL.SEED_STEP },
+    },
+    count,
+    true
+  ).then((res) => {
+    if (!res) {
+      fillSpeckles(pos, col, seed, fillR, count, axis, lat1, lat2, knotAt, tint)
+    }
+
+    const p = res ? res.pos : pos
+    const c = res ? res.col : col
+
+    geo.setAttribute('position', new THREE.BufferAttribute(p, 3))
+    geo.setAttribute('color', new THREE.BufferAttribute(c, 3))
+    geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((p.length / 3) * 2), 2))
+  })
 
   return points
 }
@@ -186,16 +260,21 @@ export function makeStructure(
 
   const radius = def.structure?.radius ?? def.radius
 
-  const shellMat = makeShellMaterial(THREE, deps, def)
+  // Speckle-only landmarks skip the boundary sphere — `shell: false`
+  // marks a region by its member cloud alone, so no fake wall paints
+  // where space has no edge.
+  const shellMat = def.structure?.shell === false ? undefined : makeShellMaterial(THREE, deps, def)
 
-  const shell = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, SF_STRUCTURE.SEGMENTS, SF_STRUCTURE.SEGMENTS / 2),
-    shellMat
-  )
+  if (shellMat) {
+    const shell = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, SF_STRUCTURE.SEGMENTS, SF_STRUCTURE.SEGMENTS / 2),
+      shellMat
+    )
 
-  shell.raycast = () => undefined
+    shell.raycast = () => undefined
 
-  group.add(shell)
+    group.add(shell)
+  }
 
   let speckleMat: THREE_NS.PointsMaterial | null = null
   const speckles = def.structure?.speckles ?? 0
@@ -213,7 +292,7 @@ export function makeStructure(
   group.userData = {
     isStructure: true,
     radius,
-    fade: shellMat.userData?.fade,
+    fade: shellMat?.userData?.fade,
     speckleMat,
   }
 

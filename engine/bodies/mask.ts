@@ -20,6 +20,9 @@ import { lcg, seedFrom } from '../rand.js'
 
 type ThreeModule = typeof import('three')
 
+/** Fallback lobe-mask seed when the caller passes no body id. */
+const _MASK_SEED_DEFAULT = 'default'
+
 /**
  * Returns the intrinsic pixel size of a loaded texture — `image` may be
  * an HTMLImageElement (`naturalWidth`) or any frame source carrying
@@ -80,7 +83,7 @@ export function maskPhotoTexture(
   ctx.drawImage(tex.image as CanvasImageSource, 0, 0, cw, ch)
 
   const lobes = options.lobes ?? 0
-  const seed = options.seed ?? 'default'
+  const seed = options.seed ?? _MASK_SEED_DEFAULT
 
   if (lobes > 0) {
     irregularMask(ctx, cw, ch, lobes, seed)
@@ -154,22 +157,24 @@ function irregularMask(
   const drawLobe = (lx: number, ly: number, lr: number, alpha: number): void => {
     const g = mx.createRadialGradient(lx, ly, 0, lx, ly, lr)
 
-    g.addColorStop(0, `rgba(255,255,255,${alpha})`)
-    g.addColorStop(1, 'rgba(255,255,255,0)')
+    g.addColorStop(0, SF_COLORS.GLOW_INNER)
+    g.addColorStop(1, SF_COLORS.GLOW_OUTER)
 
-    mx.globalCompositeOperation = 'source-over'
+    mx.globalCompositeOperation = CANVAS_STRINGS.COMPOSITE_SOURCE_OVER
+    mx.globalAlpha = alpha
     mx.fillStyle = g
     mx.fillRect(0, 0, cw, ch)
+    mx.globalAlpha = 1
   }
 
   // Central lobe plus lobes scattered near the edge.
-  drawLobe(gx, gy, rOuter * SF_DETAIL.MASK_INNER, 1.0)
+  drawLobe(gx, gy, rOuter * SF_DETAIL.MASK_INNER, SF_DETAIL.MASK_LOBE_ALPHA_MAX)
 
   for (let i = 0; i < lobes; i++) {
     const angle = rand() * Math.PI * 2
-    const dist = rOuter * (0.3 + rand() * 0.55)
-    const lr = rOuter * (0.35 + rand() * 0.35)
-    const alpha = 0.55 + rand() * 0.35
+    const dist = rOuter * (SF_DETAIL.MASK_LOBE_DIST + rand() * SF_DETAIL.MASK_LOBE_DIST_VAR)
+    const lr = rOuter * (SF_DETAIL.MASK_LOBE_R + rand() * SF_DETAIL.MASK_LOBE_R_VAR)
+    const alpha = SF_DETAIL.MASK_LOBE_ALPHA + rand() * SF_DETAIL.MASK_LOBE_ALPHA_VAR
 
     drawLobe(gx + Math.cos(angle) * dist, gy + Math.sin(angle) * dist, lr, alpha)
   }

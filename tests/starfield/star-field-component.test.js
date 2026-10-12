@@ -188,7 +188,10 @@ describe('StarField component', () => {
     const btns = el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_BTN}`)
 
     btns[0].click()
+    expect(el._instructionsOpen).toBe(true)
+
     btns[1].click()
+    btns[2].click()
 
     expect(shotSpy).toHaveBeenCalled()
     expect(flySpy).toHaveBeenCalled()

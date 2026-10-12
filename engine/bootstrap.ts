@@ -110,7 +110,11 @@ async function warmUpShaders(
 export async function bootstrapStarField(s: SFState): Promise<void> {
   const THREE = await import('three')
 
-  const [{ WebGPURenderer, MeshBasicNodeMaterial }, TSL, { OrbitControls }] = await Promise.all([
+  const [
+    { WebGPURenderer, MeshBasicNodeMaterial, MeshStandardNodeMaterial },
+    TSL,
+    { OrbitControls },
+  ] = await Promise.all([
     import('three/webgpu'),
     import('three/tsl'),
     import('three/examples/jsm/controls/OrbitControls.js'),
@@ -147,7 +151,14 @@ export async function bootstrapStarField(s: SFState): Promise<void> {
   // disc) are TSL node materials — the WebGPURenderer pipeline rejects
   // classic ShaderMaterials — so the TSL namespace and the node-material
   // ctor are injected into every body maker from here.
-  buildStarBodies(s, THREE, { TSL, mats: { MeshBasicNodeMaterial } }, SF_CATALOG, texMap, glowTex)
+  buildStarBodies(
+    s,
+    THREE,
+    { TSL, mats: { MeshBasicNodeMaterial, MeshStandardNodeMaterial } },
+    SF_CATALOG,
+    texMap,
+    glowTex
+  )
 
   /* Picking */
   bindPicking(s)

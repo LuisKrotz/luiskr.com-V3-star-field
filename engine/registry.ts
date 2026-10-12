@@ -12,6 +12,7 @@
  */
 import { SF_BODY_IDS, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { SF_DATA_BASE } from '@core/tokens/starfield/textures.js'
+import { anchorWorldPos } from './frame/camera.js'
 import { sfGalacticVec } from './scale.js'
 import type { SFState } from './types.js'
 import { devError } from '@core/devlog.js'
@@ -272,6 +273,13 @@ export function registryWorldPos(
 
   const [x, y, z] = sfGalacticVec(rec.x, rec.y, rec.z, mw.tilt ?? 0)
 
-  // Cloud origin = the Sun's pivot at the scene origin — no translation.
-  return { x, y, z }
+  // The cloud mounts on the Sun's pivot — resolve the pivot's live world
+  // position and add the record's heliocentric offset so the result is
+  // correct whichever anchor the floating origin currently pins (with
+  // the Sun pinned it simply lands at the origin).
+  const pivot = s.nodes.get(SF_BODY_IDS.SUN)?.pivot
+
+  const base = pivot?.getWorldPosition ? anchorWorldPos(pivot) : { x: 0, y: 0, z: 0 }
+
+  return { x: base.x + x, y: base.y + y, z: base.z + z }
 }

@@ -1,39 +1,39 @@
 /**
  * @file coverage/starfield/engine/starfield-catalog-tails.test.js
- * @description Coverage tails for the catalog placement helpers —
- * `nbr`'s two arms no catalog def can reach: the beyond-band passthrough
- * (`honest ≥ INNER+BAND` needs a body past ~30k ly, but every `nbr` def
- * is a solar-neighborhood star) and the zero-vector guard (`!n` needs a
- * body at exactly 0 ly). Calls `nbr` directly; the zero case also drives
- * `sfChartDist`'s `ly <= 0` guard and `sfGalacticVec`'s zero-division
- * arm in scale.ts through the same call chain.
+ * @description Coverage tails for the catalog scale/placement helpers —
+ * the `sfChartDist(0)` and `sfGalacticVec` zero-division arms no real
+ * body can reach (every catalog def sits at d > 0), plus a regression
+ * pin that authored Milky-Way bodies now land at their TRUE compressed
+ * radii (the removed legibility band had floored the whole neighborhood
+ * onto a single shell).
  */
 import { describe, test, expect } from '@jest/globals'
 
-import { nbr, shrinkSolar } from '../../../../engine/catalog.js'
+import { shrinkSolar, SF_CATALOG } from '../../../../engine/catalog.js'
+import { sfChartDist, sfGalacticPos } from '../../../../engine/scale.js'
 import { SF_SCALE } from '@core/tokens/starfield/params.js'
 
-describe('catalog neighborhood-band placement tails', () => {
-  test('nbr passes the raw galactic position through beyond the band', () => {
-    // 100 000 ly → honest 1 000 units ≥ INNER+BAND (600) — distant bodies
-    // keep their truthful compressed radius instead of the band clamp.
-    const pos = nbr(200, 30, 100000)
-
-    expect(Math.hypot(...pos)).toBeCloseTo(100000 / SF_SCALE.GALACTIC_LY, 6)
+describe('catalog honest-placement tails', () => {
+  test('sfChartDist/sfGalacticPos return the origin for a zero-distance body', () => {
+    // The `ly <= 0` guard + `k = 0` division arm — no catalog def sits at
+    // 0 ly, so the tail drives both through the real call chain.
+    expect(sfChartDist(0)).toBe(0)
+    // The z component can surface as −0 through the tilt rotation — the
+    // zero-magnitude contract is what matters.
+    for (const c of sfGalacticPos(200, 30, 0, SF_SCALE.MW_TILT)) expect(c).toBeCloseTo(0, 12)
   })
 
-  test('nbr returns the origin for a zero-distance body', () => {
-    // honest=0 < bandEdge → gpos yields a zero vector → `!n` guard.
-    // Transitively covers sfChartDist(0) and sfGalacticVec's `k = 0` arm.
-    expect(nbr(0, 0, 0)).toEqual([0, 0, 0])
-  })
+  test('nearby stars sit at their true galactic-tier radii, not a shared shell', () => {
+    // Proxima (4.246 ly → 0.042 units) and Deneb (2 615 ly → 26.15
+    // units) must keep their honest radii — distinct, ordered, and far
+    // inside the Sun's 267-unit galactocentric ring.
+    const proxima = SF_CATALOG.find((b) => b.id === 'proxima-centauri')
 
-  test('nbr compresses inside-band bodies onto the legibility ring', () => {
-    // 100 ly → honest 1 unit < 300 → direction preserved, radius rides
-    // the neighborhood band (INNER + min(honest, BAND)).
-    const pos = nbr(200, 30, 100)
+    const deneb = SF_CATALOG.find((b) => b.id === 'deneb')
 
-    expect(Math.hypot(...pos)).toBeCloseTo(SF_SCALE.NEIGHBORHOOD_INNER + 1, 6)
+    expect(Math.hypot(...proxima.pos)).toBeCloseTo(4.246 / SF_SCALE.GALACTIC_LY, 4)
+    expect(Math.hypot(...deneb.pos)).toBeCloseTo(2615 / SF_SCALE.GALACTIC_LY, 4)
+    expect(Math.hypot(...proxima.pos)).toBeLessThan(Math.hypot(...deneb.pos))
   })
 
   test('shrinkSolar scales radius/orbit/belt/satellites and keeps absent fields absent', () => {

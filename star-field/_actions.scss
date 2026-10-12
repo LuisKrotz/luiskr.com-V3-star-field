@@ -78,3 +78,12 @@
     }
   }
 }
+
+// Mobile-only instructions button and modal hidden by default on desktop.
+.#{$_B_SF}-instructions-btn {
+  display: none;
+}
+
+.#{$_B_SF}-instructions-modal {
+  display: none;
+}

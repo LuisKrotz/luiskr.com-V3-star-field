@@ -9,6 +9,7 @@
  * prefix the production build uses.
  */
 import '@core/store.js'
+import '@core/sass/components/shell/app.scss'
 import './index.js'
 import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { WINDOW_EVENTS } from '@core/tokens/events/dom.js'

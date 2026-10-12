@@ -17,11 +17,13 @@
  *   destroy()
  */
 import { POINTER_EVENTS, MOUSE_EVENTS, WINDOW_EVENTS } from '@core/tokens/events/dom.js'
-import { SF_CAMERA, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { SF_BODY_IDS, SF_CAMERA, SF_STAR_CLOUD, SF_ZOOM } from '@core/tokens/starfield/params.js'
 import { isRegistryId, loadRegistryRecord, registryWorldPos } from './engine/registry.js'
+import type { SFRegistryRecord } from './engine/registry.js'
 import { bootstrapStarField } from './engine/bootstrap.js'
 import { anchorWorldPos, rotateStarCamera, tickStar } from './engine/frame.js'
 import { startFly } from './engine/fly.js'
+import { followSelected } from './engine/frame/camera.js'
 import { takeStarScreenshot } from './engine/screenshot.js'
 import { createStarState, type SFEvents } from './engine/state.js'
 import { disposeStarCloud } from './engine/star-cloud.js'
@@ -105,15 +107,21 @@ export class StarFieldEngine {
     if (isRegistryId(id)) {
       s.selectedId = id
 
+      // Registry stars live in the heliocentric cloud on the galactic
+      // rider — they have no anchor of their own, so keep the camera
+      // pinned to the current frame anchor (Sun fallback) or the cloud's
+      // ride sweeps the picked star out of frame within a second.
+      if (!s.followId || !s.anchors.has(s.followId)) {
+        s.followId = s.anchors.has(SF_BODY_IDS.SUN) ? SF_BODY_IDS.SUN : null
+      }
+
       // Async shard resolve → fly — fire-and-forget with a selection
       // guard so a fast second select can't have a slow first response
       // hijack the camera.
       void loadRegistryRecord(id).then((rec) => {
         if (s.disposed || s.selectedId !== id || !rec || !s.camera) return
 
-        const p = registryWorldPos(s, rec)
-
-        if (p) startFly(s, p, SF_STAR_CLOUD.FLY_OFFSET)
+        startFly(s, () => registryWorldPos(s, rec), SF_STAR_CLOUD.FLY_OFFSET)
       })
 
       return
@@ -126,12 +134,50 @@ export class StarFieldEngine {
     if (!anchor || !def || !s.camera) return
 
     s.selectedId = id
+    s.followId = id
 
-    const p = anchorWorldPos(anchor)
+    // Repin the world on the new anchor before the tween arms: `track()`
+    // then resolves inside the pinned frame, so the glide covers only
+    // the local gap — same-plane picks (Moon/Jupiter neighbours) just
+    // slide sideways instead of zooming out across the galactic span.
+    followSelected(s)
 
-    const offset = def.radius * 5 + 14
+    const offset = Math.max(def.radius * SF_ZOOM.STANDOFF, SF_ZOOM.STANDOFF_MIN)
 
-    startFly(s, p, offset)
+    startFly(s, () => anchorWorldPos(anchor), offset)
+  }
+
+  /**
+   * Navigator-hover position hint — arms the hint record for the row
+   * under the pointer/focus so `trackHover` reports the body's
+   * projected (edge-clamped) screen position every tick: the hint
+   * locates the object at any zoom level, on- or off-screen. Catalog
+   * ids store their anchor (live world position); registry rows store
+   * their shard record so the static shard point resolves in the
+   * pinned frame. Also echoes `onHover` so the tooltip label +
+   * aria-live announce populate the same way canvas hover does.
+   * Pass null to clear.
+   * @param id Hovered body id, or null to clear the hint.
+   * @param rec Registry record when `id` is a shard id (star-NNNNNN…).
+   */
+  setHint(id: string | null, rec?: SFRegistryRecord): void {
+    const s = this.#s
+
+    if (!id) {
+      s.hint = null
+
+      s.onHover?.(null)
+
+      return
+    }
+
+    const anchor = s.anchors.get(id)
+
+    if (!anchor?.getWorldPosition && !rec) return
+
+    s.hint = { id, anchor: anchor ?? null, rec: rec ?? null }
+
+    s.onHover?.(id)
   }
 
   /**
@@ -154,17 +200,34 @@ export class StarFieldEngine {
    */
   deselect(): void {
     this.#s.selectedId = null
+    this.#s.followId = null
   }
 
-  /** Returns the camera to the overview pose — the whole-chart vantage. */
+  /**
+   * Overview — glides to the solar-system vantage: the camera tracks the
+   * Sun anchor's live position (it rides the rotating galactic disc, so a
+   * fixed target would strand the view on empty space) at the HOME
+   * standoff, which frames the tier out to the Kuiper belt. Falls back
+   * to the scene origin only while anchors are unavailable.
+   */
   flyHome(): void {
     const s = this.#s
 
     s.selectedId = null
 
+    const sun = s.anchors.get(SF_BODY_IDS.SUN)
+
+    s.followId = sun ? SF_BODY_IDS.SUN : null
+
+    // Pin the Sun at the origin before the tween arms so the overview
+    // glide resolves in the pinned frame (see selectBody).
+    followSelected(s)
+
     startFly(
       s,
-      { x: SF_CAMERA.TARGET_X, y: SF_CAMERA.TARGET_Y, z: SF_CAMERA.TARGET_Z },
+      sun
+        ? () => anchorWorldPos(sun)
+        : () => ({ x: SF_CAMERA.TARGET_X, y: SF_CAMERA.TARGET_Y, z: SF_CAMERA.TARGET_Z }),
       Math.max(Math.hypot(SF_CAMERA.HOME_X, SF_CAMERA.HOME_Y, SF_CAMERA.HOME_Z), 1)
     )
   }

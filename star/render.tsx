@@ -20,6 +20,7 @@ import { h, Fragment } from '@core/jsx.js'
 import { appText } from '@core/locale/ui-text.js'
 import { SF_ASSET_BASE } from '@core/tokens/starfield/textures.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
+import { LABEL_TEXT } from '@core/tokens/strings/text.js'
 import { SF_GROUP_ORDER, sfCatalogByGroup } from '../engine/catalog.js'
 import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { registryDist } from './dossier.js'
@@ -190,6 +191,10 @@ function RegistryRow({
         type={FORM_ATTRS.BUTTON}
         {...{ [DATA_ATTRS.DATA_BODY]: rec.i }}
         onClick={() => host._selectBody(rec.i)}
+        onMouseEnter={() => host._hintBody(rec.i, rec)}
+        onMouseLeave={() => host._clearHint()}
+        onFocus={() => host._hintBody(rec.i, rec)}
+        onBlur={() => host._clearHint()}
       >
         {rec.n}
         <span className={SF_CLASSES.SF_NAV_ITEM_META}>
@@ -331,6 +336,10 @@ export function renderStarField(host: StarField) {
                         type={FORM_ATTRS.BUTTON}
                         {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
                         onClick={() => host._selectBody(def.id)}
+                        onMouseEnter={() => host._hintBody(def.id)}
+                        onMouseLeave={() => host._clearHint()}
+                        onFocus={() => host._hintBody(def.id)}
+                        onBlur={() => host._clearHint()}
                       >
                         {def.name}
                         <span className={SF_CLASSES.SF_NAV_ITEM_META}>
@@ -405,6 +414,11 @@ export function renderStarField(host: StarField) {
               )}
             </section>
           )}
+
+          {/* Mobile home for the scale disclaimer — the pinned strip is
+              display:none under 768px so the bottom edge stays clear;
+              the drawer keeps the honesty note one gesture away. */}
+          <p className={SF_CLASSES.SF_NAV_DISCLAIMER}>{t.disclaimer}</p>
         </div>
       </nav>
 
@@ -444,8 +458,20 @@ export function renderStarField(host: StarField) {
         </div>
       </aside>
 
+      {/* Scale disclaimer — honesty note pinned to the bottom edge. */}
+      <p className={SF_CLASSES.SF_DISCLAIMER}>{t.disclaimer}</p>
+
       {/* Actions */}
       <div className={SF_CLASSES.SF_ACTIONS}>
+        <button
+          className={`${SF_CLASSES.SF_BTN} ${SF_CLASSES.SF_INSTRUCTIONS_BTN}`}
+          type={FORM_ATTRS.BUTTON}
+          aria-expanded={host._instructionsOpen ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
+          aria-controls={APP_IDS.SF_INSTRUCTIONS_PANEL}
+          onClick={() => host._toggleInstructions()}
+        >
+          {LABEL_TEXT.INSTRUCTIONS}
+        </button>
         <button
           className={SF_CLASSES.SF_BTN}
           type={FORM_ATTRS.BUTTON}
@@ -461,6 +487,32 @@ export function renderStarField(host: StarField) {
           {t.overview}
         </button>
       </div>
+
+      {/* Instructions modal (mobile) — auto closes on interaction */}
+      {host._instructionsOpen && (
+        <div
+          className={`${SF_CLASSES.SF_INSTRUCTIONS_MODAL} ${SF_CLASSES.SF_INSTRUCTIONS_MODAL_OPEN}`}
+          id={APP_IDS.SF_INSTRUCTIONS_PANEL}
+          role={ARIA_ATTRS.ROLE_DIALOG}
+          aria-label={LABEL_TEXT.INSTRUCTIONS}
+        >
+          <div className={SF_CLASSES.SF_INSTRUCTIONS_HEAD}>
+            <span className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{LABEL_TEXT.INSTRUCTIONS}</span>
+            <button
+              className={SF_CLASSES.SF_INSTRUCTIONS_CLOSE}
+              type={FORM_ATTRS.BUTTON}
+              aria-label={appText(NAV_UI_KEYS.CLOSE)}
+              onClick={() => host._closeInstructions()}
+            >
+              ✕
+            </button>
+          </div>
+          <div className={SF_CLASSES.SF_INSTRUCTIONS_BODY}>
+            <p className={SF_CLASSES.SF_INSTRUCTIONS_HINT}>{t.hint}</p>
+            <p className={SF_CLASSES.SF_INSTRUCTIONS_DISCLAIMER}>{t.disclaimer}</p>
+          </div>
+        </div>
+      )}
     </Fragment>
   )
 }
