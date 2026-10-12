@@ -20,7 +20,6 @@ import { h, Fragment } from '@core/jsx.js'
 import { appText } from '@core/locale/ui-text.js'
 import { SF_ASSET_BASE } from '@core/tokens/starfield/textures.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
-import { LABEL_TEXT } from '@core/tokens/strings/text.js'
 import { SF_GROUP_ORDER, sfCatalogByGroup } from '../engine/catalog.js'
 import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { registryDist } from './dossier.js'
@@ -470,7 +469,7 @@ export function renderStarField(host: StarField) {
           aria-controls={APP_IDS.SF_INSTRUCTIONS_PANEL}
           onClick={() => host._toggleInstructions()}
         >
-          {LABEL_TEXT.INSTRUCTIONS}
+          {t.instructions}
         </button>
         <button
           className={SF_CLASSES.SF_BTN}
@@ -494,10 +493,10 @@ export function renderStarField(host: StarField) {
           className={`${SF_CLASSES.SF_INSTRUCTIONS_MODAL} ${SF_CLASSES.SF_INSTRUCTIONS_MODAL_OPEN}`}
           id={APP_IDS.SF_INSTRUCTIONS_PANEL}
           role={ARIA_ATTRS.ROLE_DIALOG}
-          aria-label={LABEL_TEXT.INSTRUCTIONS}
+          aria-label={String(t.instructions)}
         >
           <div className={SF_CLASSES.SF_INSTRUCTIONS_HEAD}>
-            <span className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{LABEL_TEXT.INSTRUCTIONS}</span>
+            <span className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{t.instructions}</span>
             <button
               className={SF_CLASSES.SF_INSTRUCTIONS_CLOSE}
               type={FORM_ATTRS.BUTTON}
