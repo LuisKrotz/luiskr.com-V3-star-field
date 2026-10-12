@@ -24,7 +24,13 @@ export async function takeStarScreenshot(s: SFState): Promise<void> {
   if (!s.canvas || !s.renderer) return
 
   try {
-    if (s.scene && s.camera) s.renderer.render(s.scene, s.camera)
+    // Route through the post chain when it built so captures match what
+    // the viewer sees (bloom/grain included); plain render otherwise.
+    if (s.pipeline) {
+      s.pipeline.render()
+    } else if (s.scene && s.camera) {
+      s.renderer.render(s.scene, s.camera)
+    }
 
     await new Promise<void>((r) => requestAnimationFrame(() => r()))
 

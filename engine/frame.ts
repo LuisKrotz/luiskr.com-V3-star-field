@@ -44,7 +44,8 @@ export {
  *   spins  — spinner.rotation.y advances by SPIN_SPEED·spin·dt
  *   satellites — same orbit formula on child pivots
  *   fly    — eased camera tween overrides manual control until done
- *   render — plain renderer.render (no post pipeline in this engine)
+ *   render — RenderPipeline post chain when it built (bloom → vignette
+ *            → film grain), plain renderer.render otherwise
  * @param s Engine state.
  * @param now RAF timestamp in ms — falls back to performance.now.
  */
@@ -124,6 +125,10 @@ function tickFrame(s: SFState, now?: number): void {
     for (const sat of node.satPivots) {
       sat.pivot.rotation.y = sat.phase + s.t * SF_MOTION.ORBIT_SPEED * sat.speed
 
+      // Self-tumble — belt hero rocks and spinning companions rotate
+      // their own mesh on top of the orbit sweep.
+      if (sat.spin) sat.mesh.rotation.y = s.t * sat.spin
+
       if (sat.ecc) {
         const th = sat.pivot.rotation.y - sat.phase
 
@@ -156,7 +161,11 @@ function tickFrame(s: SFState, now?: number): void {
   s.controls?.update()
 
   if (s.renderer && s.scene && s.camera) {
-    s.renderer.render(s.scene, s.camera)
+    if (s.pipeline) {
+      s.pipeline.render()
+    } else {
+      s.renderer.render(s.scene, s.camera)
+    }
   }
 
   trackHover(s)

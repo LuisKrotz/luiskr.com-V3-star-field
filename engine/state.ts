@@ -35,6 +35,7 @@ export function createStarState(canvas: HTMLCanvasElement, events: SFEvents = {}
   return {
     canvas,
     renderer: null,
+    pipeline: null,
     scene: null,
     world: null,
     sunLight: null,
@@ -47,8 +48,14 @@ export function createStarState(canvas: HTMLCanvasElement, events: SFEvents = {}
     dayNight: [],
 
     approached: new Set(),
+    solarWind: null,
+    fxTime: null,
     starCloud: null,
     starCloudLoading: false,
+    THREE: null,
+    deps: null,
+    glowTex: null,
+    registryBodies: new Map(),
     fly: null,
     animId: null,
     disposed: false,

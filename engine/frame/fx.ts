@@ -6,8 +6,30 @@
  * armed warm/ice ramp; star corona sprites slowly rotate and shimmer.
  * Split out of frame.ts.
  */
+import { SF_METEOR, SF_SOLAR_WIND } from '@core/tokens/starfield/params.js'
 import { armed } from './shared.js'
 import type { SFState } from '../types.js'
+
+/**
+ * Solar-wind level — the shared activity signal every wind-touched
+ * system reads from `s.solarWind`/`s.fxTime`: a slow BASE+WAVE swell
+ * (the ~11-year-style activity cycle compressed to scene seconds) plus
+ * sharp storm spikes from two detuned sines raised to a high power —
+ * rare, brief, bright gusts that make auroras ignite and flares leap.
+ * @param t Scene seconds.
+ * @returns Activity level (0 quiet … ~1.5 storm).
+ */
+function solarWindAt(t: number): number {
+  const W = SF_SOLAR_WIND
+
+  const swell = W.BASE + W.WAVE_AMP * (0.5 + 0.5 * Math.sin((2 * Math.PI * t) / W.WAVE_PERIOD))
+
+  const spike =
+    Math.pow(Math.max(0, Math.sin(t * W.STORM_F1) * Math.sin(t * W.STORM_F2 + 1.3)), W.STORM_POW) *
+    W.STORM_GAIN
+
+  return swell + spike
+}
 
 /**
  * Ambient life — the small "alive" behaviors on top of the static chart:
@@ -17,6 +39,14 @@ import type { SFState } from '../types.js'
  * @param s Engine state.
  */
 export function updateFx(s: SFState): void {
+  // Shared uniforms — one write per frame drives the weather field's
+  // evolution, aurora curtain drift, and every wind-scaled emission.
+  if (s.fxTime) s.fxTime.value = s.t
+
+  const wind = solarWindAt(s.t)
+
+  if (s.solarWind) s.solarWind.value = wind
+
   for (const node of s.nodes.values()) {
     const def = node.def
 
@@ -45,12 +75,73 @@ export function updateFx(s: SFState): void {
     }
 
     // Star corona — slow in-plane rotation plus a subtle brightness
-    // breathe makes the streamer field shimmer like a live photosphere.
+    // breathe makes the streamer field shimmer like a live photosphere;
+    // the shared wind level scales the shimmer so storms visibly swell.
     if (node.corona) {
       const co = node.corona
 
       co.material.rotation = co.phase + s.t * co.rate
-      co.material.opacity = 0.55 + 0.2 * Math.sin(s.t * (co.rate * 6) + co.phase)
+      co.material.opacity =
+        (0.55 + 0.2 * Math.sin(s.t * (co.rate * 6) + co.phase)) * (0.7 + 0.5 * wind)
+    }
+
+    // Limb flares — sin⁴ gives a bright narrow pulse per flare, scaled
+    // and stretched by the wind so a storm throws prominences into space.
+    if (node.flares) {
+      for (const f of node.flares) {
+        const k = Math.pow(Math.max(0, Math.sin(s.t * f.rate + f.phase)), 4) * (0.25 + wind)
+        const spr = f.sprite as {
+          material?: { opacity?: number }
+          scale: { set(x: number, y: number, z: number): void }
+        }
+
+        if (spr.material) spr.material.opacity = Math.min(1, k)
+
+        const sc = f.base * (SF_SOLAR_WIND.FLARE_MIN_SCALE + SF_SOLAR_WIND.FLARE_MAX_STRETCH * k)
+
+        spr.scale.set(sc, sc, 1)
+      }
+    }
+
+    // Meteor strikes — airless bodies still take hits: when the schedule
+    // elapses, a pooled flash fires at a random surface point (uniform
+    // sphere sampling), ramps bright fast, then decays — the impact
+    // fireball flash that makes the cratered terrain read as live.
+    if (node.meteorPool && node.meteorNext != null) {
+      if (s.t >= node.meteorNext) {
+        const slot = node.meteorPool.find((m) => !m.active)
+
+        if (slot) {
+          // Uniform random point on the sphere — u uniform in cos θ.
+          const u = Math.random() * 2 - 1
+          const a = Math.random() * Math.PI * 2
+          const r = Math.sqrt(1 - u * u)
+          const lift = def.radius * 1.02
+
+          slot.sprite.position.set(Math.cos(a) * r * lift, u * lift, Math.sin(a) * r * lift)
+          slot.t0 = s.t
+          slot.active = true
+        }
+
+        node.meteorNext = s.t + SF_METEOR.INTERVAL * (0.4 + Math.random() * 1.2)
+      }
+
+      for (const slot of node.meteorPool) {
+        if (!slot.active) continue
+
+        const k = (s.t - slot.t0) / SF_METEOR.LIFE
+        const mat = slot.sprite as { material?: { opacity?: number } }
+
+        if (k >= 1) {
+          slot.active = false
+
+          if (mat.material) mat.material.opacity = 0
+        } else if (mat.material) {
+          // Fast rise (first 25% of the life), slow decay after — the
+          // real fireball profile.
+          mat.material.opacity = k < 0.25 ? k / 0.25 : 1 - (k - 0.25) / 0.75
+        }
+      }
     }
   }
 }

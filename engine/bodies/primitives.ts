@@ -444,8 +444,65 @@ export function makeShell(
 }
 
 /**
+ * Crafted-station silhouette — a crewed orbiter (the ISS) is not a ball
+ * of light: a long truss carries a pressurized-module core at centre and
+ * a pair of wide flat solar-array wings at the tips, all in lit
+ * MeshStandardMaterial so the station glints in sunlight and goes dark
+ * through eclipse instead of glowing. All proportions derive from
+ * `sat.radius` so the model shrinks with the solar tier.
+ * @param THREE The three.js module.
+ * @param sat Satellite def — `radius` is the core scale unit.
+ * @returns The station group (caller positions it on its pivot).
+ */
+export function makeStation(
+  THREE: ThreeModule,
+  sat: { radius: number; color?: number }
+): THREE_NS.Object3D {
+  const r = sat.radius
+
+  const hull = new THREE.MeshStandardMaterial(
+    matParams({ color: sat.color ?? SF_COLORS.ISS, metalness: 0.75, roughness: 0.35 })
+  )
+
+  const panel = new THREE.MeshStandardMaterial(
+    matParams({ color: SF_COLORS.ISS_PANEL, metalness: 0.9, roughness: 0.4 })
+  )
+
+  const station = new THREE.Group()
+
+  // Main truss — the ISS's long backbone beam (≈5 core radii across).
+  const truss = new THREE.Mesh(new THREE.BoxGeometry(r * 5, r * 0.4, r * 0.4), hull)
+
+  // Pressurized modules — the habitable core at mid-truss.
+  const core = new THREE.Mesh(new THREE.BoxGeometry(r * 1.6, r * 1.2, r * 1.2), hull)
+
+  // Solar wings — wide flat arrays at both truss tips, panel-gold.
+  const wingGeo = new THREE.BoxGeometry(r * 1.4, r * 0.08, r * 3.2)
+
+  const wingA = new THREE.Mesh(wingGeo, panel)
+
+  wingA.position.x = r * 2.3
+
+  const wingB = new THREE.Mesh(wingGeo, panel)
+
+  wingB.position.x = -r * 2.3
+
+  station.add(truss)
+
+  station.add(core)
+
+  station.add(wingA)
+
+  station.add(wingB)
+
+  return station
+}
+
+/**
  * Decorative companion satellites — small unlit spheres on child pivots;
- * `satPivots` returns the {pivot,speed,phase} records frame.ts rotates.
+ * `sat.station` swaps the glow ball for the crafted truss-and-panels
+ * model (ISS). `satPivots` returns the {pivot,speed,phase} records
+ * frame.ts rotates.
  * @param THREE The three.js module.
  * @param deps TSL namespace + node-material ctors.
  * @param def Catalog entry — `satellites` lists the companions.
@@ -462,20 +519,21 @@ export function makeSatellites(
   for (const sat of def.satellites ?? []) {
     const pivot = new THREE.Object3D()
 
-    const geo = new THREE.SphereGeometry(sat.radius, 24, 12)
-
-    // Companion dots share the fresnel-limb material (dim rim, loose
-    // falloff) so they read as small glowing bodies, not hard discs.
-    const mat = makeGlowSphereMaterial(
-      THREE,
-      deps,
-      sat.color,
-      undefined,
-      sat.color ?? SF_COLORS.SUN_LIGHT,
-      SF_DETAIL.SAT_RIM_FALLOFF
-    )
-
-    const sm = new THREE.Mesh(geo, mat)
+    const sm: THREE_NS.Object3D = sat.station
+      ? makeStation(THREE, sat)
+      : new THREE.Mesh(
+          new THREE.SphereGeometry(sat.radius, 24, 12),
+          // Companion dots share the fresnel-limb material (dim rim, loose
+          // falloff) so they read as small glowing bodies, not hard discs.
+          makeGlowSphereMaterial(
+            THREE,
+            deps,
+            sat.color,
+            undefined,
+            sat.color ?? SF_COLORS.SUN_LIGHT,
+            SF_DETAIL.SAT_RIM_FALLOFF
+          )
+        )
 
     sm.position.x = sat.orbit
 

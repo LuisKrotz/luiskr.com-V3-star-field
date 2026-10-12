@@ -16,6 +16,7 @@ import { buildStarBodies } from './bodies-scene.js'
 import { ensureStarCloud } from './star-cloud.js'
 import { armPicking, bindPicking } from './picking.js'
 import { armFrame, handleStarResize, tickStar } from './frame.js'
+import { buildStarPostPipeline } from './post.js'
 import type * as THREE_NS from 'three'
 import { SF_CATALOG } from './catalog.js'
 import type { SFState } from './types.js'
@@ -111,13 +112,17 @@ export async function bootstrapStarField(s: SFState): Promise<void> {
   const THREE = await import('three')
 
   const [
-    { WebGPURenderer, MeshBasicNodeMaterial, MeshStandardNodeMaterial },
+    { WebGPURenderer, MeshBasicNodeMaterial, MeshStandardNodeMaterial, RenderPipeline },
     TSL,
     { OrbitControls },
+    { bloom },
+    { film },
   ] = await Promise.all([
     import('three/webgpu'),
     import('three/tsl'),
     import('three/examples/jsm/controls/OrbitControls.js'),
+    import('three/examples/jsm/tsl/display/BloomNode.js'),
+    import('three/examples/jsm/tsl/display/FilmNode.js'),
   ])
 
   if (s.disposed) return
@@ -147,18 +152,26 @@ export async function bootstrapStarField(s: SFState): Promise<void> {
 
   const glowTex = makeGlowTexture(THREE)
 
+  // Lazy-spawn handles — registry-body.ts materializes deep-catalog
+  // records on selection long after boot, so the module, node-material
+  // deps and the shared glow sprite ride on the state bag.
+  s.THREE = THREE
+  s.deps = { TSL, mats: { MeshBasicNodeMaterial, MeshStandardNodeMaterial } }
+  s.glowTex = glowTex ?? null
+
+  // Shared FX uniforms — one uniform node each for scene time and the
+  // solar-wind level; updateFx writes them once per frame and every
+  // weather/aurora/flare shader reads the same pair, so the storm
+  // propagation from Sun to planets is frame-coherent.
+  s.fxTime = TSL.uniform(0) as unknown as { value: number }
+
+  s.solarWind = TSL.uniform(0) as unknown as { value: number }
+
   // Custom-shaded surfaces (fresnel limbs, boundary shells, the Sgr A*
   // disc) are TSL node materials — the WebGPURenderer pipeline rejects
   // classic ShaderMaterials — so the TSL namespace and the node-material
   // ctor are injected into every body maker from here.
-  buildStarBodies(
-    s,
-    THREE,
-    { TSL, mats: { MeshBasicNodeMaterial, MeshStandardNodeMaterial } },
-    SF_CATALOG,
-    texMap,
-    glowTex
-  )
+  buildStarBodies(s, THREE, s.deps!, SF_CATALOG, texMap, glowTex)
 
   /* Picking */
   bindPicking(s)
@@ -175,6 +188,11 @@ export async function bootstrapStarField(s: SFState): Promise<void> {
   await warmUpShaders(s.renderer, s)
 
   if (s.disposed) return
+
+  /* Post chain — bloom + vignette + grain. Built after warmup so the
+     scene pass compiles against already-hot materials; failure is
+     non-fatal (frame falls back to a plain render). */
+  buildStarPostPipeline(s, { TSL, RenderPipeline, bloom, film })
 
   if (!s.reduced) tickStar(s)
 

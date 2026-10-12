@@ -12,6 +12,7 @@ import type * as THREE_NS from 'three'
 import {
   SF_BODY_IDS,
   SF_COLORS,
+  SF_CONSTELLATION,
   SF_DETAIL,
   SF_SCALE,
   SF_SPIRAL,
@@ -22,7 +23,15 @@ import { makeGalaxyDisc, makeNebulaSprite } from './bodies/deep-sky.js'
 import { makeBlackHole } from './bodies/black-hole.js'
 import { makeStructure } from './bodies/structures.js'
 import { makeBelt } from './bodies/belt.js'
+import { makeBeltRocks } from './bodies/belt-rocks.js'
 import { coronaFor } from './bodies/procedural.js'
+import {
+  makeAurora,
+  makeConstellation,
+  makeMeteorPool,
+  makeSolarFlares,
+  makeWeatherClouds,
+} from './bodies/weather.js'
 import {
   makeAtmoShell,
   makeCloudShell,
@@ -69,7 +78,9 @@ export function buildStarBodies(
     let spinner: THREE_NS.Object3D | null = null
     let rotor: THREE_NS.Object3D | undefined
     let lock: THREE_NS.Object3D | undefined
+    let beltRockGroup: THREE_NS.Object3D | undefined
     let vis = def
+    const rockPivots: SFNode['satPivots'] = []
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
       // Nebulae get an irregular wispy mask so they look like gas clouds;
@@ -95,6 +106,18 @@ export function buildStarBodies(
       // stays out of the raycast set so its pebbles can't intercept
       // every pointer ray, but the navigator flies to its anchor.
       mesh = makeBelt(THREE, def, glowTex)
+
+      // Hero rocks — irregular seeded meshes (stone/carbon/dust/ice/
+      // metal, fragments through large bodies) on individual Keplerian
+      // pivots, so a fly-in resolves real varied debris above the
+      // particle rubble rather than a dotted hairline.
+      const rocks = makeBeltRocks(THREE, def)
+
+      beltRockGroup = rocks.group
+
+      mesh.add(rocks.group)
+
+      rockPivots.push(...rocks.pivots)
     } else if (def.kind === SF_KINDS.GALAXY || def.kind === SF_KINDS.DWARF_GALAXY) {
       if (def.spiralDisc) {
         const spiral = makeSpiralGalaxy(
@@ -224,17 +247,47 @@ export function buildStarBodies(
 
     const cloudTex = def.cloudTexture ? texMap.get(def.cloudTexture) : undefined
 
-    if (cloudTex) {
-      const clouds = makeCloudShell(THREE, def, cloudTex)
-
-      mesh.add(clouds)
-
-      detail.push(clouds)
-    }
-
     // Atmosphere rim — day/dusk/night tint migration driven by the same
     // shared sun-direction vector the night-lights gate uses.
     const dn = s.dayNight?.find((e) => e.anchor === mesh)
+
+    if (cloudTex) {
+      // Living weather (Earth): the procedural field — jets, storms,
+      // ITCZ, snow lines, ash — replaces the static additive deck and
+      // writes the matching cloud shadows onto the surface material.
+      // Bodies without the flag keep the classic translucent shell.
+      const clouds =
+        def.weather && dn && s.fxTime
+          ? makeWeatherClouds(
+              THREE,
+              deps,
+              def,
+              cloudTex,
+              dn.dir,
+              (mesh as { material?: unknown }).material,
+              s.fxTime
+            )
+          : makeCloudShell(THREE, def, cloudTex)
+
+      if (clouds) {
+        mesh.add(clouds)
+
+        detail.push(clouds)
+      }
+    }
+
+    // Aurora curtains — polar emission fed by the shared solar-wind
+    // uniform; a storm on the Sun lights every aurora-bearing world at
+    // once (Earth plus the giant planets' high-latitude glow).
+    if (def.aurora && s.fxTime) {
+      const au = makeAurora(THREE, deps, def, s.fxTime, s.solarWind, dn?.dir)
+
+      if (au) {
+        mesh.add(au)
+
+        detail.push(au)
+      }
+    }
 
     if (def.atmosphere && dn) {
       const atmo = makeAtmoShell(THREE, deps, def, dn.dir)
@@ -292,9 +345,52 @@ export function buildStarBodies(
       }
     }
 
+    // Solar flares — limb prominence sprites rooted at the photosphere
+    // edge; updateFx breathes them with the solar-wind cycle.
+    const flares = def.flares && vis === def ? makeSolarFlares(THREE, def, glowTex) : undefined
+
+    for (const f of flares ?? []) mesh.add(f.sprite)
+
     const satPivots = makeSatellites(THREE, deps, vis, mesh)
 
     detail.push(...satPivots.map((sat) => sat.pivot))
+
+    // Belt hero rocks — the group joins the LOD detail list (far view
+    // keeps only the particle annulus) and the pivots join satPivots so
+    // tickFrame sweeps and tumbles them like every other companion.
+    if (beltRockGroup) {
+      detail.push(beltRockGroup)
+
+      satPivots.push(...rockPivots)
+    }
+
+    // LEO constellation — the Starlink-class swarm rides a single
+    // precessing pivot like a satellite (the points carry their own
+    // inclined-orbit positions inside the holder frame).
+    const swarm = def.constellation ? makeConstellation(THREE, def) : null
+
+    if (swarm) {
+      const holder = new THREE.Object3D()
+
+      holder.add(swarm)
+      mesh.add(holder)
+
+      satPivots.push({
+        pivot: holder,
+        mesh: swarm,
+        speed: SF_CONSTELLATION.SPEED,
+        phase: 0,
+        orbit: 0,
+      })
+
+      detail.push(holder)
+    }
+
+    // Meteor strikes — pooled flash sprites on cratered airless bodies;
+    // updateFx schedules and fades the impacts.
+    const meteorPool = def.meteors ? makeMeteorPool(THREE, def, glowTex) : undefined
+
+    for (const slot of meteorPool ?? []) mesh.add(slot.sprite)
 
     const anchor = def.parent ? s.anchors.get(def.parent) : s.world
 
@@ -310,6 +406,9 @@ export function buildStarBodies(
       satPivots,
       detail,
       corona,
+      flares,
+      meteorPool,
+      meteorNext: def.meteors ? 2 + Math.random() * 4 : undefined,
     }
 
     s.nodes.set(def.id, node)

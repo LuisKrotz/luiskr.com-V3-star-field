@@ -31,6 +31,9 @@ const SOLAR_RAW: SFBodyDef[] = [
     rim: SF_COLORS.STAR_LIMB,
     activity: 1.7,
     spin: 0.05,
+    // Limb prominences — flare sprites rooted at the photosphere edge
+    // breathe and stretch outward with the solar-wind cycle.
+    flares: true,
   },
   {
     id: 'mercury',
@@ -43,6 +46,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 0.02,
     dist: '0.39 AU',
     texture: SF_TEXTURES.MERCURY,
+    meteors: true,
     phase: 0.4,
   },
   {
@@ -53,7 +57,12 @@ const SOLAR_RAW: SFBodyDef[] = [
     radius: 1.6,
     orbit: 31,
     speed: 1.2,
-    spin: -0.01,
+    // Retrograde and slow — the real Venus is the chart's only planet
+    // whose sidereal day (243 d, backwards) outlasts its year (225 d).
+    // spin −0.25·SPIN_SPEED = −0.03 rad/s vs orbit 1.2·ORBIT_SPEED =
+    // 0.06 rad/s → a Venus "day" (~210 s) takes ~2× its "year" (~105 s),
+    // and the negative sign keeps it turning against every sibling.
+    spin: -0.25,
     dist: '0.72 AU',
     texture: SF_TEXTURES.VENUS_SURFACE,
     shellTexture: SF_TEXTURES.VENUS_ATMOS,
@@ -76,12 +85,23 @@ const SOLAR_RAW: SFBodyDef[] = [
     cloudTexture: SF_TEXTURES.EARTH_CLOUDS,
     bumpTexture: SF_TEXTURES.EARTH_ELEVATION,
     atmosphere: 1,
+    // Living weather — procedural jet streams, ITCZ/monsoon band,
+    // hurricanes, seasonal snow lines, volcanic ash + cloud shadows
+    // (engine/bodies/weather.ts), fed by the shared fxTime uniform.
+    weather: true,
+    // Boreal curtains — solar-wind-driven polar emission shell.
+    aurora: true,
+    // Starlink-class LEO swarm — a point shell sweeping one inclined plane.
+    constellation: { count: 56, orbit: 1.45 },
     phase: 3.1,
     cycle: { period: 90 },
-    // ISS — the largest crewed object in low Earth orbit: a pin-prick
-    // satellite hugging the surface, lapping the planet fast enough to
-    // read as "artificial" against the Moon's stately sweep.
-    satellites: [{ radius: 0.07, orbit: 2.4, speed: 9, color: SF_COLORS.ISS, phase: 0.7 }],
+    // ISS — the largest crewed object in low Earth orbit: rendered as a
+    // lit truss-and-panels model (`station`), hugging the cloud deck in
+    // a true close orbit and lapping the planet fast enough to read as
+    // artificial against the Moon's stately sweep.
+    satellites: [
+      { radius: 0.09, orbit: 1.3, speed: 9, color: SF_COLORS.ISS, phase: 0.7, station: true },
+    ],
   },
   {
     id: 'moon',
@@ -94,6 +114,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     speed: 3.4,
     dist: '384 400 km',
     texture: SF_TEXTURES.MOON,
+    meteors: true,
     phase: 1.2,
   },
   {
@@ -118,7 +139,9 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 55,
     speed: 0.65,
     dist: '2.77 AU',
-    color: SF_COLORS.CERES,
+    // Dawn HAMO global mosaic (PIA20351) — real bright spots at Occator.
+    texture: SF_TEXTURES.CERES,
+    meteors: true,
     phase: 0.9,
   },
   {
@@ -132,6 +155,15 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 2.4,
     dist: '5.20 AU',
     texture: SF_TEXTURES.JUPITER,
+    // Jovian auroras — the system's most powerful: tight, bright
+    // cyan-violet hydrogen curtains (Jupiter's field emits mostly UV).
+    aurora: {
+      color: SF_COLORS.AURORA_JUPITER,
+      colorLow: SF_COLORS.AURORA_JUPITER_LOW,
+      tilt: 0.17,
+      lat: 0.78,
+      intensity: 1.4,
+    },
     phase: 5.3,
   },
   {
@@ -148,6 +180,15 @@ const SOLAR_RAW: SFBodyDef[] = [
     texture: SF_TEXTURES.SATURN,
     shellTexture: SF_TEXTURES.SATURN_RING,
     shellRing: true,
+    // Saturnian auroras — deep-blue hydrogen curtains on a nearly
+    // axis-aligned dipole (Saturn's field tilts <1° off the pole).
+    aurora: {
+      color: SF_COLORS.AURORA_SATURN,
+      colorLow: SF_COLORS.AURORA_SATURN_LOW,
+      tilt: 0.02,
+      lat: 0.84,
+      intensity: 0.85,
+    },
     phase: 2.2,
   },
   {
@@ -162,6 +203,15 @@ const SOLAR_RAW: SFBodyDef[] = [
     tilt: 1.71,
     dist: '19.2 AU',
     texture: SF_TEXTURES.URANUS,
+    // Uranian auroras — the palest of the giants, teal curtains on a
+    // dipole tilted ~59° off a spin axis already lying on its side.
+    aurora: {
+      color: SF_COLORS.AURORA_URANUS,
+      colorLow: SF_COLORS.AURORA_URANUS_LOW,
+      tilt: 1.03,
+      lat: 0.7,
+      intensity: 0.4,
+    },
     phase: 4.9,
   },
   {
@@ -175,6 +225,16 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 1.5,
     dist: '30.1 AU',
     texture: SF_TEXTURES.NEPTUNE,
+    // Neptunian auroras — faint violet-cyan curtains on a wildly offset
+    // dipole (~47° tilt, offset half a radius), so the oval sits far off
+    // the spin pole and wanders with longitude.
+    aurora: {
+      color: SF_COLORS.AURORA_NEPTUNE,
+      colorLow: SF_COLORS.AURORA_NEPTUNE_LOW,
+      tilt: 0.82,
+      lat: 0.72,
+      intensity: 0.55,
+    },
     phase: 5.8,
   },
   {
@@ -186,7 +246,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 116,
     speed: 0.15,
     dist: '39.5 AU',
-    color: SF_COLORS.PLUTO,
+    texture: SF_TEXTURES.PLUTO,
     phase: 1.5,
   },
   {
@@ -199,7 +259,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'mars',
     speed: 4.2,
     dist: '9 376 km',
-    color: SF_COLORS.PHOBOS,
+    texture: SF_TEXTURES.PHOBOS,
+    meteors: true,
     phase: 0.6,
   },
   {
@@ -212,7 +273,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'mars',
     speed: 3.0,
     dist: '23 460 km',
-    color: SF_COLORS.DEIMOS,
+    texture: SF_TEXTURES.DEIMOS,
+    meteors: true,
     phase: 2.4,
   },
   {
@@ -224,7 +286,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 57,
     speed: 0.7,
     dist: '2.36 AU',
-    color: SF_COLORS.VESTA,
+    texture: SF_TEXTURES.VESTA,
+    meteors: true,
     phase: 2.7,
   },
   {
@@ -237,7 +300,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'jupiter',
     speed: 3.8,
     dist: '421 700 km',
-    color: SF_COLORS.IO,
+    texture: SF_TEXTURES.IO,
     phase: 0.9,
   },
   {
@@ -250,7 +313,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'jupiter',
     speed: 3.1,
     dist: '671 000 km',
-    color: SF_COLORS.EUROPA,
+    texture: SF_TEXTURES.EUROPA,
     phase: 2.1,
   },
   {
@@ -263,7 +326,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'jupiter',
     speed: 2.4,
     dist: '1.07 Gm',
-    color: SF_COLORS.GANYMEDE,
+    texture: SF_TEXTURES.GANYMEDE,
+    meteors: true,
     phase: 4.0,
   },
   {
@@ -276,7 +340,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'jupiter',
     speed: 1.8,
     dist: '1.88 Gm',
-    color: SF_COLORS.CALLISTO,
+    // Most heavily cratered body in the system — the real Galileo
+    // mosaic keeps Valhalla's concentric rings; meteors still hit it.
+    texture: SF_TEXTURES.CALLISTO,
+    meteors: true,
     phase: 5.2,
   },
   {
@@ -289,7 +356,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'saturn',
     speed: 4.0,
     dist: '186 000 km',
-    color: SF_COLORS.MIMAS,
+    texture: SF_TEXTURES.MIMAS,
+    meteors: true,
     phase: 1.1,
   },
   {
@@ -302,7 +370,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'saturn',
     speed: 3.4,
     dist: '238 000 km',
-    color: SF_COLORS.ENCELADUS,
+    texture: SF_TEXTURES.ENCELADUS,
     phase: 2.9,
   },
   {
@@ -315,7 +383,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'saturn',
     speed: 2.9,
     dist: '377 000 km',
-    color: SF_COLORS.DIONE,
+    texture: SF_TEXTURES.DIONE,
+    meteors: true,
     phase: 4.6,
   },
   {
@@ -328,7 +397,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'saturn',
     speed: 2.4,
     dist: '527 000 km',
-    color: SF_COLORS.RHEA,
+    texture: SF_TEXTURES.RHEA,
+    meteors: true,
     phase: 0.4,
   },
   {
@@ -341,7 +411,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'saturn',
     speed: 1.7,
     dist: '1.22 Gm',
-    color: SF_COLORS.TITAN,
+    texture: SF_TEXTURES.TITAN,
     phase: 3.3,
   },
   {
@@ -354,7 +424,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'saturn',
     speed: 1.2,
     dist: '3.56 Gm',
-    color: SF_COLORS.IAPETUS,
+    texture: SF_TEXTURES.IAPETUS,
+    meteors: true,
     phase: 5.8,
   },
   {
@@ -367,7 +438,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     parent: 'neptune',
     speed: 2.6,
     dist: '354 800 km',
-    color: SF_COLORS.TRITON,
+    texture: SF_TEXTURES.TRITON,
     phase: 1.9,
   },
   {
@@ -379,7 +450,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 42,
     speed: 1.1,
     dist: '1.19 AU',
-    color: SF_COLORS.RYUGU,
+    texture: SF_TEXTURES.RYUGU,
+    meteors: true,
     phase: 5.5,
   },
   {
@@ -391,7 +463,8 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 43.5,
     speed: 1.05,
     dist: '1.13 AU',
-    color: SF_COLORS.BENNU,
+    texture: SF_TEXTURES.BENNU,
+    meteors: true,
     phase: 2.2,
   },
   {
