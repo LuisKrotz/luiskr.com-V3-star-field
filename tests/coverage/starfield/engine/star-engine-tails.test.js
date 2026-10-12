@@ -23,8 +23,9 @@ import { armFrame, anchorWorldPos, handleStarResize, tickStar } from '../../../.
 import { startFly, updateFly, cancelFly } from '../../../../engine/fly.js'
 import { armPicking, bindPicking } from '../../../../engine/picking.js'
 import { makeGlowTexture, setupStarCamera, setupStarScene } from '../../../../engine/scene.js'
-import { buildStarBodies, SF_USER_BODY } from '../../../../engine/bodies-scene.js'
+import { buildStarBodies, SF_USER_BODY, SF_USER_PROXY } from '../../../../engine/bodies-scene.js'
 import { takeStarScreenshot } from '../../../../engine/screenshot.js'
+import { buildStarPostPipeline } from '../../../../engine/post.js'
 import { SF_CATALOG } from '../../../../engine/catalog.js'
 import { __setRendererInitDelay, MeshBasicNodeMaterial } from 'three/webgpu'
 import * as TSL from 'three/tsl'
@@ -693,6 +694,32 @@ describe('fly tween', () => {
   })
 })
 
+describe('post pipeline tails', () => {
+  test('buildStarPostPipeline early-returns on a cold state and devWarns on ctor failure', () => {
+    // Nothing live yet — the guard's early return.
+    buildStarPostPipeline(makeState({ camera: null }), {})
+
+    clearDevLog()
+
+    // RenderPipeline throws — the catch arm warns and keeps pipeline null.
+    const s = makeState({ renderer: {}, scene: {}, camera: fakeCamera() })
+
+    buildStarPostPipeline(s, {
+      TSL,
+      RenderPipeline: class {
+        constructor() {
+          throw new Error('boom')
+        }
+      },
+      bloom: jest.fn(),
+      film: jest.fn(),
+    })
+
+    expect(s.pipeline).toBeNull()
+    expect(getDevLog().filter((e) => e.level === LOG_LEVELS.WARN).length).toBeGreaterThan(0)
+  })
+})
+
 describe('picking', () => {
   const makeRaycaster = (hits) =>
     class {
@@ -914,6 +941,38 @@ describe('picking', () => {
 
     expect(s.hoverId).toBeNull()
   })
+
+  test('pickAt proxy race — the smallest authored radius wins', () => {
+    // Two proxy bubbles on one ray — the second (larger body) loses the
+    // `r < proxyR` compare, covering its else arm.
+    const small = { object: { userData: { [SF_USER_BODY]: 'moon', [SF_USER_PROXY]: true } } }
+    const large = { object: { userData: { [SF_USER_BODY]: 'earth', [SF_USER_PROXY]: true } } }
+
+    armPicking(makeRaycaster([small, large]))
+
+    const canvas = makeCanvas()
+
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 })
+
+    const s = makeState({
+      canvas,
+      camera: fakeCamera(),
+      pickables: [{}],
+      onHover: jest.fn(),
+      nodes: new Map([
+        ['moon', { def: { radius: 1 } }],
+        ['earth', { def: { radius: 5 } }],
+      ]),
+    })
+
+    bindPicking(s)
+
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
+    )
+
+    expect(s.hoverId).toBe('moon')
+  })
 })
 
 describe('scene helpers', () => {
@@ -983,8 +1042,15 @@ describe('buildStarBodies', () => {
       (d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT
     )
 
+    // Solar stars/systems (the Sun) additionally carry a hidden
+    // far-pick proxy so the collapsed glyph stays tappable past
+    // SF_LOD.SOLAR_FAR.
+    const farPicks = SF_CATALOG.filter(
+      (d) => d.group === SF_GROUPS.SOLAR && (d.kind === SF_KINDS.STAR || d.kind === SF_KINDS.SYSTEM)
+    ).length
+
     expect(s.nodes.size).toBe(SF_CATALOG.length + satIds.length)
-    expect(s.pickables.length).toBe(pickable.length + satIds.length)
+    expect(s.pickables.length).toBe(pickable.length + satIds.length + farPicks)
     expect(s.nodes.get('iss')?.def.kind).toBe(SF_KINDS.SATELLITE)
   })
 

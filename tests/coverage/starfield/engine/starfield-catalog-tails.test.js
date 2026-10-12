@@ -24,16 +24,59 @@ describe('catalog honest-placement tails', () => {
   })
 
   test('nearby stars sit at their true galactic-tier radii, not a shared shell', () => {
-    // Proxima (4.246 ly → 0.042 units) and Deneb (2 615 ly → 26.15
-    // units) must keep their honest radii — distinct, ordered, and far
-    // inside the Sun's 267-unit galactocentric ring.
+    // Alpha Centauri A (4.37 ly → ~1 092 units) keeps its honest radius
+    // as the triple-system anchor; Proxima no longer carries its own
+    // `pos` — it orbits the pair (`parent` + `orbit`) and Deneb stays
+    // the far-ly honest landmark.
+    const alpha = SF_CATALOG.find((b) => b.id === 'alpha-centauri')
+
     const proxima = SF_CATALOG.find((b) => b.id === 'proxima-centauri')
 
     const deneb = SF_CATALOG.find((b) => b.id === 'deneb')
 
-    expect(Math.hypot(...proxima.pos)).toBeCloseTo(4.246 / SF_SCALE.GALACTIC_LY, 4)
+    expect(Math.hypot(...alpha.pos)).toBeCloseTo(4.37 / SF_SCALE.GALACTIC_LY, 4)
+    expect(proxima.parent).toBe('alpha-centauri')
     expect(Math.hypot(...deneb.pos)).toBeCloseTo(2615 / SF_SCALE.GALACTIC_LY, 4)
-    expect(Math.hypot(...proxima.pos)).toBeLessThan(Math.hypot(...deneb.pos))
+    expect(Math.hypot(...alpha.pos)).toBeLessThan(Math.hypot(...deneb.pos))
+  })
+
+  test('Alpha Centauri is a real orbiting triple: B + Proxima parented, ordered, eccentric', () => {
+    const alphaB = SF_CATALOG.find((b) => b.id === 'alpha-centauri-b')
+
+    const proxima = SF_CATALOG.find((b) => b.id === 'proxima-centauri')
+
+    // Both companions orbit the A anchor — a true hierarchy, not two
+    // co-located glyphs.
+    expect(alphaB.parent).toBe('alpha-centauri')
+    expect(proxima.parent).toBe('alpha-centauri')
+
+    // Proxima rides far outside the tight AB pair (real ratio is
+    // ~550:1; the chart exaggerates but keeps the ordering honest).
+    expect(proxima.orbit).toBeGreaterThan(alphaB.orbit)
+
+    // Real orbital eccentricities — the AB pair's 0.52 swing and
+    // Proxima's wider ~0.5 path, not perfect circles.
+    expect(alphaB.ecc).toBeGreaterThan(0.4)
+    expect(proxima.ecc).toBeGreaterThan(0.4)
+  })
+
+  test('Proxima b, c and d orbit the red dwarf as real planets', () => {
+    const planets = ['proxima-b', 'proxima-c', 'proxima-d'].map((id) =>
+      SF_CATALOG.find((b) => b.id === id)
+    )
+
+    for (const p of planets) {
+      expect(p).toBeDefined()
+      expect(p.parent).toBe('proxima-centauri')
+      expect(p.orbit).toBeGreaterThan(0)
+      expect(p.speed).toBeGreaterThan(0)
+    }
+
+    // Semi-major-axis ordering matches reality: d < b < c.
+    const [b, c, d] = planets
+
+    expect(d.orbit).toBeLessThan(b.orbit)
+    expect(b.orbit).toBeLessThan(c.orbit)
   })
 
   test('shrinkSolar scales radius/orbit/belt/satellites and keeps absent fields absent', () => {
