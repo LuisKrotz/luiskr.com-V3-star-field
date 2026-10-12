@@ -166,11 +166,13 @@ function weatherField(TSL: TslNs, time: N, sunDirU: N, cloudTex: THREE_NS.Textur
 
   dens = dens.add(
     // GLSL smoothstep needs lo<hi edges — the inverted falloff is
-    // written as oneMinus(smoothstep(lo, hi, d)).
+    // written as oneMinus(smoothstep(lo, hi, d)). The cell gate turns
+    // the band into a chain of convective towers: without it the gain
+    // paints a solid equatorial stripe, not weather.
     smoothstep(W.ITCZ_HALF * 0.3, W.ITCZ_HALF, lat.sub(decl.mul(W.ITCZ_WANDER)).abs())
       .oneMinus()
       .mul(W.ITCZ_GAIN)
-      .mul(float(0.55).add(itczDetail.mul(0.45)))
+      .mul(smoothstep(W.ITCZ_CELL_LO, W.ITCZ_CELL_HI, itczDetail))
   )
 
   // Hurricanes — seeded tropical vortices. Each swirls the sampling
@@ -313,7 +315,10 @@ export function makeWeatherClouds(
     field.ash.clamp(0, 1)
   )
 
-  mat.opacityNode = field.dens.clamp(0, 1).mul(SF_DETAIL.CLOUD_OPACITY)
+  // Coverage → opacity through a power curve: thin haze dies fast so
+  // the ocean and continents stay saturated instead of wearing a pale
+  // film; only real cloud mass reads opaque.
+  mat.opacityNode = field.dens.clamp(0, 1).pow(SF_WEATHER.DENS_POW).mul(SF_DETAIL.CLOUD_OPACITY)
 
   // Surface cloud shadow — same field, day side only. `colorNode`
   // REPLACES the material's map lookup entirely (it doesn't multiply
