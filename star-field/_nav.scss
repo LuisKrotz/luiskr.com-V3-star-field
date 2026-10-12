@@ -76,7 +76,9 @@
   position: absolute;
   top: $_NAV_INSET;
   left: to-rem($gap-272);
-  bottom: to-rem($space-xl);
+  // Bottom inset matches the nav-toggle/action buttons' own offset so
+  // the drawer's lower edge lands on the same line as the bottom chrome.
+  bottom: calc(#{to-rem($space-xl)} + #{to-rem($space-md)});
   z-index: 40;
   width: min(#{to-rem($space-7xl)}, 84vw);
   translate: calc(-100% - #{to-rem($space-4xl)}) 0;
@@ -106,7 +108,15 @@
 
   &-panel {
     height: 100%;
+    // Content-box sizing would add the padding on top of the 100%
+    // track — the card then overflows its container and drops below
+    // the viewport edge (bigger than the dossier panel, no bottom
+    // margin). Border-box keeps the padding inside the track.
+    box-sizing: border-box;
     overflow-y: auto;
+    // Contain touch scrolls inside the sheet — without this the gesture
+    // chains to the page scroller and the list feels unscrollable.
+    overscroll-behavior: contain;
     padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xl);
     background: var(--sf-chrome);
     backdrop-filter: blur(to-rem($space-md));
@@ -221,6 +231,22 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-top: to-rem($space-2xs);
+}
+
+// In-drawer scale disclaimer — hidden on desktop where the pinned strip
+// carries it; _mobile.scss flips it on so the text lives in the sheet
+// instead of cluttering the bottom chrome.
+.#{$_B_SF}-nav-disclaimer {
+  @extend .txt-xs;
+
+  display: none;
+  font-weight: 400;
+  color: var(--sf-ink-3);
+  line-height: 1.75;
+  letter-spacing: 0.04em;
+  margin: to-rem($space-xl) 0 0;
+  padding-top: to-rem($space-lg);
+  border-top: var(--space-hairline) solid var(--sf-line-2);
 }
 
 .#{$_B_SF}-nav-more {

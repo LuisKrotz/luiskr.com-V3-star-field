@@ -55,7 +55,12 @@ export function makeNebulaSprite(
       // colors the last-ditch glow fallback.
       color: photo || gas ? SF_COLORS.SUN_LIGHT : def.color,
       transparent: true,
-      blending: photo || gas ? THREE.NormalBlending : THREE.AdditiveBlending,
+      // Additive on every path: a normal-blended photo occludes the
+      // star field with its dark sky frame — a flat card. Additive lets
+      // background stars shine through the photo's dark regions while
+      // its light accumulates, and the feathered mask still melts the
+      // rectangular edge (SRC_ALPHA gates the contribution).
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
   )
@@ -119,7 +124,9 @@ export function makeGalaxyDisc(
       map: masked ?? photo ?? glowTex,
       color: photo ? SF_COLORS.SUN_LIGHT : def.color,
       transparent: true,
-      blending: photo ? THREE.NormalBlending : THREE.AdditiveBlending,
+      // Additive so the photo's dark sky transmits background starlight
+      // instead of reading as an opaque tilted card — see nebula sprite.
+      blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
       depthWrite: false,
     })

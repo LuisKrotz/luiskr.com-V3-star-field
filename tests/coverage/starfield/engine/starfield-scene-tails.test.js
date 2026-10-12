@@ -10,16 +10,11 @@
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals'
 
 import { ensureStarCloud, disposeStarCloud } from '../../../../engine/star-cloud.js'
-import {
-  anchorScreenPos,
-  armFrame,
-  rotateStarCamera,
-  tickStar,
-} from '../../../../engine/frame.js'
+import { anchorScreenPos, armFrame, rotateStarCamera, tickStar } from '../../../../engine/frame.js'
 import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
 import * as THREE from 'three'
-import { MeshBasicNodeMaterial } from 'three/webgpu'
+import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from 'three/webgpu'
 import * as TSL from 'three/tsl'
 
 /** TSL namespace + node-material ctor bundle injected into body makers. */
@@ -224,9 +219,7 @@ describe('frame projection + LOD', () => {
     expect(anchorScreenPos({}, s)).toBeNull()
 
     // getWorldPosition without project → null.
-    expect(
-      anchorScreenPos({ getWorldPosition: () => ({ x: 0, y: 0, z: 0 }) }, s)
-    ).toBeNull()
+    expect(anchorScreenPos({ getWorldPosition: () => ({ x: 0, y: 0, z: 0 }) }, s)).toBeNull()
 
     // No camera / zero-size canvas → null.
     expect(anchorScreenPos(fakeAnchor({ x: 0, y: 0, z: 0 }), { canvas: s.canvas })).toBeNull()
@@ -246,7 +239,9 @@ describe('frame projection + LOD', () => {
 
     const detail = [{ visible: true }, { visible: true }]
     const farDetail = [{ visible: true }]
-    const hoverAnchor = { getWorldPosition: () => ({ x: 0, y: 0, z: 0, project: () => ({ x: 0, y: 0, z: 0 }) }) }
+    const hoverAnchor = {
+      getWorldPosition: () => ({ x: 0, y: 0, z: 0, project: () => ({ x: 0, y: 0, z: 0 }) }),
+    }
 
     const s = {
       animId: 0,
@@ -332,10 +327,7 @@ describe('frame projection + LOD', () => {
 
     // Anchor present but projecting behind the camera — pos-null arm.
     s.hoverId = 'behind'
-    s.anchors.set(
-      'behind',
-      fakeAnchor({ x: 0, y: 0, z: 2 })
-    )
+    s.anchors.set('behind', fakeAnchor({ x: 0, y: 0, z: 2 }))
     tickStar(s, 96)
 
     expect(s.onHoverMove).not.toHaveBeenCalled()
@@ -396,7 +388,13 @@ describe('rotateStarCamera orbit math', () => {
 describe('spiral + satellite arms', () => {
   test('makeSpiralGalaxy honors defaults, arm overrides and the mobile divisor', () => {
     // No spiralDisc → default count/arms; empty texMap → procedural fallback.
-    const a = makeSpiralGalaxy(THREE, { id: 'g1', radius: 10, tilt: 0.1 }, new Map(), undefined, false)
+    const a = makeSpiralGalaxy(
+      THREE,
+      { id: 'g1', radius: 10, tilt: 0.1 },
+      new Map(),
+      undefined,
+      false
+    )
 
     expect(a.group).toBeTruthy()
     expect(a.pick).toBeTruthy()
@@ -488,5 +486,269 @@ describe('spiral + satellite arms', () => {
     expect(s.nodes.get('probe-planet').satPivots[0].phase).toBe(0)
     expect(s.nodes.get('probe-galaxy')).toBeTruthy()
     expect(s.nodes.get('probe-elliptical')).toBeTruthy()
+  })
+})
+
+describe('day/night + axis-lock tails', () => {
+  const NODE_DEPS_STD = {
+    TSL,
+    mats: { MeshBasicNodeMaterial, MeshStandardNodeMaterial },
+  }
+
+  const anchorAt = (x, y, z) => ({
+    getWorldPosition: (v) => {
+      v.x = x
+      v.y = y
+      v.z = z
+
+      return v
+    },
+  })
+
+  /** Plain {x,y,z,set} stand-in — the auto-mock's Vector3 swallows sets. */
+  const dirVec = () => ({
+    x: 0,
+    y: 0,
+    z: 0,
+    set(x, y, z) {
+      this.x = x
+      this.y = y
+      this.z = z
+    },
+  })
+
+  test('updateDayNight writes normalized sun directions and survives every guard', async () => {
+    const { updateDayNight } = await import('../../../../engine/frame/updates.js')
+
+    armFrame(THREE.Vector3, THREE.Color)
+
+    // Empty/undefined registries and a missing sun light all bail early.
+    updateDayNight({})
+    updateDayNight({ dayNight: [] })
+    updateDayNight({ dayNight: [{ anchor: {}, dir: dirVec() }] })
+
+    const dir = dirVec()
+
+    const s = {
+      sunLight: anchorAt(100, 0, 0),
+      dayNight: [
+        { anchor: anchorAt(0, 0, 0), dir },
+        // Coincident body — the len>0 guard leaves the zero vector.
+        { anchor: anchorAt(100, 0, 0), dir: dirVec() },
+      ],
+    }
+
+    updateDayNight(s)
+
+    expect(dir.x).toBeCloseTo(1)
+    expect(dir.y).toBeCloseTo(0)
+    expect(dir.z).toBeCloseTo(0)
+    expect(s.dayNight[1].dir).toEqual({ x: 0, y: 0, z: 0, set: expect.any(Function) })
+  })
+
+  test('tilted orbiting bodies get an inertial lock; moons keep the mesh tilt', async () => {
+    // Recording Group — the auto-mock's chain proxy swallows
+    // `rotation.z = tilt`, so a plain class stores it for assertion.
+    class RecGroup {
+      constructor() {
+        this.rotation = { x: 0, y: 0, z: 0 }
+        this.children = []
+      }
+      add(c) {
+        this.children.push(c)
+      }
+    }
+
+    const T = { ...THREE, Group: RecGroup }
+
+    const s = {
+      scene: new THREE.Scene(),
+      world: new THREE.Group(),
+      nodes: new Map(),
+      anchors: new Map(),
+      pickables: [],
+      dayNight: [],
+    }
+
+    const defs = [
+      {
+        id: 'tilted',
+        kind: 'planet',
+        radius: 2,
+        orbit: 10,
+        speed: 1,
+        tilt: 0.41,
+        color: 0x8899aa,
+      },
+      {
+        id: 'tilted-moon',
+        kind: 'moon',
+        radius: 1,
+        orbit: 3,
+        parent: 'tilted',
+        speed: 2,
+        tilt: 0.1,
+        color: 0xaaaaaa,
+      },
+      {
+        id: 'earth-like',
+        kind: 'planet',
+        radius: 1.7,
+        orbit: 39,
+        speed: 1,
+        tilt: 0.41,
+        texture: '/day.jpg',
+        emissiveTexture: '/night.jpg',
+        atmosphere: 1,
+      },
+    ]
+
+    const texMap = new Map([
+      ['/day.jpg', { fake: true }],
+      ['/night.jpg', { fake: true }],
+    ])
+
+    buildStarBodies(s, T, NODE_DEPS_STD, defs, texMap, undefined)
+
+    const planet = s.nodes.get('tilted')
+
+    // Axis lock — tilt on the lock's z; the mesh rides inside the lock.
+    expect(planet.lock).toBeInstanceOf(RecGroup)
+    expect(planet.lock.rotation.z).toBeCloseTo(0.41)
+    expect(planet.lock.children).toContain(planet.mesh)
+
+    // The moon keeps the legacy in-orbit tilt path — no lock.
+    expect(s.nodes.get('tilted-moon').lock).toBeUndefined()
+
+    // The day/night registry picked up the emissive+atmosphere body.
+    expect(s.dayNight.length).toBe(1)
+    expect(s.dayNight[0].anchor).toBe(s.nodes.get('earth-like').mesh)
+
+    // Node-material emissive gating + the atmosphere shell in detail.
+    expect(s.nodes.get('earth-like').mesh.material.emissiveNode).toBeTruthy()
+    expect(s.nodes.get('earth-like').detail.length).toBeGreaterThan(0)
+
+    // Classic-material fallback — without MeshStandardNodeMaterial the
+    // day/night registry still gets a sunDir but the emissive map falls
+    // back to the unlit emissiveMap path.
+    const s2 = {
+      scene: new THREE.Scene(),
+      world: new THREE.Group(),
+      nodes: new Map(),
+      anchors: new Map(),
+      pickables: [],
+      dayNight: [],
+    }
+
+    buildStarBodies(
+      s2,
+      T,
+      { TSL, mats: { MeshBasicNodeMaterial } },
+      [
+        {
+          id: 'legacy-earth',
+          kind: 'planet',
+          radius: 1,
+          orbit: 10,
+          speed: 1,
+          emissiveTexture: '/night.jpg',
+        },
+      ],
+      texMap,
+      undefined
+    )
+
+    expect(s2.dayNight.length).toBe(1)
+
+    // Atmosphere shell with a default opacity — the `?? 1` arm the
+    // guarded caller (def.atmosphere && dn) can never reach.
+    const { makeAtmoShell } = await import('../../../../engine/bodies/primitives.js')
+
+    expect(makeAtmoShell(THREE, NODE_DEPS_STD, { radius: 1 }, dirVec())).toBeTruthy()
+  })
+
+  test('tickFrame counter-rotates the lock and updateFx syncs cycle to the orbit', async () => {
+    const { updateFx } = await import('../../../../engine/frame/fx.js')
+
+    armFrame(THREE.Vector3, THREE.Color)
+
+    const lock = { rotation: { y: 0, z: 0.41 } }
+    const pivot = { rotation: { y: 0 } }
+    const lerpColors = jest.fn()
+    const lerpRogue = jest.fn()
+
+    const s = {
+      animId: 0,
+      disposed: false,
+      reduced: false,
+      lastT: 0,
+      t: 0,
+      nodes: new Map([
+        [
+          'earth',
+          {
+            def: { orbit: 39, speed: 1, cycle: { period: 90 } },
+            pivot,
+            lock,
+            mesh: { material: { color: { lerpColors } } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+          },
+        ],
+        [
+          // Free-running glaciation — no axis lock, so the tint keeps
+          // its wall-clock sine instead of syncing to an orbit.
+          'rogue',
+          {
+            def: { cycle: { period: 90 } },
+            pivot: { rotation: { y: 0 } },
+            mesh: { material: { color: { lerpColors: lerpRogue } } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+          },
+        ],
+      ]),
+      camera: { position: { x: 0, y: 0, z: 0 } },
+      controls: null,
+      renderer: null,
+      scene: null,
+      canvas: null,
+    }
+
+    const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 7)
+
+    tickStar(s, 16)
+
+    raf.mockRestore()
+
+    // Orbit advanced θ → the lock cancels it exactly on its own Y.
+    expect(pivot.rotation.y).toBeGreaterThan(0)
+    expect(lock.rotation.y).toBeCloseTo(-pivot.rotation.y)
+
+    // Cycle k = 0.5 + 0.5·cos(θ) — orbit-synced seasons, not wall time.
+    expect(lerpColors.mock.calls[0][2]).toBeCloseTo(0.5 + 0.5 * Math.cos(pivot.rotation.y))
+
+    // The unlocked body keeps the free-running sine on s.t.
+    expect(lerpRogue.mock.calls[0][2]).toBeCloseTo(0.5 + 0.5 * Math.sin((2 * Math.PI * s.t) / 90))
+
+    updateFx(s)
+  })
+
+  test('fillSpiral covers the barred bulge and the bubble resample paths', async () => {
+    const { fillSpiral } = await import('../../../../engine/spiral.js')
+
+    const count = 64
+    const pos = new Float32Array(count * 3)
+    const col = new Float32Array(count * 3)
+
+    // count·BULGE ≥ 1 → the `inBulge` block rotates bar points; the
+    // off-center exclusion bubble catches some arm points so the
+    // keep-dim, resample-escape and outside arms all run.
+    const bubble = { x: 30, y: 0, z: 0, r: 25 }
+
+    fillSpiral(pos, col, 100, 7, count, 4, 1, 0.1, undefined, bubble)
+
+    expect(Array.from(pos).some((v) => v !== 0)).toBe(true)
+    expect(Array.from(col).some((v) => v !== 0)).toBe(true)
   })
 })

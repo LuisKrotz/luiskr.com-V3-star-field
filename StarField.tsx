@@ -15,7 +15,7 @@ import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { SF_CLASSES } from '@core/tokens/classes/starfield.js'
 import { KEYS } from '@core/tokens/primitives.js'
-import { KEYBOARD_EVENTS } from '@core/tokens/events/dom.js'
+import { KEYBOARD_EVENTS, POINTER_EVENTS } from '@core/tokens/events/dom.js'
 import { h } from '@core/jsx.js'
 import { BaseComponent } from '@core/Component.js'
 import store from '@core/store.js'
@@ -32,7 +32,10 @@ import {
   searchRegistry,
 } from './engine/registry.js'
 import type { SFRegistryManifest, SFRegistryRecord } from './engine/registry.js'
-import { SF_KEYS } from '@core/tokens/starfield/params.js'
+import { SF_BODY_IDS, SF_KEYS } from '@core/tokens/starfield/params.js'
+import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
+import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
+import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
 import router from '@core/router/router.js'
 import type { RouteDescriptor } from '@core/router/types.js'
@@ -83,6 +86,7 @@ export class StarField extends BaseComponent {
   _sfFailed = false // engine boot failed — CSS fallback renders instead
   _fallbackDispose: (() => void) | null = null // 2D fallback resize-observer cleanup
   _navOpen = false // navigator drawer open state
+  _instructionsOpen = false // instructions modal open state (mobile)
   _search = '' // navigator directory filter query
   _selectedId: string | null = null // dossier panel body id
   _dossier: SFDossier | null = null // locale dossier for the panel
@@ -127,6 +131,17 @@ export class StarField extends BaseComponent {
     if (this.shadowRoot && !this.shadowRoot.contains(canvas)) {
       this.shadowRoot?.insertBefore(canvas, this._contentNode)
     }
+
+    this.shadowRoot?.addEventListener(POINTER_EVENTS.POINTERDOWN, (e: Event) => {
+      const target = e.target as HTMLElement | null
+
+      if (
+        !target?.closest(`.${SF_CLASSES.SF_INSTRUCTIONS_MODAL}`) &&
+        !target?.closest(`.${SF_CLASSES.SF_INSTRUCTIONS_BTN}`)
+      ) {
+        this._closeInstructions()
+      }
+    })
 
     this._loadTranslations()
 
@@ -231,7 +246,9 @@ export class StarField extends BaseComponent {
       const key = (e as KeyboardEvent).key
 
       if (key === KEYS.ESCAPE) {
-        if (this._selectedId) {
+        if (this._instructionsOpen) {
+          this._closeInstructions()
+        } else if (this._selectedId) {
           this._closePanel()
         } else if (this._navOpen) {
           this._toggleNav()
@@ -244,6 +261,8 @@ export class StarField extends BaseComponent {
 
       if (delta && this._engine) {
         e.preventDefault()
+
+        this._closeInstructions()
 
         this._engine.rotateView(delta[0], delta[1])
       }
@@ -338,9 +357,27 @@ export class StarField extends BaseComponent {
     })
   }
 
+  /** Toggles the mobile instructions modal. */
+  _toggleInstructions() {
+    this._instructionsOpen = !this._instructionsOpen
+
+    this._updateDom()
+  }
+
+  /** Closes the mobile instructions modal. */
+  _closeInstructions() {
+    if (!this._instructionsOpen) return
+
+    this._instructionsOpen = false
+
+    this._updateDom()
+  }
+
   /** Opens the drawer and starts the manifest fetch in one gesture. */
 
   _toggleNav() {
+    this._closeInstructions()
+
     this._navOpen = !this._navOpen
 
     if (this._navOpen) this._ensureRegistry()
@@ -367,6 +404,20 @@ export class StarField extends BaseComponent {
    */
 
   _selectBody(id: string) {
+    this._closeInstructions()
+
+    // On the mobile layout the nav is a bottom sheet over the scene —
+    // leaving it open after a pick hides the body the user just chose.
+    if (
+      this._navOpen &&
+      typeof window !== TYPE_STRINGS.UNDEFINED &&
+      window.innerWidth < BREAKPOINTS[768]
+    ) {
+      this._navOpen = false
+
+      this._updateDom()
+    }
+
     this._engine?.selectBody(id)
 
     loadDossier(this, id)
@@ -384,8 +435,6 @@ export class StarField extends BaseComponent {
     this._dossier = null
 
     this._dossierLoading = false
-
-    this._engine?.deselect()
 
     this._syncUrl(null)
 
@@ -457,24 +506,30 @@ export class StarField extends BaseComponent {
 
   /**
    * Deep-link entry — after the engine reports ready, selects the body
-   * named in the URL (flies the camera + opens the dossier). Falls back
-   * silently to the overview chart on unknown ids.
+   * named in the URL (flies the camera + opens the dossier). Defaults
+   * to the Sun when no specific body was deep-linked.
    */
   _applyDeepLink(): void {
     const body = router.currentRoute?.params?.body
 
-    if (body && (_NAME_BY_ID.has(body) || isRegistryId(body))) this._selectBody(body)
+    const target = body && (_NAME_BY_ID.has(body) || isRegistryId(body)) ? body : SF_BODY_IDS.SUN
+
+    this._selectBody(target)
   }
 
   /** Downloads the current frame as a PNG. */
 
   _takeScreenshot() {
+    this._closeInstructions()
+
     this._engine?.takeScreenshot()
   }
 
   /** Returns the camera to the overview pose. */
 
   _flyHome() {
+    this._closeInstructions()
+
     this._engine?.flyHome()
   }
 
@@ -522,7 +577,6 @@ export class StarField extends BaseComponent {
    * Direct DOM writes (like the live region) so per-frame tracking never
    * triggers a full re-render.
    * @param id Hovered body id, or null on leaving.
-   * @param text Resolved display text (for the early-return guard).
    */
 
   _syncTip(id: string | null, text: string) {
@@ -553,20 +607,57 @@ export class StarField extends BaseComponent {
    * Per-frame hover tracking — the engine reports the hovered body's
    * projected canvas-space pixel position every tick; the tooltip root
    * is translate-positioned so the leader line + label orbit with it.
+   * Edge-clamped positions (object off-screen/behind) switch the tip to
+   * its `--edge` mode: the marker sits on the canvas rim and the leader
+   * line rotates toward the body, so navigator-hover hints locate the
+   * object at any zoom level.
    * @param id Hovered body id.
    * @param x Canvas-space x in px.
    * @param y Canvas-space y in px.
+   * @param edge True when the projected point was clamped to the rim.
+   * @param angle Outward direction in degrees for the leader-line arrow.
    */
 
-  _handleHoverMove(id: string, x: number, y: number) {
+  _handleHoverMove(id: string, x: number, y: number, edge?: boolean, angle?: number) {
     const tip = this.$(`.${SF_CLASSES.SF_TIP}`) as HTMLElement | null
 
     if (!tip) return
 
     tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`
+
+    tip.classList.toggle(SF_CLASSES.SF_TIP_EDGE, !!edge)
+
+    // Flip the label inward — the marker is on the rim, so the label
+    // must sit on the canvas side: left of the marker when the object
+    // is off to the right, below it when the object is overhead.
+    const rad = angle != null ? (angle * Math.PI) / 180 : 0
+
+    if (edge && angle != null) {
+      tip.style.setProperty(SF_CSS_PROPS.TIP_ANGLE, `${Math.round(angle)}deg`)
+    }
+
+    tip.classList.toggle(SF_CLASSES.SF_TIP_FLIPX, !!edge && Math.cos(rad) > 0)
+    tip.classList.toggle(SF_CLASSES.SF_TIP_FLIPY, !!edge && Math.sin(rad) < 0)
   }
 
-  /** Announces a selection through the same live region. */
+  /**
+   * Navigator-hover position hint — while a catalog row is hovered or
+   * focused the engine reports that body's projected screen position
+   * (edge-clamped), so the row's object is located on the canvas at any
+   * zoom level before the user commits to the fly-to.
+   * @param id Hovered catalog or registry body id.
+   * @param rec Registry record — passed only for shard ids (`star-NNNNNN`…).
+   */
+
+  _hintBody(id: string, rec?: SFRegistryRecord) {
+    this._engine?.setHint(id, rec)
+  }
+
+  /** Clears the navigator-hover hint when the row loses pointer/focus. */
+
+  _clearHint() {
+    this._engine?.setHint(null)
+  }
 
   /** Announces a selection through the same live region. */
 
@@ -578,6 +669,36 @@ export class StarField extends BaseComponent {
     const live = this.$(`.${SF_CLASSES.SF_LIVE}`)
 
     if (live) live.textContent = name
+  }
+
+  /**
+   * Re-renders the component template while preserving focus and cursor
+   * position if the search input was active, preventing autocomplete blur.
+   */
+  override _updateDom(): void {
+    const activeEl = this.shadowRoot?.activeElement as HTMLInputElement | null
+
+    const isSearchFocused = activeEl?.classList?.contains(SF_CLASSES.SF_NAV_SEARCH) ?? false
+
+    const selStart: number | null =
+      isSearchFocused && activeEl?.selectionStart != null ? activeEl.selectionStart : null
+
+    const selEnd: number | null =
+      isSearchFocused && activeEl?.selectionEnd != null ? activeEl.selectionEnd : null
+
+    super._updateDom()
+
+    if (isSearchFocused) {
+      const input = this.$(`.${SF_CLASSES.SF_NAV_SEARCH}`) as HTMLInputElement | null
+
+      if (input) {
+        input.focus()
+
+        if (selStart !== null && selEnd !== null) {
+          input.setSelectionRange(selStart, selEnd)
+        }
+      }
+    }
   }
 
   override render() {

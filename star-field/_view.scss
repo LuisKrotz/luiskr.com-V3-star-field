@@ -9,7 +9,11 @@
   position: relative;
   width: 100%;
   height: 100vh;
-  min-height: 100dvh;
+  // The host tracks the DYNAMIC viewport, not the legacy static 100vh —
+  // mobile chrome (URL bar/toolbars) inflates 100vh beyond the visible
+  // area, which pushes bottom-anchored sheets past the fold where their
+  // scroll edge can't be reached. dvh stays inside the visible rect.
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg-darkest);
 

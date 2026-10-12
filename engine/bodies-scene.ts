@@ -1,384 +1,46 @@
 /**
  * @file engine/bodies-scene.ts
- * @description Scene-graph builder for the star-field catalog — turns each
- * SFBodyDef into a pickable node: textured sphere for mapped bodies,
- * procedural MeshStandard for dwarf planets, unlit MeshBasic for stars,
- * billboard sprites for nebulae, tilted gradient discs for galaxies, plus
- * Saturn/Venus shell layers, the accretion ring on Sgr A*, and decorative
- * satellite pivots.
+ * @description Scene-graph assembler for the star-field catalog — turns
+ * each SFBodyDef into a pickable node by dispatching on kind: textured
+ * spheres for mapped bodies, billboard sprites for nebulae, galaxy
+ * discs, the black-hole composite, hierarchy structures, small-body
+ * belts, plus shells, halos, coronae and satellite pivots from
+ * `bodies/primitives.ts`, and finally the galactic co-rotation rider
+ * that carries everything heliocentric around the Milky Way.
  */
 import type * as THREE_NS from 'three'
-import { SF_COLORS, SF_DETAIL, SF_SCENE, SF_SPIRAL } from '@core/tokens/starfield/params.js'
-import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import {
+  SF_BODY_IDS,
+  SF_COLORS,
+  SF_DETAIL,
+  SF_SCALE,
+  SF_SPIRAL,
+} from '@core/tokens/starfield/params.js'
+import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { makeSpiralGalaxy } from './spiral.js'
 import { makeGalaxyDisc, makeNebulaSprite } from './bodies/deep-sky.js'
 import { makeBlackHole } from './bodies/black-hole.js'
 import { makeStructure } from './bodies/structures.js'
 import { makeBelt } from './bodies/belt.js'
-import { coronaFor, surfaceFor } from './bodies/procedural.js'
+import { coronaFor } from './bodies/procedural.js'
+import {
+  makeAtmoShell,
+  makeCloudShell,
+  makePickProxy,
+  makeSatellites,
+  makeShell,
+  makeSphere,
+  makeStarHalo,
+  SF_USER_BODY,
+  SF_USER_PROXY,
+} from './bodies/primitives.js'
 import { matParams } from './materials.js'
 import { lcg, seedFrom } from './rand.js'
 import type { SFBodyDef, SFNode, SFNodeDeps, SFState } from './types.js'
 
+export { SF_USER_BODY, SF_USER_PROXY } from './bodies/primitives.js'
+
 type ThreeModule = typeof import('three')
-
-/** `userData` key carrying the body id from mesh → raycast hit. */
-export const SF_USER_BODY = 'bodyId'
-
-/**
- * `userData` flag marking an invisible oversized pick proxy — picking
- * prefers a real-mesh hit down the ray so proxy bubbles never eclipse
- * the bodies they overlap.
- */
-export const SF_USER_PROXY = 'pickProxy'
-
-/**
- * Invisible pick bubble for bodies too small to hit reliably — planets
- * and moons under `SF_DETAIL.PICK_MIN` world units subtend a handful of
- * pixels at the home camera, so a slightly larger transparent sphere
- * (riding inside `mesh` to inherit orbit position and spin) gives the
- * raycaster a usable target. Marked `SF_USER_PROXY` so a real-mesh hit
- * along the same ray always wins; the caller stamps the body id on
- * `userData` since the proxy is shared across kinds.
- * @param THREE The three.js module.
- * @returns The invisible proxy mesh.
- */
-function makePickProxy(THREE: ThreeModule): THREE_NS.Object3D {
-  const proxy = new THREE.Mesh(
-    new THREE.SphereGeometry(SF_DETAIL.PICK_MIN, 8, 6),
-    new THREE.MeshBasicMaterial({ visible: false })
-  )
-
-  proxy.userData[SF_USER_PROXY] = true
-
-  return proxy
-}
-
-/**
- * Luminous-sphere node material — a star's disc must not read as a flat
- * polygon. The fresnel rim `(1 − |view·n|)^falloff` mixes the body's
- * color/texture toward the limb tint and dips the alpha at the extreme
- * silhouette, so the photosphere dissolves into its additive halo
- * instead of cutting a hard circle against the sky. Built as a
- * MeshBasicNodeMaterial — the WebGPURenderer node pipeline rejects
- * classic GLSL ShaderMaterials.
- * @param THREE The three.js module.
- * @param deps TSL namespace + node-material ctors (bootstrap-injected).
- * @param colorHex Core tint (def.color; SUN_LIGHT fallback).
- * @param tex Optional photosphere texture — modulates the core.
- * @param rimTint Limb color (hot rim for stars, muted for moons).
- * @param falloff Fresnel exponent — higher keeps a tight bright core.
- */
-function makeGlowSphereMaterial(
-  THREE: ThreeModule,
-  deps: SFNodeDeps,
-  colorHex: number | undefined,
-  tex: THREE_NS.Texture | undefined,
-  rimTint: number,
-  falloff: number
-): THREE_NS.Material {
-  const { TSL, mats } = deps
-
-  const { mix, normalize, cameraPosition, positionWorld, normalWorld, pow, dot, vec3, texture } =
-    TSL
-
-  // Fresnel rim factor — 0 face-on, →1 at the grazing silhouette.
-  const viewDir = normalize(cameraPosition.sub(positionWorld))
-  const fres = pow(dot(viewDir, normalWorld).abs().oneMinus(), falloff)
-
-  const mat = new mats.MeshBasicNodeMaterial()
-
-  // Tints as vec3 constants — color nodes only support scalar mul, but
-  // the texture modulate needs componentwise vec3×vec3.
-  const coreC = new THREE.Color(colorHex ?? SF_COLORS.SUN_LIGHT)
-  const coreTint = vec3(coreC.r, coreC.g, coreC.b)
-
-  const rimC = new THREE.Color(rimTint)
-  const rim = vec3(rimC.r, rimC.g, rimC.b)
-
-  // core·tex → limb tint across the fresnel; alpha dips at the extreme
-  // silhouette so the sphere edge melts into the halo instead of a
-  // raytraced-crisp circle.
-  mat.colorNode = tex ? mix(coreTint.mul(texture(tex).rgb), rim, fres) : mix(coreTint, rim, fres)
-  mat.transparent = true
-  mat.opacityNode = fres.mul(0.55).oneMinus()
-
-  return mat
-}
-
-/**
- * Sphere + material for a solid body — textured when the catalog maps one,
- * tinted procedural otherwise. Stars/systems use the fresnel-limb node
- * material (they emit their own light); planets and smaller get lit
- * MeshStandard.
- * @param THREE The three.js module.
- * @param deps TSL namespace + node-material ctors.
- * @param def Catalog entry.
- * @param texMap Loaded texture map keyed by URL.
- */
-function makeSphere(
-  THREE: ThreeModule,
-  deps: SFNodeDeps,
-  def: SFBodyDef,
-  texMap: Map<string, THREE_NS.Texture>
-) {
-  const geo = new THREE.SphereGeometry(
-    def.radius,
-    SF_SCENE.SPHERE_SEGMENTS,
-    SF_SCENE.SPHERE_SEGMENTS / 2
-  )
-
-  const luminous = def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM
-
-  if (luminous) {
-    return new THREE.Mesh(
-      geo,
-      makeGlowSphereMaterial(
-        THREE,
-        deps,
-        def.color,
-        texMap.get(def.texture ?? ''),
-        SF_COLORS.STAR_RIM,
-        SF_DETAIL.STAR_RIM_FALLOFF
-      )
-    )
-  }
-
-  const mat = new THREE.MeshStandardMaterial(
-    matParams({
-      // No photo map → seeded procedural surface (mottle/bands/craters)
-      // so untextured moons, dwarf planets and exoplanets read as real
-      // worlds instead of flat tinted balls.
-      map: texMap.get(def.texture ?? '') ?? surfaceFor(THREE, def),
-      color: def.color,
-    })
-  )
-
-  // Relief + night-lights detail layers — Earth's three extra maps land
-  // on the same material: `normalMap` shades terrain relief under the
-  // sun light rig, `emissiveMap` carries city lights that stay black on
-  // the day side.
-  const nrmTex = def.normalTexture ? texMap.get(def.normalTexture) : undefined
-
-  if (nrmTex) mat.normalMap = nrmTex
-
-  const bumpTex = def.bumpTexture ? texMap.get(def.bumpTexture) : undefined
-
-  if (bumpTex) {
-    mat.bumpMap = bumpTex
-    mat.bumpScale = SF_DETAIL.BUMP_SCALE
-  }
-
-  const emiTex = def.emissiveTexture ? texMap.get(def.emissiveTexture) : undefined
-
-  if (emiTex) {
-    mat.emissiveMap = emiTex
-    mat.emissive = new THREE.Color(SF_COLORS.SUN_LIGHT)
-    mat.emissiveIntensity = SF_DETAIL.EMISSIVE_INT
-  }
-
-  return new THREE.Mesh(geo, mat)
-}
-
-/**
- * Extra translucent sphere one shell above a surface — Earth's cloud
- * deck rides a white-on-black map under additive blending so the dark
- * sky between clouds contributes nothing; the deck scales slightly past
- * the surface sphere so it reads as atmosphere, not paint.
- * @param THREE The three.js module.
- * @param def Catalog entry (radius sizes the shell).
- * @param cloudTex The loaded cloud map (caller guards its presence).
- */
-function makeCloudShell(
-  THREE: ThreeModule,
-  def: SFBodyDef,
-  cloudTex: THREE_NS.Texture
-): THREE_NS.Object3D {
-  const geo = new THREE.SphereGeometry(
-    def.radius * SF_DETAIL.CLOUD_SCALE,
-    SF_SCENE.SPHERE_SEGMENTS,
-    SF_SCENE.SPHERE_SEGMENTS / 2
-  )
-
-  const mat = new THREE.MeshBasicMaterial({
-    map: cloudTex,
-    transparent: true,
-    opacity: SF_DETAIL.CLOUD_OPACITY,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  })
-
-  return new THREE.Mesh(geo, mat)
-}
-
-/**
- * Additive halo sprite behind a luminous body — stars and the Sun glow
- * like point sources on a real long-exposure frame instead of rendering
- * as flat colored balls. Kept off the LOD `detail` list: a star's glow
- * IS its far-field representation.
- * @param THREE The three.js module.
- * @param def Catalog entry (color tints the halo).
- * @param glowTex Shared radial-gradient glow texture (may be undefined).
- */
-function makeStarHalo(
-  THREE: ThreeModule,
-  def: SFBodyDef,
-  glowTex: THREE_NS.Texture | undefined
-): THREE_NS.Sprite {
-  const size = def.radius * SF_DETAIL.HALO_SCALE
-
-  const sprite = new THREE.Sprite(
-    new THREE.SpriteMaterial(
-      matParams({
-        map: glowTex,
-        color: def.color ?? SF_COLORS.SUN_LIGHT,
-        transparent: true,
-        opacity: SF_DETAIL.HALO_OPACITY,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    )
-  )
-
-  sprite.scale.set(size, size, 1)
-
-  return sprite
-}
-
-/**
- * Translucent shell layer — Venus's haze atmosphere and Saturn's ring get
- * a secondary texture-mapped surface parented to the main mesh. Returns
- * the created Object3D so the caller can register it as LOD detail.
- * @param THREE The three.js module.
- * @param def Catalog entry.
- * @param shellTexture Shell texture URL — narrowed non-null by the caller's
- *   `if (def.shellTexture)` guard.
- * @param parent The primary mesh the shell rides on.
- * @param texMap Loaded texture map keyed by URL.
- */
-function makeShell(
-  THREE: ThreeModule,
-  def: SFBodyDef,
-  shellTexture: string,
-  parent: { add(o: unknown): unknown },
-  texMap: Map<string, THREE_NS.Texture>
-): THREE_NS.Object3D {
-  const tex = texMap.get(shellTexture)
-
-  if (def.shellRing) {
-    const inner = def.radius * SF_DETAIL.RING_INNER
-
-    const outer = def.radius * SF_DETAIL.RING_OUTER
-
-    const geo = new THREE.RingGeometry(inner, outer, SF_SCENE.RING_SEGMENTS)
-
-    /**
-     * RingGeometry ships planar UVs (the ring occupies uv-space like a
-     * circle inscribed in a square), but the Saturn strip texture is
-     * radius-indexed — u sweeps inner→outer across the banded ring face.
-     * Remap each vertex's u to its normalized radius (v rides the strip's
-     * center row) so the C/B/A ring bands and the Cassini gap land at
-     * their true radii instead of smearing into a solid plate.
-     */
-    const posAttr = geo.getAttribute('position')
-
-    const uvAttr = geo.getAttribute('uv')
-
-    // `Math.max(1, ·)` guards the degenerate-attribute case (mocked or
-    // stripped geometries) — a real RingGeometry always has vertices.
-    for (let i = 0; i < Math.max(1, posAttr.count); i++) {
-      const r = Math.hypot(posAttr.getX(i), posAttr.getY(i))
-
-      uvAttr.setXY(i, (r - inner) / (outer - inner), SF_DETAIL.RING_V)
-    }
-
-    const mat = new THREE.MeshBasicMaterial(
-      matParams({
-        map: tex,
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      })
-    )
-
-    const ring = new THREE.Mesh(geo, mat)
-
-    ring.rotation.x = -Math.PI / 2 + (def.tilt ?? 0.3)
-
-    parent.add(ring)
-
-    return ring
-  }
-
-  const geo = new THREE.SphereGeometry(
-    def.radius * 1.06,
-    SF_SCENE.SPHERE_SEGMENTS,
-    SF_SCENE.SPHERE_SEGMENTS / 2
-  )
-
-  const mat = new THREE.MeshBasicMaterial(matParams({ map: tex, transparent: true, opacity: 0.65 }))
-
-  const shell = new THREE.Mesh(geo, mat)
-
-  parent.add(shell)
-
-  return shell
-}
-
-/**
- * Decorative companion satellites — small unlit spheres on child pivots;
- * `satPivots` returns the {pivot,speed,phase} records frame.ts rotates.
- * @param THREE The three.js module.
- * @param deps TSL namespace + node-material ctors.
- * @param def Catalog entry — `satellites` lists the companions.
- * @param mesh The host body mesh — pivots attach to it to orbit.
- */
-function makeSatellites(
-  THREE: ThreeModule,
-  deps: SFNodeDeps,
-  def: SFBodyDef,
-  mesh: { add(o: unknown): unknown }
-) {
-  const satPivots: SFNode['satPivots'] = []
-
-  for (const sat of def.satellites ?? []) {
-    const pivot = new THREE.Object3D()
-
-    const geo = new THREE.SphereGeometry(sat.radius, 24, 12)
-
-    // Companion dots share the fresnel-limb material (dim rim, loose
-    // falloff) so they read as small glowing bodies, not hard discs.
-    const mat = makeGlowSphereMaterial(
-      THREE,
-      deps,
-      sat.color,
-      undefined,
-      sat.color ?? SF_COLORS.SUN_LIGHT,
-      SF_DETAIL.SAT_RIM_FALLOFF
-    )
-
-    const sm = new THREE.Mesh(geo, mat)
-
-    sm.position.x = sat.orbit
-
-    pivot.add(sm)
-
-    pivot.rotation.y = sat.phase ?? 0
-
-    mesh.add(pivot)
-
-    satPivots.push({
-      pivot,
-      mesh: sm,
-      speed: sat.speed,
-      phase: sat.phase ?? 0,
-      orbit: sat.orbit,
-      ecc: sat.ecc,
-    })
-  }
-
-  return satPivots
-}
 
 /**
  * Builds every catalog body into the scene graph: pivots for orbiting
@@ -405,6 +67,9 @@ export function buildStarBodies(
     let mesh: THREE_NS.Object3D
     let pickMesh: THREE_NS.Object3D | null = null
     let spinner: THREE_NS.Object3D | null = null
+    let rotor: THREE_NS.Object3D | undefined
+    let lock: THREE_NS.Object3D | undefined
+    let vis = def
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
       // Nebulae get an irregular wispy mask so they look like gas clouds;
@@ -444,26 +109,67 @@ export function buildStarBodies(
 
         pickMesh = spiral.pick
 
-        // Embedded volumetric galaxies (the Milky Way) get a dedicated
-        // inner-disc rotor as the spin target — tickStar's `spin` then
-        // revolves the core around Sgr A* instead of tumbling the whole
-        // disc (which would sweep the heliocentric bubble and carry the
-        // anchored black hole off the rotation axis). External galaxies
-        // keep the whole-mesh spinner — no bubble to protect.
-        spinner = spiral.rotor ?? null
+        // Whole-disc rigid spin — the solar system rides the disc via
+        // the galactic rider (mountGalacticRider), so the carved
+        // heliocentric bubble co-rotates with the Sun and stays locked.
+        // The inner-disc rotor is kept separately for differential
+        // rotation: tickFrame spins it faster than the disc rate so the
+        // core laps the rim like a real flat rotation curve.
+        spinner = spiral.group
+
+        rotor = spiral.rotor
       } else {
         mesh = makeGalaxyDisc(THREE, def, texMap, glowTex)
       }
     } else {
-      mesh = makeSphere(THREE, deps, def, texMap)
+      // Galactic stars are unresolvable points at honest chart distances
+      // — no sphere mesh at all: an invisible pick bubble + the point
+      // halo (added below) carry the body, so no marker can ever render
+      // as a planet-like ball beside another body. The authored
+      // `def.radius` keeps driving the luminosity halo, the pick proxy
+      // and the fly-to standoff; satellites/corona scale to the point.
+      const pointStar =
+        (def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM) &&
+        def.group !== SF_GROUPS.SOLAR &&
+        def.radius > SF_DETAIL.POINT_RADIUS
 
-      // Sub-pixel bodies get an invisible pick bubble inside the mesh so
-      // they stay clickable at the home zoom; the bubble is a proxy — a
-      // real-mesh hit along the same ray still wins in `pickAt`.
-      if (def.radius < SF_DETAIL.PICK_MIN) {
-        pickMesh = makePickProxy(THREE)
+      if (pointStar) {
+        const k = SF_DETAIL.POINT_RADIUS / def.radius
+
+        vis = {
+          ...def,
+          radius: SF_DETAIL.POINT_RADIUS,
+          satellites: def.satellites?.map((sat) => ({
+            ...sat,
+            radius: sat.radius * k,
+            orbit: sat.orbit * k,
+          })),
+        }
+
+        mesh = new THREE.Object3D()
+        pickMesh = makePickProxy(THREE, def.radius)
 
         mesh.add(pickMesh)
+      } else {
+        // Day/night registry — a shared sun-direction vector per body
+        // whose shading depends on illumination (night-lights emissive
+        // gating, atmosphere rim tint); updateDayNight rewrites it each
+        // frame so the TSL uniforms stay live.
+        const sunDir =
+          def.emissiveTexture || def.atmosphere ? new THREE.Vector3(1, 0, 0) : undefined
+
+        mesh = makeSphere(THREE, deps, def, texMap, sunDir)
+
+        if (sunDir) s.dayNight?.push({ anchor: mesh, dir: sunDir })
+
+        // Sub-pixel bodies get an invisible pick bubble inside the mesh so
+        // they stay clickable at the home zoom; the bubble is a proxy — a
+        // real-mesh hit along the same ray still wins in `pickAt`.
+        if (def.radius < SF_DETAIL.PICK_MIN) {
+          pickMesh = makePickProxy(THREE, def.radius)
+
+          mesh.add(pickMesh)
+        }
       }
     }
 
@@ -482,19 +188,34 @@ export function buildStarBodies(
       pivot.position.set(def.pos[0], def.pos[1], def.pos[2])
     }
 
-    pivot.add(mesh)
-
     // Axial tilt applies to sphere-path bodies only — galaxy groups own
     // their rotation.x disc tilt, structures are spherical boundaries,
     // and the black-hole composite aligns its own disc/jet axis.
-    if (
+    const sphereTilt =
       def.tilt &&
       def.kind !== SF_KINDS.GALAXY &&
       def.kind !== SF_KINDS.DWARF_GALAXY &&
       def.kind !== SF_KINDS.STRUCTURE &&
       def.kind !== SF_KINDS.BLACK_HOLE
-    ) {
-      mesh.rotation.z = def.tilt
+
+    // Inertial axis lock — a directly orbiting body whose tilt rides the
+    // mesh precesses with the orbit (axis always tilts along the radial
+    // line → perpetual solstice, no seasons). The lock group carries the
+    // tilt on rotation.z and counter-rotates on Y in tickFrame, keeping
+    // the axis fixed in the parent frame so the terminator sweeps the
+    // hemispheres over the year — real seasons. Parent-mounted bodies
+    // (moons) keep the legacy in-orbit tilt: their spin is tidal anyway.
+    const useAxisLock = !!(sphereTilt && def.orbit != null && !def.parent)
+
+    if (useAxisLock) {
+      lock = new THREE.Group()
+      lock.rotation.z = def.tilt as number
+      pivot.add(lock)
+      lock.add(mesh)
+    } else {
+      pivot.add(mesh)
+
+      if (sphereTilt) mesh.rotation.z = def.tilt as number
     }
 
     const detail: THREE_NS.Object3D[] = []
@@ -511,25 +232,41 @@ export function buildStarBodies(
       detail.push(clouds)
     }
 
+    // Atmosphere rim — day/dusk/night tint migration driven by the same
+    // shared sun-direction vector the night-lights gate uses.
+    const dn = s.dayNight?.find((e) => e.anchor === mesh)
+
+    if (def.atmosphere && dn) {
+      const atmo = makeAtmoShell(THREE, deps, def, dn.dir)
+
+      mesh.add(atmo)
+
+      detail.push(atmo)
+    }
+
     // Luminous bodies glow past their limb — the halo rides on the pivot
     // (not `detail`) so a distant star still reads as a light source.
     let corona: SFNode['corona']
 
     if (def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM) {
-      mesh.add(makeStarHalo(THREE, def, glowTex))
+      mesh.add(makeStarHalo(THREE, def, glowTex, vis !== def))
 
       // Corona sprite — seeded streamers + flare knots that rotate and
       // breathe in updateFx, so stars read as live suns rather than a
-      // static lit disc with a glow blob behind it.
-      const coronaTex = coronaFor(THREE, def)
+      // static lit disc with a glow blob behind it. Point stars (vis
+      // clamped) skip it — a corona around a sphere-less marker is just
+      // a second halo, so the point glow does the work alone.
+      const coronaTex = vis === def ? coronaFor(THREE, def) : undefined
 
       if (coronaTex) {
         const cm = new THREE.SpriteMaterial(
           matParams({
             map: coronaTex,
-            color: def.color ?? SF_COLORS.SUN_LIGHT,
+            // Tint stays baked in the texture — `color` white keeps the
+            // node pipeline from double-multiplying the gold.
+            color: SF_COLORS.SUN_LIGHT,
             transparent: true,
-            opacity: 0.7,
+            opacity: 0.55,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
           })
@@ -537,7 +274,9 @@ export function buildStarBodies(
 
         const coronaSprite = new THREE.Sprite(cm)
 
-        const csize = def.radius * SF_DETAIL.HALO_SCALE * 1.4
+        // Activity enlarges the corona — an active star's streamers and
+        // eruptions reach farther off the limb than a quiet dwarf's.
+        const csize = vis.radius * SF_DETAIL.CORONA_SCALE * (def.activity ?? 1)
 
         coronaSprite.scale.set(csize, csize, 1)
 
@@ -553,15 +292,25 @@ export function buildStarBodies(
       }
     }
 
-    const satPivots = makeSatellites(THREE, deps, def, mesh)
+    const satPivots = makeSatellites(THREE, deps, vis, mesh)
 
     detail.push(...satPivots.map((sat) => sat.pivot))
 
-    const anchor = def.parent ? s.anchors.get(def.parent) : s.scene
+    const anchor = def.parent ? s.anchors.get(def.parent) : s.world
 
     if (anchor) anchor.add(pivot)
 
-    const node: SFNode = { def, pivot, mesh, spinner: spinner ?? mesh, satPivots, detail, corona }
+    const node: SFNode = {
+      def,
+      pivot,
+      mesh,
+      spinner: spinner ?? mesh,
+      rotor,
+      lock,
+      satPivots,
+      detail,
+      corona,
+    }
 
     s.nodes.set(def.id, node)
     s.anchors.set(def.id, mesh)
@@ -572,5 +321,88 @@ export function buildStarBodies(
     if (def.kind !== SF_KINDS.STRUCTURE && def.kind !== SF_KINDS.BELT) {
       s.pickables.push(pickMesh ?? mesh)
     }
+  }
+
+  mountGalacticRider(s, THREE)
+
+  // Re-parent the sun stand-in light onto the Sun anchor — the floating
+  // origin pins whichever body is followed at the origin, so a
+  // scene-rooted light would sit inside that body rather than shining
+  // from the Sun's real position.
+  const sunAnchor = s.anchors.get(SF_BODY_IDS.SUN)
+
+  if (sunAnchor && s.sunLight) sunAnchor.add(s.sunLight)
+}
+
+/**
+ * Galactic co-rotation — the solar system and its stellar neighborhood
+ * are not stationary: the real Galaxy carries the Sun around the
+ * galactic centre, so everything heliocentric must ride the Milky
+ * Way's rotating disc as one structure. This mounts a rider group on
+ * the disc's spin target at the Sun's true local ring position, then
+ * re-parents every unparented node whose whole extent fits inside
+ * SF_SCALE.CO_ROTATE_R — the Sun's pivot (which carries the planets,
+ * their satellites, and later the deep-field star cloud), orbiting
+ * bodies pivoted at the origin, the named-star neighborhood, and the
+ * local hierarchy shells. Because the carved heliocentric bubble lives
+ * in the same rotating frame, it stays locked on the Sun forever — the
+ * earlier static-outer-disc workaround is no longer needed.
+ * The rider counter-tilts its own X so children keep their ecliptic
+ * orientation (the solar system's plane is not the galactic plane).
+ * @param s Engine state (nodes map must be fully populated).
+ * @param THREE The three.js module.
+ */
+function mountGalacticRider(s: SFState, THREE: ThreeModule): void {
+  const mw = s.nodes.get(SF_BODY_IDS.MILKY_WAY)
+
+  if (!mw || !mw.def.pos) return
+
+  const rider = new THREE.Group()
+
+  // The Sun's position in the disc's LOCAL frame — the same inverse
+  // transform the heliocentric bubble uses: negate the disc centre's
+  // world offset, then un-rotate the disc tilt about X. For the MW's
+  // (−267,0,0) centre this lands at (+267,0,0) — the Sun's true 0.51R
+  // ring on the disc's X axis (invariant under the tilt itself).
+  const a = -Math.PI / 2 + (mw.def.tilt ?? 0)
+
+  const wy = -mw.def.pos[1]
+
+  const wz = -mw.def.pos[2]
+
+  rider.position.set(
+    -mw.def.pos[0],
+    wy * Math.cos(-a) - wz * Math.sin(-a),
+    wy * Math.sin(-a) + wz * Math.cos(-a)
+  )
+
+  // Undo the disc tilt for rider children — the ecliptic is ~60° off
+  // the galactic plane, so heliocentric pivots keep world axes while
+  // still orbiting the galactic pole with the disc.
+  rider.rotation.x = -a
+
+  mw.spinner.add(rider)
+
+  for (const node of s.nodes.values()) {
+    const def = node.def
+
+    // Parented bodies already live in their host's frame (Sgr A* rides
+    // the MW group directly); the disc itself never adopts itself.
+    if (node === mw || def.parent) continue
+
+    const px = def.pos?.[0] ?? 0
+    const py = def.pos?.[1] ?? 0
+    const pz = def.pos?.[2] ?? 0
+
+    // The body's whole extent (orbit sweep, shell radius, or body size)
+    // must fit inside the co-rotation bubble — partially-contained
+    // structures like the observable-universe shell stay world-fixed.
+    const extent = Math.max(def.orbit ?? 0, def.structure?.radius ?? 0, def.radius)
+
+    if (Math.hypot(px, py, pz) + extent > SF_SCALE.CO_ROTATE_R) continue
+
+    // three.js re-parents automatically; pivot.position is already
+    // heliocentric (rider origin = the Sun's local position).
+    rider.add(node.pivot)
   }
 }

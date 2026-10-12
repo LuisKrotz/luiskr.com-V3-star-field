@@ -10,6 +10,8 @@
 import type * as THREE_NS from 'three'
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type MeshBasicNodeMaterial from 'three/src/materials/nodes/MeshBasicNodeMaterial.js'
+import type MeshStandardNodeMaterial from 'three/src/materials/nodes/MeshStandardNodeMaterial.js'
+import type { SFRegistryRecord } from './registry.js'
 
 /** The TSL node-graph namespace (compiled to WGSL/GLSL by the renderer). */
 type TslNs = typeof import('three/tsl')
@@ -26,7 +28,10 @@ export interface SFNodeDeps {
   /** The `three/tsl` module namespace. */
   TSL: TslNs
   /** Node-material constructors re-exported by `three/webgpu`. */
-  mats: { MeshBasicNodeMaterial: typeof MeshBasicNodeMaterial }
+  mats: {
+    MeshBasicNodeMaterial: typeof MeshBasicNodeMaterial
+    MeshStandardNodeMaterial?: typeof MeshStandardNodeMaterial
+  }
 }
 
 /**
@@ -69,6 +74,19 @@ export interface SFBodyDef {
   texture?: string
   /** SF_COLORS hex for procedural material/emissive tint. */
   color?: number
+  /**
+   * Limb tint override (SF_COLORS hex) — the fresnel mixes toward this
+   * at the silhouette instead of the default hot `STAR_RIM`. A darker
+   * rim produces limb darkening on resolved star discs (the Sun):
+   * we see deeper hotter layers at centre, cooler gas at the limb.
+   */
+  rim?: number
+  /**
+   * Corona activity scale (1 = quiet star) — stretches prominences,
+   * adds eruption plumes and sunspots, and enlarges the corona sprite.
+   * The Sun runs above 1 so its surface reads as an active photosphere.
+   */
+  activity?: number
   /** Secondary texture for translucent shells (Venus atmosphere, Saturn ring). */
   shellTexture?: string
   /** Shell is a flat ring disc (Saturn) rather than an atmosphere sphere. */
@@ -79,6 +97,12 @@ export interface SFBodyDef {
   bumpTexture?: string
   /** Night-lights emissive map — glows only where the map is lit. */
   emissiveTexture?: string
+  /**
+   * Atmosphere rim shell (0 = off) — a fresnel-limb translucent sphere
+   * just past the surface whose tint migrates day→dusk→night with the
+   * sun direction (Earth); the value scales the shell's opacity.
+   */
+  atmosphere?: number
   /** Cloud deck texture — extra translucent sphere one layer up. */
   cloudTexture?: string
   /** Fixed scene position `[x,y,z]` for non-orbiting deep-sky objects. */
@@ -100,6 +124,8 @@ export interface SFBodyDef {
     elliptical?: boolean
     /** Disc-thickness multiplier on `SF_SPIRAL.THIN`. */
     thick?: number
+    /** Arm angular jitter (rad) — overrides `SF_SPIRAL.ARM_JITTER`. */
+    jitter?: number
     /** Spherical stellar-halo fraction (0–1) layered over the disc. */
     halo?: number
     /**
@@ -120,7 +146,13 @@ export interface SFBodyDef {
    * member galaxies. Structures are not raycast-pickable (their shell
    * would swallow every pointer ray); the navigator still flies to them.
    */
-  structure?: { radius: number; speckles?: number }
+  /**
+   * Hierarchy structure — `radius` sizes the volume, `speckles` the
+   * interior point cloud, `shell: false` suppresses the boundary sphere
+   * (speckle-only landmarks: a fresnel bubble at chart scale reads as a
+   * fake wall, while the member cloud marks the region honestly).
+   */
+  structure?: { radius: number; speckles?: number; shell?: boolean }
   /**
    * Small-body annulus (asteroid/Kuiper belt) — `inner`/`outer` are the
    * ring bounds in chart units, `count` the particle budget, `puff` the
@@ -273,6 +305,24 @@ export interface SFState {
   /** three.js WebGPURenderer (WebGPU or forced-WebGL backend). */
   renderer: { render(...args: unknown[]): unknown; dispose(): void } | null
   scene: THREE_NS.Scene | null
+  /**
+   * Floating-origin world root — every catalog body, cloud and rider
+   * parents under this group instead of the scene directly. The follow
+   * step counter-translates it so the followed anchor sits at the world
+   * origin: rider-mounted bodies translate up to ~16k units/s on the
+   * galactic ring, which would otherwise push all coordinates to ~6.7M
+   * where float32 quantization (±0.5 units) visibly jitters every mesh.
+   * Skybox and lights stay on the scene at the origin — the pin point —
+   * so they always enclose/light whatever the camera follows.
+   */
+  world: THREE_NS.Object3D | null
+  /**
+   * Sun stand-in point light — created in the scene at the origin (the
+   * pin point), then re-parented onto the Sun anchor once bodies build
+   * so it keeps illuminating from the Sun's real position whichever
+   * body the floating origin currently pins.
+   */
+  sunLight: THREE_NS.Object3D | null
   camera: THREE_NS.PerspectiveCamera | null
   controls: OrbitControls | null
   /** id → runtime body node record. */
@@ -281,6 +331,15 @@ export interface SFState {
   anchors: Map<string, THREE_NS.Object3D>
   /** Pickable meshes for raycasting. */
   pickables: THREE_NS.Object3D[]
+  /**
+   * Day/night shader registry — bodies with sun-direction-dependent
+   * shading (night-lights emissive gating, atmosphere rim shells).
+   * Each frame `updateDayNight` writes `dir = normalize(sunPos −
+   * bodyPos)` into the shared vector the material's TSL uniform wraps,
+   * so lights stay dark on the lit hemisphere and the rim migrates
+   * with the terminator.
+   */
+  dayNight: Array<{ anchor: THREE_NS.Object3D; dir: THREE_NS.Vector3 }>
   /** ids whose dossier was already prefetched — approach fires once. */
   approached: Set<string>
   /**
@@ -316,8 +375,31 @@ export interface SFState {
   t: number
   /** Camera hover state — last picked body id for the HUD. */
   hoverId: string | null
+  /**
+   * Navigator-hover position hint — while the pointer (or focus) rests
+   * on a catalog row the engine reports the body's projected screen
+   * position every tick, edge-clamped so the hint works at any zoom
+   * level. Plain data, resolved per tick in `trackHover`: catalog ids
+   * carry their `anchor` (live world position) and registry rows carry
+   * their shard `rec` (resolved via `registryWorldPos` in the pinned
+   * frame). Null when no nav row is hovered; takes precedence over
+   * `hoverId` (the pointer is on the drawer, not the canvas).
+   */
+  hint: {
+    id: string
+    anchor: THREE_NS.Object3D | null
+    rec: SFRegistryRecord | null
+  } | null
   /** Selected body id (panel open). */
   selectedId: string | null
+  /**
+   * Camera-follow anchor — which catalog id the camera rides with when
+   * no fly tween runs. Selections set it to the picked body; the solar
+   * overview sets it to the Sun so the chart holds the solar system
+   * while it orbits inside the galactic disc — without marking a
+   * dossier selection. Null = free camera.
+   */
+  followId: string | null
   /** Lifecycle callbacks from the host. */
   onReady?: () => void
   onProgress?: SFProgressFn
@@ -327,9 +409,12 @@ export interface SFState {
   /**
    * Per-frame hover tracking — fires every tick while a body is hovered
    * with its projected canvas-space pixel position, so the tooltip and
-   * its leader line follow orbiting bodies without DOM thrash.
+   * its leader line follow orbiting bodies without DOM thrash. `edge`
+   * marks the projected point as clamped to the canvas edge (object
+   * off-screen or behind) and `angle` carries the outward direction in
+   * degrees for the leader-line arrow.
    */
-  onHoverMove?: (bodyId: string, x: number, y: number) => void
+  onHoverMove?: (bodyId: string, x: number, y: number, edge?: boolean, angle?: number) => void
   /** Fires once when a frame throws — host swaps to the 2D fallback. */
   onLost?: () => void
 }
@@ -343,6 +428,22 @@ export interface SFNode {
   mesh: THREE_NS.Object3D
   /** Spin target (mesh or its inner group) for self-rotation. */
   spinner: THREE_NS.Object3D
+  /**
+   * Inertial axis lock — a group between the orbit pivot and the mesh
+   * carrying `rotation.z = tilt` and counter-rotated on Y each frame.
+   * Without it the pivot's orbital Y-rotation precesses the spin axis
+   * with the body's position (perpetual solstice); the lock keeps the
+   * axis fixed in the parent frame so the terminator sweeps the
+   * hemispheres over the orbit — real seasons. Only set on directly
+   * orbiting tilted bodies.
+   */
+  lock?: THREE_NS.Object3D
+  /**
+   * Differential-rotation subgroup — a volumetric galaxy's inner-disc
+   * Points cloud; tickFrame spins it at ROTOR_DIFF× the whole-disc rate
+   * so the core laps the rim the way real rotation curves do.
+   */
+  rotor?: THREE_NS.Object3D
   /** Satellite pivots (decorative companions) — rotate per frame. */
   satPivots: Array<{
     pivot: THREE_NS.Object3D
@@ -374,12 +475,19 @@ export interface SFFly {
   t0: number
   /** Camera position at tween start. */
   fromPos: { x: number; y: number; z: number }
-  /** Camera destination. */
-  toPos: { x: number; y: number; z: number }
+  /** Approach offset — destination sits this vector away from the body. */
+  offset: { x: number; y: number; z: number }
   /** Controls target at tween start. */
   fromTgt: { x: number; y: number; z: number }
-  /** Controls target destination (body center). */
-  toTgt: { x: number; y: number; z: number }
+  /**
+   * Live body-position getter — rider-mounted anchors keep moving while
+   * the tween runs, so the destination is re-resolved every frame; a
+   * static snapshot would land the camera where the body was at arm
+   * time. Returns null when the anchor is gone (dest frozen at last).
+   */
+  track: () => { x: number; y: number; z: number } | null
+  /** Last resolved body position — destination anchor when track yields null. */
+  last: { x: number; y: number; z: number }
   /** Optional follow-up when the tween completes (fire onSelect). */
   done?: () => void
 }

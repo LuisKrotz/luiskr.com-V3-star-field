@@ -97,6 +97,15 @@ export function setupStarScene(
 
   s.scene = scene
 
+  // Floating-origin world root — all catalog bodies parent here so the
+  // follow step can pin the followed anchor at the origin by shifting
+  // this one group (see SFState.world).
+  const world = new THREE.Group()
+
+  scene.add(world)
+
+  s.world = world
+
   if (skyTex) {
     const skyGeo = new THREE.SphereGeometry(SF_SCENE.SKYBOX_RADIUS, 32, 16)
     const skyMat = new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide })
@@ -113,4 +122,10 @@ export function setupStarScene(
   sunLight.position.set(0, 0, 0)
 
   scene.add(sunLight)
+
+  // Kept on state so bootstrap can re-parent it onto the Sun anchor —
+  // with the floating origin the pinned body sits at the origin, so a
+  // scene-rooted light would end up inside whatever is followed instead
+  // of shining from the Sun.
+  s.sunLight = sunLight
 }

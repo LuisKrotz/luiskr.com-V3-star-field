@@ -93,6 +93,9 @@
 
   &-body {
     overflow-y: auto;
+    // Same containment as the nav sheet — dossier scrolls must not
+    // chain to the page on mobile.
+    overscroll-behavior: contain;
     padding: to-rem($space-xl);
     flex: 1;
   }

@@ -15,13 +15,20 @@ import * as TSL from 'three/tsl'
 
 const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
-import { surfaceFor, coronaFor, gasFor } from '../../../../engine/bodies/procedural.js'
+import {
+  surfaceFor,
+  coronaFor,
+  haloFor,
+  pointGlowFor,
+  starSurfaceFor,
+  gasFor,
+} from '../../../../engine/bodies/procedural.js'
 import { makeNebulaSprite } from '../../../../engine/bodies/deep-sky.js'
 import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
 import { createStarState } from '../../../../engine/state.js'
 import { tickStar } from '../../../../engine/frame.js'
-import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
 
 const ctxProto = () => window.HTMLCanvasElement.prototype
 
@@ -83,8 +90,43 @@ describe('procedural generators', () => {
   test('coronaFor paints streamers + flare knots', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    expect(coronaFor(THREE, { id: 'sol', color: 0xffddaa })).toBeTruthy()
+    // Active star (Sun-catalog activity) — crosses _CORONA_PLUME_MIN so
+    // the H-alpha eruption-plume block paints.
+    expect(coronaFor(THREE, { id: 'sol', color: 0xffddaa, activity: 1.7 })).toBeTruthy()
     expect(coronaFor(THREE, { id: 'vega', color: 0xaaccff })).toBeTruthy()
+  })
+
+  test('haloFor serves the cached annulus on repeat ids', () => {
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const def = { id: 'halo-star', color: 0xffcc88 }
+
+    expect(haloFor(THREE, def)).toBeTruthy()
+
+    // Second call with the same id returns the memoized texture — the
+    // `if (cached)` arm inside haloFor.
+    expect(haloFor(THREE, def)).toBe(haloFor(THREE, def))
+  })
+
+  test('pointGlowFor paints the filled core glow and serves the cache', () => {
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const def = { id: 'point-halo', color: 0x99bbff }
+
+    expect(pointGlowFor(THREE, def)).toBeTruthy()
+
+    // Same-id call returns the memoized texture — the `if (cached)` arm.
+    expect(pointGlowFor(THREE, def)).toBe(pointGlowFor(THREE, def))
+  })
+
+  test('starSurfaceFor paints sunspot groups on active stars', () => {
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    // activity 1.7 (Sun catalog) > _SPOT_MIN — umbra/penumbra groups draw.
+    expect(starSurfaceFor(THREE, { id: 'sun', color: 0xffbb66, activity: 1.7 })).toBeTruthy()
+
+    // Quiet dwarf — activity defaults to 1, below the spot threshold.
+    expect(starSurfaceFor(THREE, { id: 'quiet', color: 0xffeecc })).toBeTruthy()
   })
 
   test('gasFor paints lobes + destination-out absorption wisps', () => {
@@ -206,9 +248,12 @@ describe('corona registration + animation', () => {
     s.scene = new THREE.Scene()
 
     const defs = [
+      // Solar-group stars keep a resolved photosphere + corona — the
+      // only tier where a star's disc is ever resolvable.
       {
         id: 'corona-star',
         kind: SF_KINDS.STAR,
+        group: SF_GROUPS.SOLAR,
         radius: 3,
         pos: [0, 0, 0],
         color: 0xffcc88,
@@ -217,13 +262,32 @@ describe('corona registration + animation', () => {
       {
         id: 'corona-sys',
         kind: SF_KINDS.SYSTEM,
+        group: SF_GROUPS.SOLAR,
         radius: 2,
         pos: [10, 0, 0],
         color: 0x88ccff,
       },
+      // Galactic star — point-star path: sphere-less group, pick proxy,
+      // point halo, no corona; satellites scale to the point radius.
+      {
+        id: 'point-star',
+        kind: SF_KINDS.STAR,
+        group: SF_GROUPS.MILKY_WAY,
+        radius: 0.04,
+        pos: [20, 0, 0],
+        color: 0xff8899,
+        satellites: [{ radius: 0.01, orbit: 0.1, speed: 1 }],
+      },
     ]
 
     buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), undefined)
+
+    const point = s.nodes.get('point-star')
+
+    expect(point.corona).toBeUndefined()
+    expect(point.satPivots?.length).toBe(1)
+
+    s.nodes.delete('point-star')
 
     const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
 

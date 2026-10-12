@@ -48,6 +48,11 @@ export async function initStarRenderer(
       alpha: false,
       powerPreference: 'high-performance',
       forceWebGL: force,
+      // Honest stellar scale needs NEAR=0.01 against FAR=200000 — a 2e7
+      // ratio that would z-fight linear 24-bit depth into noise. The
+      // logarithmic buffer keeps precision roughly uniform across the
+      // chart's full AU-to-observable-universe span.
+      logarithmicDepthBuffer: true,
     })
 
     return r as unknown as NonNullable<SFState['renderer']> & { init(): Promise<void> }

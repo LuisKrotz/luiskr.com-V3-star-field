@@ -19,21 +19,27 @@ const easeInOutCubic = (p: number): number =>
 /**
  * Arms a fly-to tween: destination is `offset` units along the current
  * camera→body direction (or straight above when the camera is too close
- * to define a direction), target is the body world position.
+ * to define a direction), target tracks the body's live world position.
  * @param s Engine state.
- * @param worldPos Body center in world space {x,y,z}.
+ * @param track Body world-position getter — re-resolved per frame so a
+ *   moving (rider-mounted) anchor can't leave the camera landing on a
+ *   stale spot; null return freezes the last destination.
  * @param offset Standoff distance — scaled per body so giants frame wide.
  * @param done Optional completion callback.
  */
 export function startFly(
   s: SFState,
-  worldPos: { x: number; y: number; z: number },
+  track: () => { x: number; y: number; z: number } | null,
   offset: number,
   done?: () => void
 ): void {
   const cam = s.camera
 
   if (!cam) return
+
+  const worldPos = track()
+
+  if (!worldPos) return
 
   const cx = cam.position.x
   const cy = cam.position.y
@@ -60,13 +66,14 @@ export function startFly(
   s.fly = {
     t0: performance.now(),
     fromPos: { x: cx, y: cy, z: cz },
-    toPos: { x: worldPos.x + dx, y: worldPos.y + dy, z: worldPos.z + dz },
+    offset: { x: dx, y: dy, z: dz },
     fromTgt: {
       x: tgt?.x ?? SF_CAMERA.TARGET_X,
       y: tgt?.y ?? SF_CAMERA.TARGET_Y,
       z: tgt?.z ?? SF_CAMERA.TARGET_Z,
     },
-    toTgt: { x: worldPos.x, y: worldPos.y, z: worldPos.z },
+    track,
+    last: { x: worldPos.x, y: worldPos.y, z: worldPos.z },
     done,
   }
 }
@@ -86,19 +93,26 @@ export function updateFly(s: SFState): void {
 
   const e = easeInOutCubic(p)
 
+  const live = fly.track()
+
+  // `track` returns the shared armed-scratch vector — copy the components
+  // so a later per-frame caller (label projection, hover leader line,
+  // followSelected) can't hijack the destination by mutating it.
+  if (live) fly.last = { x: live.x, y: live.y, z: live.z }
+
   const lerp = (a: number, b: number) => a + (b - a) * e
 
   s.camera.position.set(
-    lerp(fly.fromPos.x, fly.toPos.x),
-    lerp(fly.fromPos.y, fly.toPos.y),
-    lerp(fly.fromPos.z, fly.toPos.z)
+    lerp(fly.fromPos.x, fly.last.x + fly.offset.x),
+    lerp(fly.fromPos.y, fly.last.y + fly.offset.y),
+    lerp(fly.fromPos.z, fly.last.z + fly.offset.z)
   )
 
   if (s.controls) {
     s.controls.target.set(
-      lerp(fly.fromTgt.x, fly.toTgt.x),
-      lerp(fly.fromTgt.y, fly.toTgt.y),
-      lerp(fly.fromTgt.z, fly.toTgt.z)
+      lerp(fly.fromTgt.x, fly.last.x),
+      lerp(fly.fromTgt.y, fly.last.y),
+      lerp(fly.fromTgt.z, fly.last.z)
     )
   }
 
