@@ -9,8 +9,8 @@
  */
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals'
 
-import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
-import { SF_BODY_IDS, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { SF_KINDS, SF_GROUPS } from '@core/tokens/starfield/kinds.js'
+import { SF_BODY_IDS, SF_LOD, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { SF_DATA_BASE } from '@core/tokens/starfield/textures.js'
 
 jest.unstable_mockModule('@core/utils/wasm/wasm-pool.js', () => ({
@@ -82,6 +82,74 @@ describe('tickStar per-frame update tails', () => {
 
     expect(s.nodes.get('inner').pivot.visible).toBe(true)
     expect(detailObj.visible).toBe(true)
+  })
+
+  test('updateLod collapses the solar tier to the Sun far-glyph past SOLAR_FAR', () => {
+    const cam = fakeCamera()
+
+    cam.position.x = SF_LOD.SOLAR_FAR + 1
+
+    const s = makeState({
+      camera: cam,
+      renderer: { render: jest.fn() },
+      scene: {},
+      controls: { update: jest.fn() },
+    })
+
+    const farGlow = { visible: false }
+
+    const farPick = { visible: false }
+
+    const sunMesh = { visible: true }
+
+    // Solar star → keeps its pivot but swaps sphere for the far glyph.
+    s.nodes.set(
+      'sun',
+      mk({ kind: SF_KINDS.STAR, group: SF_GROUPS.SOLAR }, { mesh: sunMesh, farGlow, farPick })
+    )
+
+    // Far glyph without a far-pick proxy — the `if (node.farPick)`
+    // else arms on both the collapse and restore paths.
+    const bareGlow = { visible: false }
+
+    const bareMesh = { visible: true }
+
+    s.nodes.set(
+      'sun-bare',
+      mk({ kind: SF_KINDS.STAR, group: SF_GROUPS.SOLAR }, { mesh: bareMesh, farGlow: bareGlow })
+    )
+
+    // Solar planet without a far glyph → whole pivot hides.
+    s.nodes.set('earth', mk({ kind: SF_KINDS.PLANET, group: SF_GROUPS.SOLAR }))
+
+    // Galactic star — the solar gate must not touch it.
+    s.nodes.set('vega', mk({ kind: SF_KINDS.STAR, group: SF_GROUPS.MILKY_WAY }))
+
+    tickStar(s, 1000)
+
+    const sun = s.nodes.get('sun')
+
+    expect(sun.pivot.visible).toBe(true)
+    expect(sunMesh.visible).toBe(false)
+    expect(farGlow.visible).toBe(true)
+    expect(farPick.visible).toBe(true)
+    expect(bareMesh.visible).toBe(false)
+    expect(bareGlow.visible).toBe(true)
+    expect(s.nodes.get('earth').pivot.visible).toBe(false)
+    expect(s.nodes.get('vega').pivot.visible).toBe(true)
+
+    // Back inside the tier → the sphere returns, the glyph retires.
+    cam.position.x = 0
+
+    tickStar(s, 1001)
+
+    expect(sun.pivot.visible).toBe(true)
+    expect(sunMesh.visible).toBe(true)
+    expect(farGlow.visible).toBe(false)
+    expect(farPick.visible).toBe(false)
+    expect(bareMesh.visible).toBe(true)
+    expect(bareGlow.visible).toBe(false)
+    expect(s.nodes.get('earth').pivot.visible).toBe(true)
   })
 
   test('updateStructures writes the shell fade uniform and speckle opacity', () => {

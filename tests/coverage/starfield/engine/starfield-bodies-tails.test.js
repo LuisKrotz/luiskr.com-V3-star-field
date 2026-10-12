@@ -28,7 +28,15 @@ import { makeBlackHole } from '../../../../engine/bodies/black-hole.js'
 import { makeStructure } from '../../../../engine/bodies/structures.js'
 import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
-import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import {
+  makeAurora,
+  makeConstellation,
+  makeMeteorPool,
+  makeWeatherClouds,
+} from '../../../../engine/bodies/weather.js'
+import { makeBeltRocks } from '../../../../engine/bodies/belt-rocks.js'
+import { spikesFor } from '../../../../engine/bodies/procedural/spikes.js'
+import { SF_KINDS, SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 import { SF_COLORS } from '@core/tokens/starfield/params.js'
 
 const ctxProto = () => window.HTMLCanvasElement.prototype
@@ -75,7 +83,9 @@ describe('mask + photoSize', () => {
 
   test('maskPhotoTexture bails on empty image and missing 2d ctx', () => {
     expect(maskPhotoTexture(THREE, {})).toBeUndefined()
-    expect(maskPhotoTexture(THREE, { image: { naturalWidth: 0, naturalHeight: 4 } })).toBeUndefined()
+    expect(
+      maskPhotoTexture(THREE, { image: { naturalWidth: 0, naturalHeight: 4 } })
+    ).toBeUndefined()
 
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
 
@@ -100,17 +110,30 @@ describe('deep-sky photo surfaces', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
     // Tall + wide sources drive both aspect-squash arms.
-    for (const dims of [[400, 800], [800, 400]]) {
+    for (const dims of [
+      [400, 800],
+      [800, 400],
+    ]) {
       const texMap = new Map([['/n.jpg', fakePhoto(...dims)]])
 
       expect(
-        makeNebulaSprite(THREE, { id: 'n', texture: '/n.jpg', color: 0x112233, radius: 10 }, texMap, undefined)
+        makeNebulaSprite(
+          THREE,
+          { id: 'n', texture: '/n.jpg', color: 0x112233, radius: 10 },
+          texMap,
+          undefined
+        )
       ).toBeTruthy()
     }
 
     // Photo listed on the def but absent from the map → same-object arm.
     expect(
-      makeNebulaSprite(THREE, { id: 'n2', texture: '/absent.jpg', color: 0x112233, radius: 10 }, new Map(), undefined)
+      makeNebulaSprite(
+        THREE,
+        { id: 'n2', texture: '/absent.jpg', color: 0x112233, radius: 10 },
+        new Map(),
+        undefined
+      )
     ).toBeTruthy()
 
     // No texture field at all → procedural glow tint fallback.
@@ -125,7 +148,12 @@ describe('deep-sky photo surfaces', () => {
     const texMap = new Map([['/n.jpg', fakePhoto()]])
 
     expect(
-      makeNebulaSprite(THREE, { id: 'n', texture: '/n.jpg', color: 0x101010, radius: 5 }, texMap, undefined)
+      makeNebulaSprite(
+        THREE,
+        { id: 'n', texture: '/n.jpg', color: 0x101010, radius: 5 },
+        texMap,
+        undefined
+      )
     ).toBeTruthy()
   })
 
@@ -135,7 +163,12 @@ describe('deep-sky photo surfaces', () => {
     const texMap = new Map([['/g.jpg', fakePhoto(200, 100)]])
 
     expect(
-      makeGalaxyDisc(THREE, { id: 'g', texture: '/g.jpg', radius: 10, tilt: 0.5 }, texMap, undefined)
+      makeGalaxyDisc(
+        THREE,
+        { id: 'g', texture: '/g.jpg', radius: 10, tilt: 0.5 },
+        texMap,
+        undefined
+      )
     ).toBeTruthy()
 
     expect(
@@ -149,7 +182,9 @@ describe('deep-sky photo surfaces', () => {
     ).toBeTruthy()
 
     // No texture on the def → additive glow disc fallback arm.
-    expect(makeGalaxyDisc(THREE, { id: 'g3', radius: 8, color: 0x223344 }, texMap, undefined)).toBeTruthy()
+    expect(
+      makeGalaxyDisc(THREE, { id: 'g3', radius: 8, color: 0x223344 }, texMap, undefined)
+    ).toBeTruthy()
   })
 })
 
@@ -330,8 +365,239 @@ describe('bodies-scene detail layers', () => {
 
     buildStarBodies(s, THREE, NODE_DEPS, defs, texMap, undefined)
 
+    // Solar stars/systems each carry one extra hidden far-pick proxy —
+    // the collapsed sun glyph stays tappable from interstellar range.
+    const farPicks = defs.filter(
+      (d) => d.group === SF_GROUPS.SOLAR && (d.kind === SF_KINDS.STAR || d.kind === SF_KINDS.SYSTEM)
+    ).length
+
     expect(s.nodes.size).toBe(defs.length)
-    expect(s.pickables.length).toBe(defs.length)
+    expect(s.pickables.length).toBe(defs.length + farPicks)
+  })
+
+  test('pos-tilted body, null aurora/cloud shells, flare+meteor loops, nameless satellite arms', () => {
+    const s = {
+      ...baseState(),
+      dayNight: [],
+      fxTime: { value: 0 },
+      solarWind: null,
+    }
+
+    const defs = [
+      // Tilted body at a fixed position — neither axis-locked nor
+      // tidally locked, so `sphereTilt` lands on the else branch's
+      // `mesh.rotation.z` arm.
+      {
+        id: 'tilted-rock',
+        name: 'Tilted',
+        kind: SF_KINDS.PLANET,
+        group: SF_GROUPS.SOLAR,
+        radius: 1,
+        pos: [9, 0, 0],
+        tilt: 0.4,
+      },
+      // Weather world — `atmosphere` registers the sun-dir entry so `dn`
+      // resolves, but NODE_DEPS lacks MeshStandardNodeMaterial so
+      // makeWeatherClouds returns null (`if (clouds)` else arm), and
+      // solarWind: null makes makeAurora return null (`if (au)` else).
+      {
+        id: 'stormy',
+        name: 'Stormy',
+        kind: SF_KINDS.PLANET,
+        group: SF_GROUPS.SOLAR,
+        radius: 2,
+        pos: [0, 0, 9],
+        atmosphere: 1,
+        cloudTexture: '/clouds.jpg',
+        weather: true,
+        aurora: true,
+      },
+      // Solar star with flares + meteors — a real glow texture makes
+      // both pools non-empty so the sprite-add loops execute; the id'd
+      // satellite carries no `name` → `sat.name ?? sat.id` arm.
+      {
+        id: 'flare-sun',
+        name: 'Flares',
+        kind: SF_KINDS.STAR,
+        group: SF_GROUPS.SOLAR,
+        radius: 3,
+        pos: [0, 0, 0],
+        flares: true,
+        meteors: true,
+        satellites: [{ id: 'code-sat', radius: 0.2, orbit: 4, speed: 1 }],
+      },
+    ]
+
+    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map([['/clouds.jpg', fakePhoto()]]), fakePhoto())
+
+    expect(s.nodes.get('code-sat')?.def.name).toBe('code-sat')
+    expect(s.nodes.get('flare-sun')?.flares?.length).toBeGreaterThan(0)
+    expect(s.nodes.get('flare-sun')?.meteorPool?.length).toBeGreaterThan(0)
+  })
+})
+
+describe('weather maker tails', () => {
+  test('makeWeatherClouds writes the surface cloud shadow when the host material has a map', () => {
+    // Node deps carrying MeshStandardNodeMaterial + a surface material
+    // holding a map → the `surf.colorNode` cloud-shadow arm.
+    const surfaceMat = { map: fakePhoto() }
+
+    const out = makeWeatherClouds(
+      THREE,
+      { TSL, mats: { MeshStandardNodeMaterial: THREE.MeshStandardMaterial } },
+      { id: 'wx-world', radius: 2 },
+      fakePhoto(),
+      { x: 1, y: 0, z: 0 },
+      surfaceMat,
+      TSL.float(0)
+    )
+
+    expect(out).toBeTruthy()
+    expect(surfaceMat.colorNode).toBeTruthy()
+  })
+
+  test('makeConstellation bails without config and its glints never raycast', () => {
+    expect(makeConstellation(THREE, { id: 'no-cfg' })).toBeNull()
+
+    // Recording Points — the chain mock would swallow the raycast stub.
+    const pts = []
+
+    class RecPoints {
+      constructor() {
+        pts.push(this)
+      }
+    }
+
+    const out = makeConstellation(
+      { ...THREE, Points: RecPoints },
+      { id: 'swarm', radius: 1, constellation: { count: 8, orbit: 2 } }
+    )
+
+    expect(out).toBeTruthy()
+    expect(pts.length).toBe(1)
+    expect(pts[0].raycast()).toBeUndefined()
+  })
+
+  test('makeAurora covers the non-object cfg arm; meteor sprites never raycast', () => {
+    // `aurora: true` (flag, not cfg object) → the `?? {}` else arm —
+    // with a live wind uniform so the maker runs past its early return.
+    const au = makeAurora(
+      THREE,
+      NODE_DEPS,
+      { id: 'aurora-flag', radius: 2, aurora: true },
+      TSL.float(0),
+      TSL.float(0.5)
+    )
+
+    expect(au).toBeTruthy()
+
+    // Recording Sprite — the meteor flash raycast stub must execute.
+    const sprites = []
+
+    class RecSprite {
+      constructor() {
+        this.position = { set: jest.fn() }
+        this.scale = { set: jest.fn() }
+        sprites.push(this)
+      }
+    }
+
+    const pool = makeMeteorPool(
+      { ...THREE, Sprite: RecSprite },
+      { id: 'rocky', radius: 1 },
+      fakePhoto()
+    )
+
+    expect(pool.length).toBeGreaterThan(0)
+
+    for (const sp of sprites) sp.raycast?.()
+  })
+})
+
+describe('belt-rock + diffraction-spike tails', () => {
+  /**
+   * 2d ctx extended with the transform/gradient calls spikeRay and
+   * rockTexture make on top of the shared fake2d surface.
+   */
+  const fake2dFull = () => ({
+    ...fake2d(),
+    save: jest.fn(),
+    restore: jest.fn(),
+    translate: jest.fn(),
+    rotate: jest.fn(),
+    scale: jest.fn(),
+    stroke: jest.fn(),
+  })
+
+  /**
+   * Geometry stand-in with a real position attribute — the chain
+   * mock's `count` proxy coerces NaN so the crumple/UV-bake vertex
+   * loop would never iterate; four real verts let it run.
+   */
+  const fakeGeo = () =>
+    class {
+      constructor() {
+        const verts = [
+          [0.4, 0.8, 0.2],
+          [-0.7, 0.3, -0.6],
+          [0.1, -0.9, 0.5],
+          [-0.2, 0.1, -0.9],
+        ]
+
+        this.attributes = {
+          position: {
+            count: verts.length,
+            getX: (i) => verts[i][0],
+            getY: (i) => verts[i][1],
+            getZ: (i) => verts[i][2],
+            setXYZ: jest.fn(),
+          },
+        }
+      }
+
+      setAttribute() {}
+
+      computeVertexNormals() {}
+    }
+
+  test('makeBeltRocks paints every material class and survives a belt-less def', () => {
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2dFull())
+
+    const T = {
+      ...THREE,
+      IcosahedronGeometry: fakeGeo(),
+      TetrahedronGeometry: fakeGeo(),
+      CanvasTexture: class {
+        constructor() {
+          this.colorSpace = ''
+        }
+      },
+    }
+
+    // Several seeds — the seeded class roll differs per id, so across
+    // a few belts the stone/carbon pits, metal veins and ice streaks
+    // all get painted at least once.
+    for (const id of ['belt-a', 'belt-b', 'belt-c', 'belt-d', 'belt-e']) {
+      const rocks = makeBeltRocks(T, { id, belt: { inner: 2, outer: 6, puff: 0.2 } })
+
+      expect(rocks.pivots.length).toBeGreaterThan(0)
+    }
+
+    // No `belt` config — the `belt?.inner ?? 0` / `belt?.outer ?? 0`
+    // and `belt?.puff ?? …` fallback arms.
+    const bare = makeBeltRocks(T, { id: 'belt-less' })
+
+    expect(bare.group).toBeTruthy()
+  })
+
+  test('spikesFor paints the six-ray cross or bails without 2d', () => {
+    const ctxSpy = jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
+
+    expect(spikesFor(THREE, { id: 'noctx', color: 0xffffff })).toBeUndefined()
+
+    ctxSpy.mockImplementation(() => fake2dFull())
+
+    expect(spikesFor(THREE, { id: 'ctx', color: 0xffcc66 })).toBeTruthy()
   })
 })
 
@@ -391,7 +657,11 @@ describe('particle-body tails (belt / black-hole / structures)', () => {
     // `gapFreq: 0` → `lanes > 0` false arm (smooth classical disc).
     const smooth = makeBelt(
       T,
-      { id: 'belt-smooth', color: 0x334455, belt: { inner: 1, outer: 3, count: 24, puff: 0.2, gapFreq: 0 } },
+      {
+        id: 'belt-smooth',
+        color: 0x334455,
+        belt: { inner: 1, outer: 3, count: 24, puff: 0.2, gapFreq: 0 },
+      },
       undefined
     )
 

@@ -611,6 +611,16 @@ export interface SFNode {
    * breathes `material.opacity` so stars shimmer like live suns.
    */
   corona?: { material: { rotation: number; opacity: number }; rate: number; phase: number }
+  /**
+   * Interstellar-collapse glyph — a flat point-glow sprite riding the
+   * pivot beside the real mesh, plus its own pick proxy. updateLod
+   * shows them (and hides the sphere) once the camera passes
+   * SF_LOD.SOLAR_FAR so the whole solar tier reads as a single bright
+   * star like every other sun in the neighborhood. Solar stars only.
+   */
+  farGlow?: THREE_NS.Object3D
+  /** Invisible pick bubble kept live while `farGlow` shows. */
+  farPick?: THREE_NS.Object3D
 }
 
 /** Active camera fly-to tween — cubic ease-in-out over FLY_MS. */

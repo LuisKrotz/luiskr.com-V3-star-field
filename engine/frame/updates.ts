@@ -13,7 +13,7 @@ import {
   SF_STAR_CLOUD,
   SF_STRUCTURE,
 } from '@core/tokens/starfield/params.js'
-import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { registryWorldPos } from '../registry.js'
 import { anchorScreenPos, anchorWorldPos, worldScreenPos } from './camera.js'
 import type { SFState } from '../types.js'
@@ -68,6 +68,12 @@ export function updateLod(s: SFState): void {
   const camHome = Math.hypot(cam.x, cam.y, cam.z)
   const deepOn = camHome > SF_LOD.DEEP_REVEAL
 
+  // Solar-tier collapse — from the stellar neighborhood outward the
+  // whole planetary diagram is an unresolvable smudge, so every solar
+  // body hides and the Sun swaps its sphere for the flat far-glow
+  // point (with its own pick proxy) that rides the same pivot.
+  const solarFar = camHome > SF_LOD.SOLAR_FAR
+
   for (const node of s.nodes.values()) {
     const def = node.def
 
@@ -80,6 +86,26 @@ export function updateLod(s: SFState): void {
     if (deep && !deepOn) {
       node.pivot.visible = false
       continue
+    }
+
+    if (def.group === SF_GROUPS.SOLAR) {
+      if (solarFar) {
+        node.pivot.visible = !!node.farGlow
+
+        if (node.farGlow) {
+          node.mesh.visible = false
+          node.farGlow.visible = true
+          if (node.farPick) node.farPick.visible = true
+        }
+
+        continue
+      }
+
+      if (node.farGlow && !node.mesh.visible) {
+        node.mesh.visible = true
+        node.farGlow.visible = false
+        if (node.farPick) node.farPick.visible = false
+      }
     }
 
     node.pivot.visible = true

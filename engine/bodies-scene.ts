@@ -203,6 +203,36 @@ export function buildStarBodies(
       pickMesh.userData[SF_USER_PROXY] = true
     }
 
+    // Interstellar collapse glyph — past SF_LOD.SOLAR_FAR the whole
+    // solar tier hides and the Sun must read as one bright star, like
+    // every other system glyph in the neighborhood. The flat halo and
+    // a dedicated pick proxy ride the pivot (NOT the mesh) so they stay
+    // visible and tappable while updateLod hides the real photosphere.
+    let farGlow: THREE_NS.Object3D | undefined
+    let farPick: THREE_NS.Object3D | undefined
+
+    if (
+      def.group === SF_GROUPS.SOLAR &&
+      (def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM)
+    ) {
+      farGlow = makeStarHalo(THREE, def, glowTex, true)
+
+      farGlow.visible = false
+
+      pivot.add(farGlow)
+
+      farPick = makePickProxy(THREE, def.radius)
+
+      farPick.userData[SF_USER_BODY] = def.id
+      farPick.userData[SF_USER_PROXY] = true
+
+      farPick.visible = false
+
+      pivot.add(farPick)
+
+      s.pickables.push(farPick)
+    }
+
     if (def.orbit != null) {
       mesh.position.x = def.orbit
 
@@ -377,9 +407,8 @@ export function buildStarBodies(
     for (const [i, sat] of (vis.satellites ?? []).entries()) {
       if (!sat.id) continue
 
+      // satPivots is built from the same vis.satellites list 1:1.
       const rec = satPivots[i]
-
-      if (!rec) continue
 
       rec.mesh.userData[SF_USER_BODY] = sat.id
 
@@ -465,6 +494,8 @@ export function buildStarBodies(
       flares,
       meteorPool,
       meteorNext: def.meteors ? 2 + Math.random() * 4 : undefined,
+      farGlow,
+      farPick,
     }
 
     s.nodes.set(def.id, node)

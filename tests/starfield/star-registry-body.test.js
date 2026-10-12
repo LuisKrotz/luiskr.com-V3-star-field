@@ -95,6 +95,30 @@ describe('ensureRegistryBody', () => {
     expect(s.registryBodies.has('star-000000')).toBe(false)
   })
 
+  test('starless magnitude falls back to the mid-curve radius and speckles never raycast', () => {
+    // Recording Points — the chain-proxy mock swallows the
+    // `points.raycast =` assignment, so a real class is what lets the
+    // no-op stub actually execute.
+    const pts = []
+
+    class RecPoints {
+      constructor() {
+        pts.push(this)
+      }
+    }
+
+    const s = mkState({ THREE: { ...THREE, Points: RecPoints } })
+
+    // No `m` on the record — the `?? 6` mid-curve arm in starRadius.
+    ensureRegistryBody(s, { ...STAR_REC, i: 'star-000100', m: undefined })
+
+    expect(s.registryBodies.has('star-000100')).toBe(true)
+
+    ensureRegistryBody(s, { ...DSO_REC, i: 'dso-000100' })
+
+    for (const p of pts) p.raycast?.()
+  })
+
   test('spawns every DSO tint class and untilted galaxies', () => {
     const s = mkState({
       glowTex: null,

@@ -798,6 +798,94 @@ describe('day/night + axis-lock tails', () => {
     updateFx(s)
   })
 
+  test('updateFx breathes flares and fires/fades the meteor pool', async () => {
+    const { updateFx } = await import('../../../../engine/frame/fx.js')
+
+    // Flare pair — one sprite with a material (opacity arm), one
+    // without (the `if (spr.material)` else arm).
+    const flares = [
+      {
+        sprite: { material: { opacity: 0 }, scale: { set: jest.fn() } },
+        rate: 1,
+        phase: 0,
+        base: 2,
+      },
+      { sprite: { scale: { set: jest.fn() } }, rate: 1, phase: 2, base: 1 },
+    ]
+
+    // Meteor slots: dormant (fires on trigger → continue + activate arms),
+    // live-with-material (rise/decay + expire-fade arms) and live-but-
+    // material-less (both `mat.material` false arms).
+    const slotA = {
+      sprite: { position: { set: jest.fn() }, material: { opacity: 0 } },
+      t0: -1,
+      active: false,
+    }
+    const slotB = {
+      sprite: { position: { set: jest.fn() }, material: { opacity: 0 } },
+      t0: 0,
+      active: true,
+    }
+    const slotC = { sprite: { position: { set: jest.fn() } }, t0: 0, active: true }
+
+    const node = {
+      def: { radius: 2 },
+      pivot: { rotation: { y: 0 } },
+      spinner: { rotation: { y: 0 } },
+      satPivots: [],
+      mesh: {},
+      flares,
+      meteorPool: [slotA, slotB, slotC],
+      meteorNext: 0,
+    }
+
+    const s = {
+      t: -1,
+      fxTime: { value: 0 },
+      solarWind: { value: 0 },
+      nodes: new Map([['sun', node]]),
+    }
+
+    // Below the schedule → no trigger; the inactive slot hits
+    // `!slot.active continue`, the material-less live slot hits the
+    // `else if (mat.material)` false arm.
+    updateFx(s)
+
+    expect(slotA.active).toBe(false)
+
+    // Past the schedule → the dormant slot fires at a surface point and
+    // the clock re-arms.
+    s.t = 0.6
+
+    updateFx(s)
+
+    expect(slotA.active).toBe(true)
+    expect(slotA.sprite.position.set).toHaveBeenCalled()
+
+    // Force every slot busy with a due trigger — `find` comes up empty,
+    // covering the `if (slot)` else arm.
+    node.meteorNext = 0
+
+    for (const slot of node.meteorPool) {
+      slot.active = true
+      slot.t0 = 2
+    }
+
+    s.t = 2.1
+
+    updateFx(s)
+
+    expect(node.meteorNext).toBeGreaterThan(2)
+
+    // Far future → all live flashes expire past SF_METEOR.LIFE (the
+    // deactivation + material-opacity-reset arms).
+    s.t = 1e6
+
+    updateFx(s)
+
+    expect(slotB.active).toBe(false)
+  })
+
   test('fillSpiral covers the barred bulge and the bubble resample paths', async () => {
     const { fillSpiral } = await import('../../../../engine/spiral.js')
 

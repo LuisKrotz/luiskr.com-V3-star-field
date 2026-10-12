@@ -23,26 +23,105 @@ import { gpos } from './geo.js'
  */
 export const MILKY_WAY: SFBodyDef[] = [
   {
+    // Alpha Centauri A — Rigil Kentaurus, G2V, ~1.1 M☉: slightly bigger
+    // and more luminous than the Sun. It anchors the triple hierarchy —
+    // B orbits it on the real 79.9-yr eccentric track and Proxima rides
+    // far outside the pair, so from interstellar range the system merges
+    // into the single point of light southern observers see naked-eye.
+    id: 'alpha-centauri',
+    name: 'Alpha Centauri',
+    kind: SF_KINDS.SYSTEM,
+    group: SF_GROUPS.MILKY_WAY,
+    radius: 14,
+    pos: gpos(315.73, -0.68, 4.37),
+    dist: '4.37 ly',
+    color: SF_COLORS.ALPHA_STAR,
+  },
+  {
+    // Alpha Centauri B — Toliman, K1V, ~0.9 M☉: smaller, cooler, orange.
+    // A parented orbit (not a decorative satellite) so the pair really
+    // sweeps a shared barycentric track — real eccentricity e≈0.518.
+    id: 'alpha-centauri-b',
+    name: 'Alpha Centauri B',
+    kind: SF_KINDS.STAR,
+    group: SF_GROUPS.MILKY_WAY,
+    radius: 9,
+    parent: 'alpha-centauri',
+    orbit: 26,
+    speed: 0.5,
+    ecc: 0.518,
+    phase: 1.9,
+    dist: '4.40 ly',
+    color: SF_COLORS.ALPHA_COMPANION,
+  },
+  {
+    // Proxima — α Cen C, M5.5V red dwarf, gravitationally bound to the
+    // AB pair at ~13 000 AU (≈0.21 ly). Its orbit is hugely exaggerated
+    // versus the AB separation (real ratio ~550:1 won't fit a glyph),
+    // but the ordering is honest: the binary is a tight inner pair and
+    // Proxima a remote third light — e≈0.5, ~550 000-yr period, so its
+    // crawl against the 80-yr waltz is nearly imperceptible.
     id: 'proxima-centauri',
     name: 'Proxima Centauri',
     kind: SF_KINDS.SYSTEM,
     group: SF_GROUPS.MILKY_WAY,
     radius: 2.5,
-    pos: gpos(313.94, -1.93, 4.246),
+    parent: 'alpha-centauri',
+    orbit: 84,
+    speed: 0.05,
+    ecc: 0.5,
+    phase: 4.1,
     dist: '4.246 ly',
     color: SF_COLORS.PROXIMA_STAR,
-    satellites: [{ radius: 0.8, orbit: 12, speed: 1.4, color: SF_COLORS.PROXIMA_PLANET }],
   },
   {
-    id: 'alpha-centauri',
-    name: 'Alpha Centauri',
-    kind: SF_KINDS.SYSTEM,
+    // Proxima d — innermost confirmed planet (0.029 AU, 5.1-day year,
+    // sub-Earth mass) — orbits the dim red dwarf, not the bright pair.
+    id: 'proxima-d',
+    name: 'Proxima d',
+    kind: SF_KINDS.PLANET,
     group: SF_GROUPS.MILKY_WAY,
-    radius: 12,
-    pos: gpos(315.73, -0.68, 4.37),
-    dist: '4.37 ly',
-    color: SF_COLORS.ALPHA_STAR,
-    satellites: [{ radius: 9, orbit: 24, speed: 0.5, color: SF_COLORS.ALPHA_COMPANION }],
+    radius: 0.4,
+    parent: 'proxima-centauri',
+    orbit: 6,
+    speed: 2.6,
+    ecc: 0.04,
+    phase: 0.8,
+    dist: '4.246 ly',
+    color: SF_COLORS.PROXIMA_PLANET,
+  },
+  {
+    // Proxima b — the famous one: 1.07 M⊕ inside the habitable zone,
+    // 11.2-day year, almost certainly tidally locked (the shared lock
+    // group already gives it that physics for free).
+    id: 'proxima-b',
+    name: 'Proxima b',
+    kind: SF_KINDS.PLANET,
+    group: SF_GROUPS.MILKY_WAY,
+    radius: 0.7,
+    parent: 'proxima-centauri',
+    orbit: 8.5,
+    speed: 1.7,
+    ecc: 0.11,
+    phase: 2.9,
+    dist: '4.246 ly',
+    color: SF_COLORS.PROXIMA_PLANET,
+  },
+  {
+    // Proxima c — outer candidate (~1.5 AU, ~5.7-yr year, ~7 M⊕
+    // mini-Neptune): the slow, distant, biggest sibling.
+    id: 'proxima-c',
+    name: 'Proxima c',
+    kind: SF_KINDS.PLANET,
+    group: SF_GROUPS.MILKY_WAY,
+    radius: 1.1,
+    parent: 'proxima-centauri',
+    orbit: 14,
+    speed: 0.35,
+    ecc: 0.3,
+    phase: 5.3,
+    dist: '4.246 ly',
+    color: SF_COLORS.PROXIMA_PLANET,
   },
   {
     id: 'sirius',
