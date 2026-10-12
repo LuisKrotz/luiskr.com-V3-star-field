@@ -1,7 +1,7 @@
 {
   "id": "antares",
   "name": "Antares",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Der Rivale des Mars – en aufgeblähter roter Überriese, der sich seiner Supernova nähert.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "NASA · ESO/VLTI"
-    ]
+    "refs": ["NASA · ESO/VLTI"]
   }
 }

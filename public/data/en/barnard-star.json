@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "Barnard's Star",
-  "kind": "star",
+  "kind": "system",
   "tagline": "The fastest-moving star across our sky — a dim red dwarf 6 light-years away.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-09",
     "locale": "en",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

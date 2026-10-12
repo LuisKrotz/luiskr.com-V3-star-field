@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sirio",
-  "kind": "star",
+  "kind": "system",
   "tagline": "The Dog Star: a estrela máis brillante do ceo nocturno da Terra, que esconde un compañeiro morto.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gl",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

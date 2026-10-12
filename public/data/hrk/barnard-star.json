@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "Barnard's Star",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Der sich am schnellsten bewegende Schdern an unserem Himmel – en schwacher Roter Zwerg, 6 Lichtjahre entfernt.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

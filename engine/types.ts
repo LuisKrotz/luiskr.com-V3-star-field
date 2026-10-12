@@ -233,9 +233,13 @@ export interface SFBodyDef {
    */
   dist: string
   /**
-   * Companion satellites orbiting this body's mesh — decorative by
-   * default; an entry carrying `id`/`name` registers as a pickable
-   * dossier body (the ISS close to Earth).
+   * Companion bodies orbiting this body's mesh — the representation for
+   * a galactic star's planetary system (TRAPPIST-1 b–h, Epsilon Eridani
+   * b) and for crafted orbiters (the ISS). Entries render inside the
+   * host's LOD `detail` set so a system's planets only resolve once the
+   * camera is inside the approach distance; `ecc`/`phase` carry the
+   * real conic. An entry carrying `id`/`name` registers as a pickable
+   * dossier body like any catalog world.
    */
   satellites?: Array<{
     radius: number
@@ -621,6 +625,15 @@ export interface SFNode {
   farGlow?: THREE_NS.Object3D
   /** Invisible pick bubble kept live while `farGlow` shows. */
   farPick?: THREE_NS.Object3D
+  /**
+   * Galactic-star far glyph — the flat point-glow sprite a point star
+   * wears at chart distances. updateLod hides it while the node's
+   * near-field group (real photosphere sphere + annulus halo + corona +
+   * flares, parked on `detail`) resolves on approach, so the star reads
+   * as an unresolvable point from range and as its spectral class up
+   * close.
+   */
+  farGlyph?: THREE_NS.Object3D
 }
 
 /** Active camera fly-to tween — cubic ease-in-out over FLY_MS. */

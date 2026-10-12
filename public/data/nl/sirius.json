@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sirius",
-  "kind": "star",
+  "kind": "system",
   "tagline": "The Dog Star - helderste ster aan de nachtelijke hemel van de aarde, die een dode metgezel verbergt.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "nl",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

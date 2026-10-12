@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sirius",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Der Hundestern – der hellste Stern am Nachthimmel der Erde, der einen toten Begleiter verbirgt.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "de",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

@@ -1,7 +1,7 @@
 {
   "id": "antares",
   "name": "Antares",
-  "kind": "star",
+  "kind": "system",
   "tagline": "El rival de Mart: una supergegant vermella inflada a prop de la seva supernova.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ca",
-    "refs": [
-      "NASA · ESO/VLTI"
-    ]
+    "refs": ["NASA · ESO/VLTI"]
   }
 }

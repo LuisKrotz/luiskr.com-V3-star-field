@@ -267,8 +267,10 @@ describe('corona registration + animation', () => {
         pos: [10, 0, 0],
         color: 0x88ccff,
       },
-      // Galactic star — point-star path: sphere-less group, pick proxy,
-      // point halo, no corona; satellites scale to the point radius.
+      // Galactic star — point-star path: invisible pick proxy + flat
+      // far glyph at chart distance, while the real photosphere group
+      // (sphere + annulus halo + corona) parks on `detail` and resolves
+      // only inside the approach distance.
       {
         id: 'point-star',
         kind: SF_KINDS.STAR,
@@ -284,7 +286,12 @@ describe('corona registration + animation', () => {
 
     const point = s.nodes.get('point-star')
 
-    expect(point.corona).toBeUndefined()
+    // The near-field star rides `detail` (hidden until approach), the
+    // flat glyph stays live as its far-field stand-in, and the corona
+    // is mounted inside the gated group.
+    expect(point.farGlyph).toBeTruthy()
+    expect(point.detail.some((o) => o.visible === false)).toBe(true)
+    expect(point.corona).toBeTruthy()
     expect(point.satPivots?.length).toBe(1)
 
     s.nodes.delete('point-star')

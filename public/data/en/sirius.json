@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sirius",
-  "kind": "star",
+  "kind": "system",
   "tagline": "The Dog Star — brightest star in Earth's night sky, hiding a dead companion.",
   "facts": [
     {
@@ -44,8 +44,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-09",
     "locale": "en",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   }
 }

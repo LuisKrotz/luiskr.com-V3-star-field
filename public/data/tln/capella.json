@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capella",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Un sistema aureo quadruplo: do stełe giganti che orbitano cusì vicine da squasi toccarsi.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

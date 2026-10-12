@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "L'étoile de Barnard",
-  "kind": "star",
+  "kind": "system",
   "tagline": "L’étoile la plus rapide dans notre ciel – une naine rouge pâle située à 6 années-lumière.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "fr",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

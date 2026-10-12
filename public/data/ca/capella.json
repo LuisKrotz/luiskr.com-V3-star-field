@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capella",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Un sistema daurat quàdruple: dues estrelles gegants que orbiten tan a prop que gairebé es toquen.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ca",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

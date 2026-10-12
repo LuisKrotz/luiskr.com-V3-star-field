@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Капелла",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Четверная золотая система — две гигантские звезды, вращающиеся так близко, что почти соприкасаются.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ru",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

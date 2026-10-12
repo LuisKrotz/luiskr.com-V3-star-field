@@ -51,9 +51,12 @@ export function checkApproach(s: SFState): void {
 
 /**
  * Detail level-of-detail — toggles each node's secondary geometry
- * (shells, satellite pivots) by camera distance so remote
- * bodies draw as one primitive. Orbit radius counts toward `size` so a
- * body's ring stays visible while the camera is still inside it.
+ * (shells, satellite pivots, the near-field star group) by camera
+ * distance so remote bodies draw as one primitive. Orbit radius counts
+ * toward `size` so a body's ring stays visible while the camera is
+ * still inside it. Galactic stars carry a `farGlyph` point glow that
+ * swaps with the near-field group — point glyph at chart distances,
+ * real photosphere on approach — the mirror of the solar collapse.
  * @param s Engine state.
  */
 export function updateLod(s: SFState): void {
@@ -123,6 +126,11 @@ export function updateLod(s: SFState): void {
     for (const obj of node.detail) {
       obj.visible = near
     }
+
+    // Far-glyph swap — while the star's near-field group is hidden the
+    // flat point glow carries the body; once the photosphere resolves
+    // the glyph would smear the disc edge, so it stands down.
+    if (node.farGlyph) node.farGlyph.visible = !near
   }
 }
 

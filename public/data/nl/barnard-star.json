@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "Barnards ster",
-  "kind": "star",
+  "kind": "system",
   "tagline": "De snelst bewegende ster aan onze hemel: een vage rode dwerg op zes lichtjaar afstand.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "nl",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

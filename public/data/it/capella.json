@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Cappella",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Un sistema aureo quadruplo: due stelle giganti che orbitano così vicine da quasi toccarsi.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "it",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

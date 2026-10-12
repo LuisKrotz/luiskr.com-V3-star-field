@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "Barnard's Star",
-  "kind": "star",
+  "kind": "system",
   "tagline": "A estrela que se move mais rápido em nosso céu — uma anã vermelha fraca a 6 anos-luz de distância.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

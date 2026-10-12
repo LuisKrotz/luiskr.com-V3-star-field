@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capella rehegua",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Peteĩ sistema de oro cuadruple — mokõi mbyjajere guasu ojeréva hi'aguĩeterei haimete opoko hikuái.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gn",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

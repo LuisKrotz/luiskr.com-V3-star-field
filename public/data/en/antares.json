@@ -1,7 +1,7 @@
 {
   "id": "antares",
   "name": "Antares",
-  "kind": "star",
+  "kind": "system",
   "tagline": "The rival of Mars — a bloated red supergiant nearing its supernova.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-09",
     "locale": "en",
-    "refs": [
-      "NASA · ESO/VLTI"
-    ]
+    "refs": ["NASA · ESO/VLTI"]
   }
 }

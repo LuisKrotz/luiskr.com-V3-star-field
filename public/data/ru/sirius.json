@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Сириус",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Собачья звезда — ярчайшая звезда ночного неба Земли, скрывающая мертвого спутника.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ru",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

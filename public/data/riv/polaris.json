@@ -1,7 +1,7 @@
 {
   "id": "polaris",
   "name": "Estrela Polar",
-  "kind": "star",
+  "kind": "system",
   "tagline": "A Estrela do Norte — um farol Cefeida quase diretamente acima do eixo da Terra.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "NASA · ESA Hipparcos/Gaia"
-    ]
+    "refs": ["NASA · ESA Hipparcos/Gaia"]
   }
 }

@@ -79,7 +79,8 @@ export function buildStarBodies(
     let rotor: THREE_NS.Object3D | undefined
     let lock: THREE_NS.Object3D | undefined
     let beltRockGroup: THREE_NS.Object3D | undefined
-    let vis = def
+    let pointStar = false
+    let farGlyph: THREE_NS.Object3D | undefined
     const rockPivots: SFNode['satPivots'] = []
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
@@ -146,29 +147,18 @@ export function buildStarBodies(
       }
     } else {
       // Galactic stars are unresolvable points at honest chart distances
-      // — no sphere mesh at all: an invisible pick bubble + the point
-      // halo (added below) carry the body, so no marker can ever render
-      // as a planet-like ball beside another body. The authored
-      // `def.radius` keeps driving the luminosity halo, the pick proxy
-      // and the fly-to standoff; satellites/corona scale to the point.
-      const pointStar =
+      // — the far-field representation is an invisible pick bubble + a
+      // flat point-glow halo, while a full photosphere group (sphere +
+      // annulus halo + corona + flares, built below) rides `detail` and
+      // resolves only on approach. The authored `def.radius` keeps
+      // driving the luminosity halo, the pick proxy and the fly-to
+      // standoff — and, up close, the real star's surface.
+      pointStar =
         (def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM) &&
         def.group !== SF_GROUPS.SOLAR &&
         def.radius > SF_DETAIL.POINT_RADIUS
 
       if (pointStar) {
-        const k = SF_DETAIL.POINT_RADIUS / def.radius
-
-        vis = {
-          ...def,
-          radius: SF_DETAIL.POINT_RADIUS,
-          satellites: def.satellites?.map((sat) => ({
-            ...sat,
-            radius: sat.radius * k,
-            orbit: sat.orbit * k,
-          })),
-        }
-
         mesh = new THREE.Object3D()
         pickMesh = makePickProxy(THREE, def.radius)
 
@@ -342,15 +332,46 @@ export function buildStarBodies(
     // (not `detail`) so a distant star still reads as a light source.
     let corona: SFNode['corona']
 
+    // The surface stack — corona, flares and the limb-reading annulus
+    // halo — mounts on `starHost`: `mesh` itself for resolved stars
+    // (the solar tier), the approach-gated near-field group for
+    // galactic point stars.
+    let starHost = mesh
+
     if (def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM) {
-      mesh.add(makeStarHalo(THREE, def, glowTex, vis !== def))
+      if (pointStar) {
+        // Far glyph — the flat point glow a distant star reads as. It
+        // stays live on `mesh` (always visible) and updateLod swaps it
+        // off the moment the near-field group resolves, mirroring the
+        // solar tier's farGlow hand-off in the opposite direction.
+        farGlyph = makeStarHalo(THREE, def, glowTex, true)
+
+        mesh.add(farGlyph)
+
+        // Near-field star — the same photosphere the Sun wears (seeded
+        // granulation, sunspots past the activity threshold, fresnel
+        // limb darkening from `def.rim`), LOD-parked on `detail` so the
+        // star resolves out of its own point glyph on approach instead
+        // of staying a bright dot at every zoom.
+        const nearStar = new THREE.Group()
+
+        nearStar.visible = false
+        nearStar.add(makeSphere(THREE, deps, def, texMap))
+        nearStar.add(makeStarHalo(THREE, def, glowTex))
+
+        mesh.add(nearStar)
+        detail.push(nearStar)
+        starHost = nearStar
+      } else {
+        mesh.add(makeStarHalo(THREE, def, glowTex))
+      }
 
       // Corona sprite — seeded streamers + flare knots that rotate and
       // breathe in updateFx, so stars read as live suns rather than a
-      // static lit disc with a glow blob behind it. Point stars (vis
-      // clamped) skip it — a corona around a sphere-less marker is just
-      // a second halo, so the point glow does the work alone.
-      const coronaTex = vis === def ? coronaFor(THREE, def) : undefined
+      // static lit disc with a glow blob behind it. Point stars get the
+      // same corona inside the near-field group — hidden at range with
+      // the photosphere it belongs to.
+      const coronaTex = coronaFor(THREE, def)
 
       if (coronaTex) {
         const cm = new THREE.SpriteMaterial(
@@ -370,11 +391,11 @@ export function buildStarBodies(
 
         // Activity enlarges the corona — an active star's streamers and
         // eruptions reach farther off the limb than a quiet dwarf's.
-        const csize = vis.radius * SF_DETAIL.CORONA_SCALE * (def.activity ?? 1)
+        const csize = def.radius * SF_DETAIL.CORONA_SCALE * (def.activity ?? 1)
 
         coronaSprite.scale.set(csize, csize, 1)
 
-        mesh.add(coronaSprite)
+        starHost.add(coronaSprite)
 
         const crand = lcg(seedFrom(`${def.id}:spin`))
 
@@ -387,12 +408,14 @@ export function buildStarBodies(
     }
 
     // Solar flares — limb prominence sprites rooted at the photosphere
-    // edge; updateFx breathes them with the solar-wind cycle.
-    const flares = def.flares && vis === def ? makeSolarFlares(THREE, def, glowTex) : undefined
+    // edge; updateFx breathes them with the solar-wind cycle. Point
+    // stars carry them inside the approach-gated group (flare stars
+    // like Proxima and TRAPPIST-1 resolve with live prominences).
+    const flares = def.flares ? makeSolarFlares(THREE, def, glowTex) : undefined
 
-    for (const f of flares ?? []) mesh.add(f.sprite)
+    for (const f of flares ?? []) starHost.add(f.sprite)
 
-    const satPivots = makeSatellites(THREE, deps, vis, mesh)
+    const satPivots = makeSatellites(THREE, deps, def, mesh)
 
     detail.push(...satPivots.map((sat) => sat.pivot))
 
@@ -404,10 +427,10 @@ export function buildStarBodies(
     // catalog world. Its pivot stays driven by the HOST's satPivots —
     // the synthesized node carries no orbit/speed so tickFrame leaves
     // it alone, and `parent` keeps the galactic rider's hands off.
-    for (const [i, sat] of (vis.satellites ?? []).entries()) {
+    for (const [i, sat] of (def.satellites ?? []).entries()) {
       if (!sat.id) continue
 
-      // satPivots is built from the same vis.satellites list 1:1.
+      // satPivots is built from the same def.satellites list 1:1.
       const rec = satPivots[i]
 
       rec.mesh.userData[SF_USER_BODY] = sat.id
@@ -496,6 +519,7 @@ export function buildStarBodies(
       meteorNext: def.meteors ? 2 + Math.random() * 4 : undefined,
       farGlow,
       farPick,
+      farGlyph,
     }
 
     s.nodes.set(def.id, node)

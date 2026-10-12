@@ -1,7 +1,7 @@
 {
   "id": "polaris",
   "name": "Полярная звезда",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Полярная звезда — маяк цефеид почти прямо над земной осью.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ru",
-    "refs": [
-      "NASA · ESA Hipparcos/Gaia"
-    ]
+    "refs": ["NASA · ESA Hipparcos/Gaia"]
   }
 }
