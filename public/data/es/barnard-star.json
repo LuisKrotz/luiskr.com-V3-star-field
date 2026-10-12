@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "La estrella de Barnard",
-  "kind": "star",
+  "kind": "system",
   "tagline": "La estrella que se mueve más rápido en nuestro cielo: una tenue enana roja a 6 años luz de distancia.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "es",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

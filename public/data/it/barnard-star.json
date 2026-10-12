@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "La stella di Barnard",
-  "kind": "star",
+  "kind": "system",
   "tagline": "La stella che si muove più velocemente nel nostro cielo: una debole nana rossa a 6 anni luce di distanza.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "it",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

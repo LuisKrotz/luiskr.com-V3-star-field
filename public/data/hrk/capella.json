@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capella",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Ein vierfaches goldenes System – zwei riesige Schderne, die so nah umkreisen, dass sie sich fast berühren.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

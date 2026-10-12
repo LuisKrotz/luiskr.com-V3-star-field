@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "L'estrella de Barnard",
-  "kind": "star",
+  "kind": "system",
   "tagline": "L'estrella que es mou més ràpidament al nostre cel: una nana vermella tènue a 6 anys llum de distància.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ca",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

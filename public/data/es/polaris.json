@@ -1,7 +1,7 @@
 {
   "id": "polaris",
   "name": "Estrella Polar",
-  "kind": "star",
+  "kind": "system",
   "tagline": "La Estrella Polar: una baliza cefeida casi directamente sobre el eje de la Tierra.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "es",
-    "refs": [
-      "NASA · ESA Hipparcos/Gaia"
-    ]
+    "refs": ["NASA · ESA Hipparcos/Gaia"]
   }
 }

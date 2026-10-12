@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sìrio",
-  "kind": "star",
+  "kind": "system",
   "tagline": "La steła del cane: la steła pi luminosa nel cielo notturno de la Terra, che nasconde un compagno morto.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

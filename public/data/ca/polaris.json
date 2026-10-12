@@ -1,7 +1,7 @@
 {
   "id": "polaris",
   "name": "Polaris",
-  "kind": "star",
+  "kind": "system",
   "tagline": "L'estrella polar: una balisa cefeida gairebé directament sobre l'eix de la Terra.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ca",
-    "refs": [
-      "NASA · ESA Hipparcos/Gaia"
-    ]
+    "refs": ["NASA · ESA Hipparcos/Gaia"]
   }
 }

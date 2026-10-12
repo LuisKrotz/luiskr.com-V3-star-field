@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capella",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Córas órga faoi cheathair - dhá réalta ollmhóra ag fithisiú chomh gar agus is beag teagmháil a dhéanann siad.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

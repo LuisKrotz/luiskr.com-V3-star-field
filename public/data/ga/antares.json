@@ -1,7 +1,7 @@
 {
   "id": "antares",
   "name": "Antares",
-  "kind": "star",
+  "kind": "system",
   "tagline": "An rival de Mars - fathach dearg faoi bhláth ag druidim lena ollnóva.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "NASA · ESO/VLTI"
-    ]
+    "refs": ["NASA · ESO/VLTI"]
   }
 }

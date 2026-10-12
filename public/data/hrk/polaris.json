@@ -1,7 +1,7 @@
 {
   "id": "polaris",
   "name": "Polarstern",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Der Nordstern – en Cepheiden-Leuchtfeuer fast direkt iwwer der Erdachse.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "NASA · ESA Hipparcos/Gaia"
-    ]
+    "refs": ["NASA · ESA Hipparcos/Gaia"]
   }
 }

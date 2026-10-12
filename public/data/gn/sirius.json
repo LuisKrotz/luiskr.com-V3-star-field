@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sirius",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Mbyja Jagua — mbyjajere omimbivéva Yvy yvága pyhare, omokañýva peteĩ iñirũ omanóva.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gn",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

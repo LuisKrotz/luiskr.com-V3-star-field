@@ -1,7 +1,7 @@
 {
   "id": "antares",
   "name": "Antares",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Il rivale di Marte: una supergigante rossa gonfia che si avvicina alla sua supernova.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "it",
-    "refs": [
-      "NASA · ESO/VLTI"
-    ]
+    "refs": ["NASA · ESO/VLTI"]
   }
 }

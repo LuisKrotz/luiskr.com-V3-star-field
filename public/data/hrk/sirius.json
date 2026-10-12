@@ -1,7 +1,7 @@
 {
   "id": "sirius",
   "name": "Sirius",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Der Hundestern – der hellste Schdern am Nachthimmel der Erde, der en toten Begleiter verbirgt.",
   "facts": [
     {
@@ -35,9 +35,7 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Harvard–Smithsonian CfA; IAU"
-    ]
+    "refs": ["Harvard–Smithsonian CfA; IAU"]
   },
   "media": {
     "images": [

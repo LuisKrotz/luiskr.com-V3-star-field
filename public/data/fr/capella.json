@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capelle",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Un système quadruple d’or – deux étoiles géantes en orbite si proches qu’elles se touchent presque.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "fr",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }

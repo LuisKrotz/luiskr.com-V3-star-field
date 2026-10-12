@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "Réalta Bharnard",
-  "kind": "star",
+  "kind": "system",
   "tagline": "An réalta is gasta a ghluaiseann trasna ár spéire — corrach caol dearg 6 solasbhliain ar shiúl.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

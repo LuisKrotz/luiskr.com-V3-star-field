@@ -1,7 +1,7 @@
 {
   "id": "antares",
   "name": "Antarès",
-  "kind": "star",
+  "kind": "system",
   "tagline": "La rivale de Mars – une supergéante rouge gonflée s’approchant de sa supernova.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "fr",
-    "refs": [
-      "NASA · ESO/VLTI"
-    ]
+    "refs": ["NASA · ESO/VLTI"]
   }
 }

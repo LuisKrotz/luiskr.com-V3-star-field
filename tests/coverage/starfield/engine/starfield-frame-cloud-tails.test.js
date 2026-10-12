@@ -122,8 +122,20 @@ describe('tickStar per-frame update tails', () => {
     // Solar planet without a far glyph → whole pivot hides.
     s.nodes.set('earth', mk({ kind: SF_KINDS.PLANET, group: SF_GROUPS.SOLAR }))
 
-    // Galactic star — the solar gate must not touch it.
-    s.nodes.set('vega', mk({ kind: SF_KINDS.STAR, group: SF_GROUPS.MILKY_WAY }))
+    // Galactic star — the solar gate must not touch it, and its
+    // farGlyph stays live while the camera is beyond its near radius
+    // (the point glow is the star's far-field face).
+    const vegaGlyph = { visible: true }
+
+    const vegaDetail = { visible: false }
+
+    s.nodes.set(
+      'vega',
+      mk(
+        { kind: SF_KINDS.STAR, group: SF_GROUPS.MILKY_WAY },
+        { farGlyph: vegaGlyph, detail: [vegaDetail] }
+      )
+    )
 
     tickStar(s, 1000)
 
@@ -137,8 +149,12 @@ describe('tickStar per-frame update tails', () => {
     expect(bareGlow.visible).toBe(true)
     expect(s.nodes.get('earth').pivot.visible).toBe(false)
     expect(s.nodes.get('vega').pivot.visible).toBe(true)
+    expect(vegaGlyph.visible).toBe(true)
+    expect(vegaDetail.visible).toBe(false)
 
-    // Back inside the tier → the sphere returns, the glyph retires.
+    // Back inside the tier → the sphere returns, the glyph retires;
+    // the camera lands inside Vega's near radius so the photosphere
+    // group swaps in and the point glyph stands down.
     cam.position.x = 0
 
     tickStar(s, 1001)
@@ -150,6 +166,8 @@ describe('tickStar per-frame update tails', () => {
     expect(bareMesh.visible).toBe(true)
     expect(bareGlow.visible).toBe(false)
     expect(s.nodes.get('earth').pivot.visible).toBe(true)
+    expect(vegaGlyph.visible).toBe(false)
+    expect(vegaDetail.visible).toBe(true)
   })
 
   test('updateStructures writes the shell fade uniform and speckle opacity', () => {

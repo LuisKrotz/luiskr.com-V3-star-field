@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "Barnard Mbyjajere",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Mbyjajere oñemongu’e pya’eveva ñande yvága ári — peteĩ enano pytã hũ’ỹva 6 ary tesape mombyry.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gn",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "polaris",
   "name": "Polaris",
-  "kind": "star",
+  "kind": "system",
   "tagline": "An Réalt Thuaidh - beacon Cepheid beagnach díreach os cionn ais an Domhain.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "NASA · ESA Hipparcos/Gaia"
-    ]
+    "refs": ["NASA · ESA Hipparcos/Gaia"]
   }
 }

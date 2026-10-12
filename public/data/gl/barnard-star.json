@@ -1,7 +1,7 @@
 {
   "id": "barnard-star",
   "name": "A estrela de Barnard",
-  "kind": "star",
+  "kind": "system",
   "tagline": "A estrela que se move máis rápido polo noso ceo: unha anana vermella tenue a 6 anos luz de distancia.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gl",
-    "refs": [
-      "NASA · ESO"
-    ]
+    "refs": ["NASA · ESO"]
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "capella",
   "name": "Capella",
-  "kind": "star",
+  "kind": "system",
   "tagline": "Um sistema dourado quádruplo – duas estrelas gigantes orbitando tão perto que quase se tocam.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "NASA · COAST/MIRC interferometry"
-    ]
+    "refs": ["NASA · COAST/MIRC interferometry"]
   }
 }
