@@ -131,11 +131,32 @@ function weatherField(TSL: TslNs, time: N, sunDirU: N, cloudTex: THREE_NS.Textur
 
   const steer = texture(cloudTex, vec2(uM, v)).r
 
-  // Base cover — evolving fbm; the texture's real cloud distribution
-  // biases which regions stay cloudy.
-  const cover = fbm(
-    pr.mul(W.CLOUD_FREQ).add(vec3(time.mul(W.CLOUD_EVOLVE), 0, time.mul(W.CLOUD_EVOLVE * 0.6)))
+  // Latitude meander — slow large-scale noise warps the coverage sample
+  // poleward/equatorward so jet-sheared banks weave instead of ringing
+  // the globe in straight east-west stripes.
+  const prW = pr.add(
+    vec3(
+      0,
+      fbm(vec3(p.x.mul(2.2), time.mul(W.CLOUD_EVOLVE * 0.7), p.z.mul(2.2))).mul(W.LAT_MEANDER),
+      0
+    )
   )
+
+  // Base cover — large-scale evolving fbm steered by the real map…
+  const coverLo = fbm(
+    prW.mul(W.CLOUD_FREQ).add(vec3(time.mul(W.CLOUD_EVOLVE), 0, time.mul(W.CLOUD_EVOLVE * 0.6)))
+  )
+
+  // …plus a detail octave at ~4× frequency that shreds the banks into
+  // clumpy cauliflower clusters — without it the deck reads as smooth
+  // latitude stripes, not clouds.
+  const coverHi = fbm(
+    prW
+      .mul(W.CLOUD_FREQ * W.CLOUD_DETAIL_FREQ)
+      .add(vec3(time.mul(W.CLOUD_EVOLVE * 1.7), 0, time.mul(W.CLOUD_EVOLVE)))
+  )
+
+  const cover = coverLo.mul(1 - W.CLOUD_DETAIL_GAIN).add(coverHi.mul(W.CLOUD_DETAIL_GAIN))
 
   let dens: N = smoothstep(W.COVER_LO, W.COVER_HI, cover.mul(0.65).add(steer.mul(W.CLOUD_STEER)))
 
