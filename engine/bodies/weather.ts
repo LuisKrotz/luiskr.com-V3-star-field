@@ -219,15 +219,19 @@ function weatherField(TSL: TslNs, time: N, sunDirU: N, cloudTex: THREE_NS.Textur
     )
   }
 
-  // Seasonal polar snow — the cap edge pushes toward the equator in each
-  // hemisphere's winter (declination swings the line opposite ways).
+  // Seasonal polar snow — the cap edge pushes toward the equator in
+  // each hemisphere's winter. `decl` is the local-frame sun elevation:
+  // positive when the north pole tilts sunward (northern summer), so
+  // the northern edge RETREATS with +decl while the southern edge
+  // advances — the signs are opposite by construction. The south cap
+  // keeps a tighter poleward footprint and shallower swing than the
+  // north (ICE_S_BASE/ICE_S_DECL): Earth's southern glaciation never
+  // reaches the northern winter's reach.
   // NB: `decl` is a node — `number * node` is a JS-side NaN, so the
   // arithmetic must stay inside node methods.
-  const declAmp = decl.mul(W.ICE_DECL)
+  const iceN = float(W.ICE_BASE).add(decl.mul(W.ICE_DECL))
 
-  const iceN = float(W.ICE_BASE).sub(declAmp)
-
-  const iceS = float(W.ICE_BASE).add(declAmp)
+  const iceS = float(W.ICE_S_BASE).sub(decl.mul(W.ICE_S_DECL))
 
   const snow = smoothstep(iceN, iceN.add(W.ICE_SOFT), lat).add(
     smoothstep(iceS, iceS.add(W.ICE_SOFT), lat.negate())

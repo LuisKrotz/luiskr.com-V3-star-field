@@ -303,6 +303,26 @@ export function updateDayNight(s: SFState): void {
       dn.dir.y /= len
       dn.dir.z /= len
     }
+
+    // The shaders dot `normalLocal` (object space) with this vector, so
+    // the world direction must be carried into the mesh's own frame —
+    // otherwise the day side would glue to one face of the texture
+    // instead of sweeping the globe as it spins. Row-vector product
+    // with matrixWorld's rotation block = transpose(R)·d = R⁻¹·d for a
+    // rigid transform; the elements live column-major at [0..2]/[4..6]/
+    // [8..10]. Anchors without a live matrix (tests, detached nodes)
+    // keep the world-space direction.
+    const e = (dn.anchor as { matrixWorld?: { elements?: number[] } }).matrixWorld?.elements
+
+    if (e && Number.isFinite(e[0])) {
+      const { x, y, z } = dn.dir
+
+      dn.dir.set(
+        e[0] * x + e[1] * y + e[2] * z,
+        e[4] * x + e[5] * y + e[6] * z,
+        e[8] * x + e[9] * y + e[10] * z
+      )
+    }
   }
 }
 
