@@ -428,9 +428,7 @@ describe('StarField route + interaction tails', () => {
       if (u.endsWith('star-000.json'))
         return {
           ok: true,
-          json: async () => [
-            { i: 'star-000000', n: 'Rigil', m: 0, d: 4.3, x: 1, y: 0, z: 0 },
-          ],
+          json: async () => [{ i: 'star-000000', n: 'Rigil', m: 0, d: 4.3, x: 1, y: 0, z: 0 }],
         }
 
       return { ok: false, status: 404 }
@@ -664,6 +662,47 @@ describe('StarField route + interaction tails', () => {
 
     expect(el._regQuery).toBe('sirius')
     expect(el._regSearching).toBe(false)
+
+    unmount(el)
+  })
+
+  test('_updateDom carries the nav panel scroll offset across the rebuild', async () => {
+    origFetch = globalThis.fetch
+    origRoute = router.currentRoute
+    origNavigate = router.handleNavigation
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    el._navOpen = true
+    el._updateDom()
+
+    const panel = el.shadowRoot.querySelector(`.${SF_CLASSES.SF_NAV_PANEL}`)
+
+    panel.scrollTop = 123
+
+    // The rebuild swaps the element wholesale — the scroll offset must
+    // survive so a selection never bounces the list back to its top.
+    el._updateDom()
+
+    const rebuilt = el.shadowRoot.querySelector(`.${SF_CLASSES.SF_NAV_PANEL}`)
+
+    expect(rebuilt).not.toBe(panel)
+    expect(rebuilt.scrollTop).toBe(123)
+
+    // scrollTop > 0 but the rebuilt tree lacks the panel — the
+    // `if (panel)` guard arm.
+    let calls = 0
+    const origQuery = el.$
+
+    el.$ = (sel) => {
+      if (!String(sel).includes(SF_CLASSES.SF_NAV_PANEL)) return origQuery.call(el, sel)
+
+      return ++calls === 1 ? { scrollTop: 7 } : null
+    }
+    el._updateDom()
+    el.$ = origQuery
 
     unmount(el)
   })

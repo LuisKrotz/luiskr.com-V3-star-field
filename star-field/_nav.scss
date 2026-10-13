@@ -125,6 +125,24 @@
     box-shadow: var(--shadow-card-hover);
   }
 
+  // Pinned strip — sticky header + search inside the scrolling panel.
+  // `top: 0` docks it to the scrollport's padding-box top while the
+  // group list scrolls beneath; the negative margins span the strip
+  // across the panel's padding gutters so scrolled items never peek
+  // past its edge, and the opaque chrome (bg + blur) hides them.
+  // Rounded top corners mirror the card's --radius-md silhouette.
+  &-pin {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin: calc(-1 * to-rem($space-3xl)) calc(-1 * to-rem($space-xl)) 0;
+    padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xs);
+    background: var(--sf-chrome);
+    backdrop-filter: blur(to-rem($space-md));
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    border-bottom: var(--space-hairline) solid var(--sf-line);
+  }
+
   &-head {
     display: flex;
     align-items: center;
