@@ -103,4 +103,16 @@ describe('star i18n', () => {
 
     expect(c.translations).toBeNull()
   })
+
+  test('applyStarTranslations pushes the node description into the head metas', () => {
+    const c = { _updateDom: jest.fn(), translations: null }
+
+    document.head.insertAdjacentHTML('beforeend', '<meta name="description" content="old">')
+
+    applyStarTranslations(c, { title: 'Star Field', description: 'Star snippet' })
+
+    expect(document.head.querySelector('meta[name="description"]').content).toBe('Star snippet')
+
+    document.head.querySelector('meta[name="description"]').remove()
+  })
 })
