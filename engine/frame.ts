@@ -107,7 +107,12 @@ function tickFrame(s: SFState, now?: number): void {
       if (def.ecc) {
         const th = node.pivot.rotation.y - (def.phase ?? 0)
 
-        node.mesh.position.x = (def.orbit * (1 - def.ecc * def.ecc)) / (1 + def.ecc * Math.cos(th))
+        // The conic radius lives on `center` — the orbit-offset carrier
+        // — never on the mesh, which may sit inside a counter-rotating
+        // axis-lock group where a position write would be rotated away.
+        const arm = node.center ?? node.mesh
+
+        arm.position.x = (def.orbit * (1 - def.ecc * def.ecc)) / (1 + def.ecc * Math.cos(th))
       }
     }
 

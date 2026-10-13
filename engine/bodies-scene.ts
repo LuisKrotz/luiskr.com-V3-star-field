@@ -223,8 +223,19 @@ export function buildStarBodies(
       s.pickables.push(farPick)
     }
 
+    // Body-system center — the non-rotating carrier at the orbit point.
+    // The radial offset must live HERE, never on the mesh inside the
+    // counter-rotating lock: pivot(θ)·lock(−θ) collapses to identity
+    // and would pin every locked body on the parent's +X ray (moons
+    // rendered as one rigid spoke, never orbiting). Satellites and
+    // swarms also attach under `center` so they orbit the body's
+    // position without inheriting surface spin or lock precession.
+    const center = new THREE.Group()
+
+    pivot.add(center)
+
     if (def.orbit != null) {
-      mesh.position.x = def.orbit
+      center.position.x = def.orbit
 
       pivot.rotation.y = def.phase ?? 0
     } else if (def.pos) {
@@ -246,28 +257,25 @@ export function buildStarBodies(
     // line → perpetual solstice, no seasons). The lock group carries the
     // tilt on rotation.z and counter-rotates on Y in tickFrame, keeping
     // the axis fixed in the parent frame so the terminator sweeps the
-    // hemispheres over the year — real seasons.
+    // hemispheres over the year — real seasons. It wraps ONLY the mesh:
+    // the orbit radius stays on `center` outside it, so the −θ counter-
+    // rotation fixes orientation without collapsing the position.
     const useAxisLock = !!(sphereTilt && def.orbit != null && !def.parent)
 
-    // Tidal lock — every catalog moon is synchronously rotating (its
-    // day equals its year), so the mesh counter-rotates with the orbit
-    // pivot and the same face always points at the parent world. The
-    // shared `lock` group does it: tickFrame writes rotation.y =
-    // −pivot.rotation.y, and any moon tilt stays on the mesh inside.
-    const tidalLock = !!def.parent && def.orbit != null
-
-    if (useAxisLock || tidalLock) {
+    // Tidal lock needs no group at all — a moon mesh rigidly co-rotating
+    // with its orbit pivot always shows the same hemisphere to the
+    // parent (its day equals its year by construction). Any authored
+    // tilt stays on the mesh inside the co-rotating frame.
+    if (useAxisLock) {
       lock = new THREE.Group()
 
-      if (useAxisLock) lock.rotation.z = def.tilt as number
+      lock.rotation.z = def.tilt as number
 
-      pivot.add(lock)
+      center.add(lock)
 
       lock.add(mesh)
-
-      if (tidalLock && sphereTilt) mesh.rotation.z = def.tilt as number
     } else {
-      pivot.add(mesh)
+      center.add(mesh)
 
       if (sphereTilt) mesh.rotation.z = def.tilt as number
     }
@@ -415,7 +423,10 @@ export function buildStarBodies(
 
     for (const f of flares ?? []) starHost.add(f.sprite)
 
-    const satPivots = makeSatellites(THREE, deps, def, mesh)
+    // Companion satellites orbit the non-rotating `center` — attached
+    // to the mesh they would inherit the surface spin (companions
+    // lapping at the parent's day rate instead of their own periods).
+    const satPivots = makeSatellites(THREE, deps, def, center)
 
     detail.push(...satPivots.map((sat) => sat.pivot))
 
@@ -481,7 +492,7 @@ export function buildStarBodies(
       const holder = new THREE.Object3D()
 
       holder.add(swarm)
-      mesh.add(holder)
+      center.add(holder)
 
       satPivots.push({
         pivot: holder,
@@ -508,6 +519,7 @@ export function buildStarBodies(
       def,
       pivot,
       mesh,
+      center,
       spinner: spinner ?? mesh,
       rotor,
       lock,
@@ -523,7 +535,10 @@ export function buildStarBodies(
     }
 
     s.nodes.set(def.id, node)
-    s.anchors.set(def.id, mesh)
+    // Anchors resolve the body-system center — the same world point as
+    // the mesh but free of spin/lock rotation, so parented bodies and
+    // the fly-to camera key off the orbit position alone.
+    s.anchors.set(def.id, center)
 
     // Hierarchy shells and small-body belts never enter the raycast
     // set — the enormous boundary spheres and the thousands of pebble

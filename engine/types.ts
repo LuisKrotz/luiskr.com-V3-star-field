@@ -540,6 +540,17 @@ export interface SFNode {
   /** Spin target (mesh or its inner group) for self-rotation. */
   spinner: THREE_NS.Object3D
   /**
+   * Body-system center — the group that carries the orbit radius
+   * (`position.x = def.orbit`) and hosts everything that must share the
+   * body's location but NOT its orientation: the axis-lock group, the
+   * bare mesh, satellite pivots and constellation swarms. It never
+   * rotates itself, so children orbit the body's center in the pivot
+   * frame instead of inheriting surface spin or lock counter-rotation.
+   * For orbiting bodies this is also the eccentric-orbit target —
+   * frame.ts rewrites its `position.x` with the conic radius.
+   */
+  center?: THREE_NS.Object3D
+  /**
    * Inertial axis lock — a group between the orbit pivot and the mesh
    * carrying `rotation.z = tilt` and counter-rotated on Y each frame.
    * Without it the pivot's orbital Y-rotation precesses the spin axis
