@@ -14,16 +14,64 @@ import {
   SF_SOLAR_WIND,
 } from '@core/tokens/starfield/params.js'
 import { armed } from './shared.js'
-import { SF_USER_GAS_TILT } from '../bodies/comet.js'
-import type * as THREE_NS from 'three'
+import { SF_USER_GAS } from '../bodies/comet.js'
 import type { SFState } from '../types.js'
 
 /**
- * Module scratch vector — updateFx drops the camera position into each
- * gas plane's parent-local frame once per frame; reusing one vector
- * keeps the per-frame path allocation-free.
+ * Live particle-sim record stashed on each tail `Points` node's
+ * `userData[SF_USER_GAS]` — updateFx reads the seeded per-grain vectors
+ * and rewrites `pos`/`col` in place each frame (the buffers are shared
+ * with the geometry's BufferAttributes, so `needsUpdate` is the only
+ * GPU round-trip; nothing allocates per frame). Bare test fixtures may
+ * stub any field — every access is optional-chained and the layer is
+ * simply skipped when the record is absent.
  */
-let _camScratch: THREE_NS.Vector3 | undefined
+interface GasPts {
+  pos?: Float32Array
+  col?: Float32Array
+  aMat?: { needsUpdate: boolean }
+  aCol?: { needsUpdate: boolean }
+  phase?: Float32Array
+  lat?: Float32Array
+  latZ?: Float32Array
+  rate?: Float32Array
+  wobP?: Float32Array
+  wobA?: Float32Array
+  wobF?: Float32Array
+  dim?: Float32Array
+  sz?: Float32Array
+  psize?: number
+  len?: number
+  spread?: number
+  grow?: number
+  rgb?: [number, number, number]
+  op?: number
+}
+
+/**
+ * Quaternion-ish — the scratch shape updateFx needs for the comet
+ * billboard math (`invert`, `multiply`). Structural so the three.js
+ * mock and the real Quaternion both satisfy it.
+ */
+interface QuatLike {
+  invert(): QuatLike
+  multiply(q: QuatLike): QuatLike
+}
+
+/**
+ * Billboard scratch — per-grain instance matrices are composed as
+ * `translate(grain) · orient(camera) · scale(size)`: a tail quad must
+ * always face the camera, so its local orientation is the node's
+ * inverse world quaternion times the camera's world quaternion. The
+ * objects are created lazily off `s.THREE` (the module arrives on the
+ * state, not as an import) and reused every frame — zero allocation in
+ * the hot loop.
+ */
+let _mat: { compose(v: unknown, q: unknown, s: unknown): unknown } | undefined
+let _vec: { set(x: number, y: number, z: number): unknown } | undefined
+let _scl: { setScalar(k: number): unknown } | undefined
+let _qN: unknown | undefined
+let _qC: unknown | undefined
 
 /**
  * Solar-wind level — the shared activity signal every wind-touched
@@ -170,158 +218,156 @@ export function updateFx(s: SFState): void {
       // Tails fully unmount outside the window — no apoapsis ghost.
       const live = f > SF_COMET.TAIL_OFF
 
-      for (const spr of [co.ion, co.dust, co.ionGas, co.dustGas]) {
-        ;(spr as { visible?: boolean }).visible = live
+      for (const pts of [co.ion, co.dust, co.ionGas, co.dustGas]) {
+        ;(pts as { visible?: boolean }).visible = live
       }
 
-      const ion = co.ion as {
-        position: { x: number; y: number }
-        scale: { set(a: number, b: number, c: number): void }
-        material?: { opacity?: number }
-      }
-      const dust = co.dust as {
-        position: { x: number; y: number }
-        scale: { set(a: number, b: number, c: number): void }
-        material?: { opacity?: number }
-      }
       const coma = co.coma as {
         scale: { set(a: number, b: number, c: number): void }
         material?: { opacity?: number }
       }
 
-      ion.scale.set(co.ionScale.x * f, co.ionScale.y * (0.5 + 0.5 * f), 1)
-      dust.scale.set(co.dustScale.x * f, co.dustScale.y * (0.5 + 0.5 * f), 1)
-
-      // The tail root re-anchors at the nucleus: sprite center sits at
-      // half the (scaled) length along its streak direction — the dust
-      // tail carries its lag tilt, so its center re-projects both axes.
-      const ionLen = co.ionScale.x * f
-      const dustLen = co.dustScale.x * f
-
-      ion.position.x = ionLen / 2
-      dust.position.x = (Math.cos(SF_COMET.DUST_TILT) * dustLen) / 2
-      dust.position.y = (Math.sin(SF_COMET.DUST_TILT) * dustLen) / 2
-
-      if (ion.material?.opacity != null) ion.material.opacity = SF_COMET.ION_OPACITY * f
-      if (dust.material?.opacity != null) dust.material.opacity = SF_COMET.DUST_OPACITY * f
+      /**
+       * Particle tails — each layer's `userData.gasPts` holds the
+       * seeded grain field; this loop is the emission simulation:
+       *
+       *   d     = frac(phase[i] + t·rate[i])      — grain age 0→1
+       *   x     = d·len                            — anti-sunward drift
+       *   y     = lat[i]·sp + sin(wobble)·amp      — lateral fan +
+       *                                            plasma turbulence
+       *   z     = latZ[i]·sp·ZFLAT                 — thin-sheet depth
+       *   sp    = spread·(1 + grow·d)              — solar-wind
+       *                                            dispersion fan
+       *   color = rgb·smoothstep(d/RAMP)·(1−d)^FADE·dim[i]·windK
+       *
+       * The `(1−d)^FADE` term makes every grain die at its own
+       * distance — the tip dissolves grain-by-grain instead of ending
+       * on a line — and vertex-color brightness doubles as alpha under
+       * additive blending, so no quad edge exists anywhere in the
+       * silhouette. `len`/`sp` scale with the periapsis factor `f`
+       * (sublimation ≈ solar flux), and `windK` couples brightness to
+       * the shared solar-wind level so storms surge the stream.
+       * ~640 grains × a handful of flops — zero allocation.
+       */
+      const windK = 1 - SF_COMET.WIND_K + (SF_COMET.WIND_K * Math.min(wind, 1.5)) / 1.5
 
       /**
-       * Streaming gas — each tail's tessellated plane is a CYLINDRICAL
-       * BILLBOARD: it rolls about its streak axis so the broad side
-       * faces the camera (a plane edge-on is a hairline, never a
-       * polygonal shell), while the vertex-color envelope keeps every
-       * quad edge at alpha 0 and the seamless filament map scrolls
-       * `offset.x` underneath so gas visibly streams anti-sunward. The
-       * roll solves `θ = atan2(−uy, lz)` in the tail-parent frame after
-       * rotating the dust tilt back out — the plane's +z normal then
-       * points at the camera; a slow wobble overlays it for turbulent
-       * shimmer, and a detuned sine flickers opacity like plasma
-       * gusts. The plane shadows the base tail's length each frame and
-       * scales its width on y only (z stays 1 — it is a surface, not
-       * a shell).
+       * One lazy scratch set for the whole comet section — matrix/quat
+       * compose targets shared by every tail layer this frame.
        */
-      const gasI = co.ionGas as {
-        position: { x: number; y: number }
-        rotation?: { x: number; order?: string }
-        scale: { set(a: number, b: number, c: number): void }
-        material?: {
-          opacity?: number
-          map?: { offset?: { x: number } }
-        }
-        parent?: { worldToLocal?: (v: unknown) => { x: number; y: number; z: number } }
-        userData?: Record<string, unknown>
-      }
-      const gasD = co.dustGas as {
-        position: { x: number; y: number }
-        rotation?: { x: number; order?: string }
-        scale: { set(a: number, b: number, c: number): void }
-        material?: {
-          opacity?: number
-          map?: { offset?: { x: number } }
-        }
-        parent?: { worldToLocal?: (v: unknown) => { x: number; y: number; z: number } }
-        userData?: Record<string, unknown>
+      const T = s.THREE
+
+      if (T && _mat === undefined) {
+        _mat = new T.Matrix4()
+        _vec = new T.Vector3()
+        _scl = new T.Vector3()
+        _qN = new T.Quaternion()
+        _qC = new T.Quaternion()
       }
 
-      const gasIW = co.ionScale.y * 0.85 * (0.5 + 0.5 * f)
-      const gasDW = co.dustScale.y * 0.8 * (0.5 + 0.5 * f)
+      const updateTail = (pts: unknown): void => {
+        const p = pts as {
+          userData?: Record<string, GasPts | undefined>
+          material?: { opacity?: number }
+          getWorldQuaternion?: (q: unknown) => unknown
+          setMatrixAt?: (i: number, m: unknown) => void
+        }
+        const ud = p.userData?.[SF_USER_GAS]
+        const n = ud?.phase?.length ?? 0
 
-      gasI.scale.set(ionLen, gasIW, 1)
-      gasI.position.x = ionLen / 2
-      gasD.scale.set(dustLen, gasDW, 1)
-      gasD.position.x = dust.position.x
-      gasD.position.y = dust.position.y
+        if (!ud?.pos || !ud.col || !n) return
 
-      const iMap = gasI.material?.map
+        const len = (ud.len ?? 0) * f
+        const sp0 = (ud.spread ?? 0) * (SF_COMET.WID_FLOOR + (1 - SF_COMET.WID_FLOOR) * f)
+        const grow = ud.grow ?? 0
+        const rgb = ud.rgb ?? [1, 1, 1]
+        const psize = ud.psize ?? 1
 
-      if (iMap?.offset) iMap.offset.x = -s.t * SF_COMET.GAS_FLOW_ION * (0.5 + f)
+        /**
+         * Billboard orientation — the quads face the camera in the
+         * node's local frame: `local = nodeWorldQuat⁻¹ · camWorldQuat`.
+         * Without a live camera/renderer (tests) the grain buffers
+         * still update — only the matrix write is skipped.
+         */
+        const cam = s.camera as
+          { quaternion?: QuatLike; getWorldQuaternion?: (q: unknown) => unknown } | null | undefined
+        const camQ = (cam?.getWorldQuaternion?.(_qC) ?? cam?.quaternion) as QuatLike | undefined
+        const node = p as { getWorldQuaternion?: (q: unknown) => QuatLike }
+        let bill: QuatLike | null = null
 
-      const dMap = gasD.material?.map
+        if (_mat && _vec && _scl && _qN && camQ && node.getWorldQuaternion && p.setMatrixAt) {
+          bill = node.getWorldQuaternion(_qN).invert().multiply(camQ)
+        }
 
-      if (dMap?.offset) dMap.offset.x = -s.t * SF_COMET.GAS_FLOW_DUST * (0.5 + f)
+        for (let i = 0; i < n; i++) {
+          const d = ((ud.phase?.[i] ?? 0) + s.t * (ud.rate?.[i] ?? 0)) % 1
+          const sp = sp0 * (1 + grow * d)
+          const j = i * 3
+          const x = d * len
+          const y =
+            (ud.lat?.[i] ?? 0) * sp +
+            Math.sin(s.t * (ud.wobF?.[i] ?? 0) + (ud.wobP?.[i] ?? 0)) *
+              (ud.wobA?.[i] ?? 0) *
+              SF_COMET.WOB_AMP *
+              sp *
+              (0.25 + 0.75 * d)
+          const z = (ud.latZ?.[i] ?? 0) * sp * SF_COMET.ZFLAT
 
-      /**
-       * Camera roll — the camera position drops into each plane's
-       * parent-local frame (+x anti-sunward), the dust tilt is rotated
-       * back out of the offset so the roll axis is the streak's own x,
-       * and the remaining transverse angle solves `θ = atan2(−uy, lz)`
-       * (normal +z → (0,−sinθ,cosθ) ∥ (uy,lz)). A lazy module scratch
-       * vector keeps this allocation-free; without a camera/parent the
-       * planes keep their built orientation plus the wobble.
-       */
-      const cam = s.camera?.position
+          ud.pos[j] = x
+          ud.pos[j + 1] = y
+          ud.pos[j + 2] = z
 
-      if (cam && s.THREE) {
-        _camScratch = (_camScratch ?? new s.THREE.Vector3()).copy(cam)
+          /**
+           * Envelope — `smoothstep(0, RAMP, d)` ramps fresh grains in
+           * (no pop at the nucleus), `(1−d)^FADE` dissolves them toward
+           * the tip, `dim[i]` spreads per-grain brightness, `windK`
+           * surges the whole column on solar storms, and `GAIN` pushes
+           * overlapping additive grains into saturation so the cloud
+           * fuses into a column.
+           */
+          const rr = Math.min(1, d / SF_COMET.PTS_RAMP)
+          const k =
+            rr *
+            rr *
+            (3 - 2 * rr) *
+            Math.pow(1 - d, SF_COMET.PTS_FADE) *
+            (ud.dim?.[i] ?? 1) *
+            windK *
+            SF_COMET.GAIN
 
-        for (const [g, phase] of [
-          [gasI, co.ionPhase],
-          [gasD, co.dustPhase],
-        ] as const) {
-          const w2l = g.parent?.worldToLocal
+          ud.col[j] = rgb[0] * k
+          ud.col[j + 1] = rgb[1] * k
+          ud.col[j + 2] = rgb[2] * k
 
-          if (g.rotation && w2l) {
-            const lp = w2l.call(g.parent, _camScratch)
-            const tilt = (g.userData?.[SF_USER_GAS_TILT] as number) ?? 0
-            const lx = lp.x - g.position.x
-            const ly = lp.y - g.position.y
-            const uy = -lx * Math.sin(tilt) + ly * Math.cos(tilt)
+          /**
+           * Instance matrix — the grain's quad swells downstream
+           * (`SZ_BASE + SZ_GROW·d`: dispersing gas expands) and carries
+           * the seeded size jitter.
+           */
+          if (bill && _mat && _vec && _scl) {
+            const sz = psize * (ud.sz?.[i] ?? 1) * (SF_COMET.SZ_BASE + SF_COMET.SZ_GROW * d)
 
-            g.rotation.x =
-              Math.atan2(-uy, lp.z) +
-              Math.sin(s.t * SF_COMET.WOBBLE_FREQ + phase) * SF_COMET.WOBBLE_AMP
-          } else if (g.rotation) {
-            g.rotation.x = Math.sin(s.t * SF_COMET.WOBBLE_FREQ + phase) * SF_COMET.WOBBLE_AMP
+            _vec.set(x, y, z)
+            _scl.setScalar(sz)
+            _mat.compose(_vec, bill, _scl)
+            p.setMatrixAt?.(i, _mat)
           }
         }
-      } else {
-        if (gasI.rotation) {
-          gasI.rotation.x = Math.sin(s.t * SF_COMET.WOBBLE_FREQ + co.ionPhase) * SF_COMET.WOBBLE_AMP
-        }
 
-        if (gasD.rotation) {
-          gasD.rotation.x =
-            Math.sin(s.t * SF_COMET.WOBBLE_FREQ * 0.7 + co.dustPhase) * SF_COMET.WOBBLE_AMP
-        }
+        if (ud.aMat) ud.aMat.needsUpdate = true
+        if (ud.aCol) ud.aCol.needsUpdate = true
+
+        if (p.material?.opacity != null) p.material.opacity = (ud.op ?? 1) * f
       }
 
-      if (gasI.material) {
-        gasI.material.opacity =
-          SF_COMET.ION_OPACITY *
-          SF_COMET.GAS_ALPHA_ION *
-          f *
-          (1 +
-            SF_COMET.FLICKER_AMP * Math.sin(s.t * SF_COMET.FLICKER_FREQ * co.ionRate + co.ionPhase))
-      }
-
-      if (gasD.material) {
-        gasD.material.opacity =
-          SF_COMET.DUST_OPACITY *
-          SF_COMET.GAS_ALPHA_DUST *
-          f *
-          (1 +
-            SF_COMET.FLICKER_AMP *
-              Math.sin(s.t * SF_COMET.FLICKER_FREQ * co.dustRate + co.dustPhase))
+      // Dead tails skip the sim entirely — the clouds are invisible
+      // anyway, so the ~640-grain loop is pure waste outside the
+      // periapsis window.
+      if (live) {
+        updateTail(co.ion)
+        updateTail(co.ionGas)
+        updateTail(co.dust)
+        updateTail(co.dustGas)
       }
 
       // The coma never fully dies — a dormant nucleus still vents a

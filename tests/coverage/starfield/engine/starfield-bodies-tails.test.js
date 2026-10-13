@@ -646,7 +646,9 @@ describe('belt-rock + diffraction-spike tails', () => {
   /**
    * Geometry stand-in with a real position attribute — the chain
    * mock's `count` proxy coerces NaN so the crumple/UV-bake vertex
-   * loop would never iterate; four real verts let it run.
+   * loop would never iterate; five real verts let it run, and the last
+   * DUPLICATES the first so `weldGeometry`'s dedup arm (`byPos.get`
+   * hit) exercises too.
    */
   const fakeGeo = () =>
     class {
@@ -656,6 +658,7 @@ describe('belt-rock + diffraction-spike tails', () => {
           [-0.7, 0.3, -0.6],
           [0.1, -0.9, 0.5],
           [-0.2, 0.1, -0.9],
+          [0.4, 0.8, 0.2],
         ]
 
         this.attributes = {
@@ -674,6 +677,60 @@ describe('belt-rock + diffraction-spike tails', () => {
       computeVertexNormals() {}
     }
 
+  /**
+   * Weld-aware attribute stand-in — `weldGeometry` rebuilds the mesh
+   * into a fresh indexed BufferGeometry, so the welded position array
+   * must keep `count`/`getX`/`setXYZ` for the displacement loop to run.
+   */
+  const fakeAttr = () =>
+    class {
+      constructor(array, itemSize) {
+        this.array = array
+        this.itemSize = itemSize
+        this.count = array.length / itemSize
+      }
+
+      getX(i) {
+        return this.array[i * this.itemSize]
+      }
+
+      getY(i) {
+        return this.array[i * this.itemSize + 1]
+      }
+
+      getZ(i) {
+        return this.array[i * this.itemSize + 2]
+      }
+
+      setXYZ(i, x, y, z) {
+        this.array[i * 3] = x
+        this.array[i * 3 + 1] = y
+        this.array[i * 3 + 2] = z
+      }
+    }
+
+  /**
+   * Weld-aware geometry stand-in — stores attributes set via
+   * `setAttribute` (the auto-mock proxy would drop them, hiding the
+   * welded position array from the displacement loop).
+   */
+  const fakeBufGeo = () =>
+    class {
+      constructor() {
+        this.attributes = {}
+      }
+
+      setAttribute(name, attr) {
+        this.attributes[name] = attr
+      }
+
+      setIndex(idx) {
+        this.index = idx
+      }
+
+      computeVertexNormals() {}
+    }
+
   test('makeBeltRocks paints every material class and survives a belt-less def', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2dFull())
 
@@ -681,6 +738,9 @@ describe('belt-rock + diffraction-spike tails', () => {
       ...THREE,
       IcosahedronGeometry: fakeGeo(),
       TetrahedronGeometry: fakeGeo(),
+      BufferGeometry: fakeBufGeo(),
+      BufferAttribute: fakeAttr(),
+      Float32BufferAttribute: fakeAttr(),
       CanvasTexture: class {
         constructor() {
           this.colorSpace = ''
@@ -710,12 +770,9 @@ describe('belt-rock + diffraction-spike tails', () => {
     const T = {
       ...THREE,
       IcosahedronGeometry: fakeGeo(),
-      BufferAttribute: class {
-        constructor(array, itemSize) {
-          this.array = array
-          this.itemSize = itemSize
-        }
-      },
+      BufferGeometry: fakeBufGeo(),
+      BufferAttribute: fakeAttr(),
+      Float32BufferAttribute: fakeAttr(),
     }
 
     // Authored triaxial axes arm (Phobos's real 27×22×18 km figure).
@@ -881,34 +938,13 @@ describe('particle-body tails (belt / black-hole / structures)', () => {
 })
 
 describe('comet + plume tails', () => {
-  /**
-   * PlaneGeometry stand-in for the gas-plane vertex envelope — the
-   * auto-mock's `attributes.position` proxy coerces to NaN so the
-   * vertex-color loop would never iterate; four real verts spanning
-   * root→tip × edge→center (x,y ∈ [-0.5, 0.5]) run it.
-   */
-  const fakeCometPlane = () =>
-    class {
-      constructor() {
-        this.attributes = {
-          position: {
-            count: 4,
-            getX: (i) => i / 3 - 0.5,
-            getY: (i) => (i % 2) - 0.5,
-          },
-        }
-      }
-
-      setAttribute() {}
-    }
-
   test('makeComet builds nucleus + coma + twin tails, with and without 2d/photo', async () => {
     const { makeComet } = await import('../../../../engine/bodies/comet.js')
 
     // Canvas up — the tail gradient + nucleus surface both paint.
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    const T = { ...THREE, PlaneGeometry: fakeCometPlane() }
+    const T = THREE
 
     const def = {
       id: 'halley-fixture',
@@ -924,7 +960,9 @@ describe('comet + plume tails', () => {
 
     expect(withPhoto.mesh).toBeTruthy()
     expect(withPhoto.ion).toBeTruthy()
+    expect(withPhoto.ionGas).toBeTruthy()
     expect(withPhoto.dust).toBeTruthy()
+    expect(withPhoto.dustGas).toBeTruthy()
     expect(withPhoto.coma).toBeTruthy()
 
     // Photo listed on the def — texMap hit arm inside the material.
@@ -938,20 +976,23 @@ describe('comet + plume tails', () => {
     expect(mapped.mesh).toBeTruthy()
   })
 
-  test('makeComet falls back to the glow map when the tail canvas fails', async () => {
+  test('makeComet still builds particle tails when the canvas/glow are absent', async () => {
     const { makeComet } = await import('../../../../engine/bodies/comet.js')
 
-    // No 2d → tailFor yields undefined → `tailTex ?? glowTex` arm.
+    // No 2d → the nucleus surface painter yields undefined and `map`
+    // drops out of every matParams bag; glowTex undefined → the
+    // particle maps drop the same way. The Points layers still spawn.
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
 
     const out = makeComet(
-      { ...THREE, PlaneGeometry: fakeCometPlane() },
+      THREE,
       { id: 'noctx-comet', kind: SF_KINDS.COMET, radius: 0.3, orbit: 40, ecc: 0.5 },
       new Map(),
-      fakePhoto()
+      undefined
     )
 
     expect(out.ion).toBeTruthy()
+    expect(out.dustGas).toBeTruthy()
   })
 
   test('makePlumes guards config/glow and builds polar + scattered vents', async () => {
@@ -988,7 +1029,7 @@ describe('comet + plume tails', () => {
   test('buildStarBodies mounts a comet nucleus + center-frame tails and a plumed moon', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    const T = { ...THREE, PlaneGeometry: fakeCometPlane() }
+    const T = THREE
 
     const s = {
       canvas: null,
@@ -1081,16 +1122,21 @@ describe('comet + plume tails', () => {
 
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    // Recording Sprite/Mesh — the chain proxy swallows `raycast`
+    // Recording Sprite/Mesh/Points — the chain proxy swallows `raycast`
     // assignment into its set trap; real classes keep the no-op
-    // invocable. Plume jets are tapered-cone Meshes, not sprites.
+    // invocable. Plume jets are tapered-cone Meshes, not sprites; comet
+    // tails are Points layers carrying their seeded grain field on
+    // `userData.gasPts`, so `userData`/`rotation`/`frustumCulled` must
+    // be real properties.
     const sprites = []
     const meshes = []
+    const points = []
 
     class RecSprite {
       constructor() {
         this.position = { x: 0, y: 0, set: jest.fn() }
         this.scale = { x: 1, y: 1, set: jest.fn() }
+        this.userData = {}
         sprites.push(this)
       }
     }
@@ -1106,11 +1152,22 @@ describe('comet + plume tails', () => {
       }
     }
 
+    class RecPoints {
+      constructor() {
+        this.position = { x: 0, y: 0, set: jest.fn() }
+        this.scale = { x: 1, y: 1, set: jest.fn() }
+        this.rotation = { x: 0, y: 0, z: 0 }
+        this.userData = {}
+        points.push(this)
+      }
+    }
+
     const T = {
       ...THREE,
       Sprite: RecSprite,
       Mesh: RecMesh,
-      PlaneGeometry: fakeCometPlane(),
+      Points: RecPoints,
+      InstancedMesh: RecPoints,
     }
 
     makeComet(
@@ -1124,6 +1181,11 @@ describe('comet + plume tails', () => {
 
     expect(sprites.length).toBeGreaterThan(0)
 
-    for (const sp of [...sprites, ...meshes]) expect(sp.raycast?.()).toBeUndefined()
+    // Four particle layers built, each carrying its seeded grain field.
+    expect(points).toHaveLength(4)
+    expect(points[0].userData.gasPts.phase.length).toBeGreaterThan(0)
+    expect(points[2].rotation.z).toBeGreaterThan(0)
+
+    for (const sp of [...sprites, ...meshes, ...points]) expect(sp.raycast?.()).toBeUndefined()
   })
 })

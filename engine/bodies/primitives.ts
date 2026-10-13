@@ -10,7 +10,7 @@ import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL, SF_SCENE } from '@core/tokens/starfield/params.js'
 import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { haloFor, pointGlowFor, starSurfaceFor, surfaceFor } from './procedural.js'
-import { css, rgb, shade, texCanvas, vnoise } from './procedural/shared.js'
+import { css, rgb, shade, texCanvas, vnoise, weldGeometry } from './procedural/shared.js'
 import { lcg, seedFrom } from '../rand.js'
 import { matParams } from '../materials.js'
 import type { SFBodyDef, SFNode, SFNodeDeps } from '../types.js'
@@ -132,7 +132,13 @@ export function makeGlowSphereMaterial(
  * @returns Crumpled geometry with spherical UVs + smooth normals.
  */
 export function irregularGeometry(THREE: ThreeModule, def: SFBodyDef): THREE_NS.BufferGeometry {
-  const geo = new THREE.IcosahedronGeometry(def.radius, SF_SCENE.ROCK_DETAIL)
+  // Weld BEFORE displacing — `IcosahedronGeometry` is non-indexed, so
+  // every face corner is an independent vertex and `computeVertexNormals`
+  // would emit PER-FACE normals (the crystalline "wart" facet look).
+  // Welded vertices share one normal → smooth continuous shading; the
+  // displacement loop then also runs once per unique vertex (~6× fewer
+  // noise evaluations at detail 7).
+  const geo = weldGeometry(THREE, new THREE.IcosahedronGeometry(def.radius, SF_SCENE.ROCK_DETAIL))
 
   const rand = lcg(seedFrom(`${def.id}:shape`))
 

@@ -8,21 +8,31 @@
  * dust tail (grains keep some orbital momentum, so the streak fans a
  * few degrees off the anti-sunward line — `SF_COMET.DUST_TILT`).
  *
- * Geometry trick: the tails are camera-facing sprites parented to the
- * body's `center` group, NOT the nucleus mesh — `center` is translated
- * along +x by the conic radius but never rotated, so local +x always
- * points away from the Sun sitting at the pivot origin. A static +x
- * streak is therefore anti-sunward by construction at every orbital
- * phase, with zero per-frame orientation math. updateFx only rescales
- * length/opacity as `r` swings between periapsis and apoapsis —
- * sublimation scales steeply with solar flux, so the tail grows toward
- * periapsis and all but vanishes at the far end of the ellipse.
+ * The tails are PARTICLE FIELDS, not geometry or billboards: each tail
+ * is two `THREE.Points` layers (a dense bright core stream plus a wide
+ * dim sheath) whose particles are camera-facing soft-glow sprites —
+ * the tail's silhouette is always a union of round soft blobs, so no
+ * quad edge can ever render as a line, rectangle or cone. Particles
+ * follow an emission cycle `d = frac(phase + t·rate)`: `x = d·len`
+ * carries each grain anti-sunward, its lateral offset fans out with
+ * distance (solar-wind dispersion spreads the column), and vertex
+ * colors carry the per-particle brightness — additive blending turns
+ * dim color into transparency, so the tail dissolves grain-by-grain
+ * into a ragged, diffuse tip instead of a cut edge.
+ *
+ * Geometry trick: the tails are parented to the body's `center` group,
+ * NOT the tumbling nucleus — `center` is translated along +x by the
+ * conic radius but never rotated, so local +x always points away from
+ * the Sun sitting at the pivot origin. updateFx only rewrites the
+ * particle positions/colors as `r` swings between periapsis and
+ * apoapsis — sublimation scales steeply with solar flux, so the tail
+ * ignites toward periapsis and all but vanishes at the far end of the
+ * ellipse.
  */
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_COMET } from '@core/tokens/starfield/params.js'
 import { matParams } from '../materials.js'
 import { lcg, seedFrom } from '../rand.js'
-import { texCanvas } from './procedural/shared.js'
 import { irregularGeometry } from './primitives.js'
 import { surfaceFor } from './procedural.js'
 import type { SFBodyDef } from '../types.js'
@@ -30,171 +40,201 @@ import type { SFBodyDef } from '../types.js'
 type ThreeModule = typeof import('three')
 
 /**
- * userData key stashing a gas plane's fixed z-tilt — updateFx reads it
- * to un-rotate the camera vector back into the frame where the streak
- * axis is local +x before solving the cylindrical-billboard roll.
+ * userData key each tail `InstancedMesh` node uses to stash its particle
+ * simulation record: the live position/color `Float32Array`s, the
+ * instance-buffer handles (`aMat` = `instanceMatrix`, `aCol` =
+ * `instanceColor` — so updateFx can flag `needsUpdate`), the seeded
+ * per-grain vectors (emission phase, lateral offset, stream rate,
+ * wobble, size jitter), and the layer's base dimensions (tail length,
+ * root spread, fan growth, grain size, tint, opacity). Storing the
+ * arrays here — rather than reading them back out of buffers — keeps
+ * the frame loop allocation-free AND makes the record inspectable
+ * without a live three.js renderer.
  */
-export const SF_USER_GAS_TILT = 'gasTilt'
-
-/** Tail gradient canvas — long narrow streak, alpha fades along +x. */
-const TAIL_W = 256
-const TAIL_H = 32
+export const SF_USER_GAS = 'gasPts'
 
 /**
- * Paints the streaming-gas layer texture: a horizontally TILEABLE
- * filament field (`wrapS = RepeatWrapping`) so updateFx can roll
- * `map.offset.x` and the gas visibly streams anti-sunward like plasma
- * riding the solar wind. The tail silhouette is NOT painted here —
- * it lives in the plane's vertex colors (scroll-invariant), so this
- * texture must stay seamless: every wisp follows
- * `y(x) = mid + sin(2π·cycles·x/W + φ)·amp` with an INTEGER cycle
- * count, so the path's phase at the left edge equals the right edge;
- * knot clumps are each drawn at `x ± W` to wrap blobs that straddle
- * the seam.
+ * Builds ONE comet-tail particle layer: an `InstancedMesh` of `n`
+ * billboarded glow quads plus the simulation record updateFx animates.
+ * Each grain i cycles `d = frac(phase[i] + t·rate[i])` — d=0 is fresh
+ * emission hugging the nucleus, d=1 is fully dispersed — and updateFx
+ * maps it to `x = d·len` anti-sunward with a lateral offset
+ * `lat[i]·spread·(1+grow·d)` (the tail widens downstream as solar-wind
+ * pressure disperses it) plus a seeded sinusoidal wobble (plasma
+ * turbulence) and a z-offset (real depth — the sheet reads volumetric,
+ * not painted). Per-grain brightness `dim[i]·envelope(d)` rides in the
+ * instance-color channel: the `ramp` smoothstep keeps the root from
+ * popping in as a wall, and the `(1−d)^fade` decay makes every grain
+ * die at its own distance — the aggregate tip is a ragged dissolve,
+ * never a straight line.
+ *
+ * Why instanced quads and not `THREE.Points`: under the WebGPU node
+ * pipeline `PointsMaterial.size` is not honored the way WebGL's
+ * `gl_PointSize` is — grains rasterize at a pixel or two regardless of
+ * the requested world size, so a real volumetric tail renders as
+ * confetti. An InstancedMesh of unit quads — one draw call for the
+ * whole cloud, each instance matrix billboarded onto the camera
+ * orientation per frame — keeps real world-space size, the soft glow
+ * texture, and per-grain HDR color on every renderer.
  * @param THREE The three.js module.
- * @param seed Deterministic RNG stream (seeded per tail so the ion and
- *   dust layers stream different filament patterns).
- * @returns A tileable CanvasTexture, or undefined without a 2d context.
+ * @param rand Seeded RNG stream (per-tail, so ion and dust churn on
+ *   different grain patterns).
+ * @param glowTex Shared radial-glow texture — each grain sprites a soft
+ *   round blob, which is what makes the silhouette edgeless.
+ * @param color Tail tint (ion blue-white / warm dust) as a hex number —
+ *   decomposed into `rgb` so updateFx can scale it per grain without
+ *   per-frame `Color` allocation.
+ * @param len Resting tail length (world units — × nucleus radius).
+ * @param spread Resting half-width at the root; grows by `grow × d`
+ *   toward the tip.
+ * @param n Grain count.
+ * @param size Grain diameter (world units — the quad's instance scale;
+ *   grains swell downstream via `SF_COMET.SZ_GROW`).
+ * @param opacity Base layer opacity — updateFx multiplies it by the
+ *   periapsis activity factor.
+ * @param rateLo Per-grain emission-cycle rate range (cycles/scene
+ *   second) — the ion wind streams fast, dust drifts.
+ * @param rateHi Upper bound of that range.
+ * @param tilt Lag angle (rad) — the whole node rotates about z so the
+ *   dust fan trails the anti-sunward line; 0 for the ion stream.
+ * @returns An `InstancedMesh` node carrying `SF_USER_GAS`.
  */
-function gasFor(THREE: ThreeModule, seed: () => number): THREE_NS.Texture | undefined {
-  const c = texCanvas(SF_COMET.GAS_W, SF_COMET.GAS_H)
+function tailLayer(
+  THREE: ThreeModule,
+  rand: () => number,
+  glowTex: THREE_NS.Texture | undefined,
+  color: number,
+  len: number,
+  spread: number,
+  grow: number,
+  n: number,
+  size: number,
+  opacity: number,
+  rateLo: number,
+  rateHi: number,
+  tilt: number
+): THREE_NS.InstancedMesh {
+  const pos = new Float32Array(n * 3)
+  const col = new Float32Array(n * 3)
 
-  if (!c) return undefined
+  const phase = new Float32Array(n)
+  const lat = new Float32Array(n)
+  const latZ = new Float32Array(n)
+  const rate = new Float32Array(n)
+  const wobP = new Float32Array(n)
+  const wobA = new Float32Array(n)
+  const wobF = new Float32Array(n)
+  const dim = new Float32Array(n)
+  const sz = new Float32Array(n)
 
-  const { ctx, canvas } = c
-  const W = SF_COMET.GAS_W
-  const H = SF_COMET.GAS_H
+  for (let i = 0; i < n; i++) {
+    phase[i] = rand()
 
-  ctx.clearRect(0, 0, W, H)
+    /**
+     * Pseudo-normal lateral offset — the mean of three uniforms
+     * concentrates density on the spine while still filling a diffuse
+     * sheath, so the column is denser down its axis like a real tail
+     * (a flat [-1,1] draw would smear the brightness evenly).
+     */
+    lat[i] = (rand() + rand() + rand()) / 1.5 - 1
+    latZ[i] = (rand() + rand() + rand()) / 1.5 - 1
 
-  /**
-   * Filaments — thin sinuous rays running the tail's length. Integer
-   * `cycles` keeps the sine periodic across the canvas width (the wrap
-   * seam is invisible); each streak's alpha jitters so the sheet reads
-   * as braided streamers, not one uniform smear.
-   */
-  for (let i = 0; i < SF_COMET.FILAMENTS; i++) {
-    const mid = (0.08 + 0.84 * seed()) * H
-    const amp = seed() * SF_COMET.WANDER * H
-    const cycles = 1 + Math.floor(seed() * 4)
-    const phase = seed() * Math.PI * 2
-    const alpha = SF_COMET.FILAMENT_W * (0.35 + 0.65 * seed())
+    rate[i] = rateLo + (rateHi - rateLo) * rand()
 
-    ctx.strokeStyle = `rgba(255,255,255,${alpha})`
-    ctx.lineWidth = 1 + seed() * 1.5
-    ctx.beginPath()
+    wobP[i] = rand() * Math.PI * 2
+    wobA[i] = rand()
+    wobF[i] = SF_COMET.WOBF_LO + (SF_COMET.WOBF_HI - SF_COMET.WOBF_LO) * rand()
 
-    for (let x = 0; x <= W; x += 4) {
-      const y = mid + Math.sin((x / W) * Math.PI * 2 * cycles + phase) * amp
-
-      if (x === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    }
-
-    ctx.stroke()
+    dim[i] = SF_COMET.DIM_LO + (1 - SF_COMET.DIM_LO) * rand()
+    sz[i] = SF_COMET.SZ_LO + (1 - SF_COMET.SZ_LO) * rand()
   }
 
   /**
-   * Knots — denser gas clumps the outgassing vents throw, biased toward
-   * the root (real comae are thickest at the nucleus). Painted at
-   * both `x` and `x ± W` so a blob crossing the wrap seam shows its
-   * continuation on the far edge.
+   * Unit quad instanced per grain — instance color carries the
+   * grain's brightness (`MeshBasicMaterial` multiplies the map by
+   * `instanceColor`, and additive blending turns dim color into
+   * transparency, so per-grain fade needs no shader). The buffers are
+   * DynamicDraw — updateFx rewrites both every frame.
    */
-  for (let i = 0; i < SF_COMET.KNOTS; i++) {
-    const kx = seed() * seed() * W
-    const ky = (0.2 + 0.6 * seed()) * H
-    const kr = (0.3 + 0.7 * seed()) * SF_COMET.KNOT_R * H
-    const ka = SF_COMET.KNOT_W * (0.4 + 0.6 * seed())
+  const quad = new THREE.PlaneGeometry(1, 1)
+  const mat = new THREE.MeshBasicMaterial(
+    matParams({
+      map: glowTex,
+      color,
+      transparent: true,
+      opacity,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    })
+  )
+  const pts = new THREE.InstancedMesh(quad, mat, n)
+  const aCol = new THREE.InstancedBufferAttribute(col, 3)
 
-    for (const ox of [0, -W, W]) {
-      const g = ctx.createRadialGradient(kx + ox, ky, 0, kx + ox, ky, kr)
+  pts.instanceColor = aCol
 
-      g.addColorStop(0, `rgba(255,255,255,${ka})`)
-      g.addColorStop(1, 'rgba(255,255,255,0)')
+  pts.instanceMatrix?.setUsage?.(THREE.DynamicDrawUsage)
+  aCol.setUsage?.(THREE.DynamicDrawUsage)
 
-      ctx.fillStyle = g
-      ctx.beginPath()
-      ctx.arc(kx + ox, ky, kr, 0, Math.PI * 2)
-      ctx.fill()
-    }
+  // The grains stream across the whole tail — the bounding volume can
+  // never be static, so culling is off rather than recomputed per frame.
+  pts.frustumCulled = false
+  pts.rotation.z = tilt
+  pts.raycast = () => undefined
+
+  /**
+   * `rgb` is the layer tint decomposed to floats — updateFx writes
+   * `col[i] = rgb·env(i,d)` per frame without allocating a `Color`;
+   * `aMat`/`aCol` alias the instance buffers so `needsUpdate` reaches
+   * the GPU side without touching geometry internals.
+   */
+  pts.userData[SF_USER_GAS] = {
+    pos,
+    col,
+    aMat: pts.instanceMatrix,
+    aCol,
+    phase,
+    lat,
+    latZ,
+    rate,
+    wobP,
+    wobA,
+    wobF,
+    dim,
+    sz,
+    psize: size,
+    len,
+    spread,
+    grow,
+    rgb: [((color >> 16) & 255) / 255, ((color >> 8) & 255) / 255, (color & 255) / 255],
+    op: opacity,
   }
 
-  const out = new THREE.CanvasTexture(canvas)
-
-  out.colorSpace = THREE.SRGBColorSpace
-  out.wrapS = THREE.RepeatWrapping
-
-  return out
-}
-
-/**
- * Paints the shared tail sprite texture: a horizontal gradient that is
- * brightest at the left edge (the end rooted at the nucleus) and fades
- * smoothly to nothing on the right (the tip dissolving into space),
- * with a vertical cosine falloff so the streak is a soft spindle, not
- * a hard-edged ribbon. White-only — the SpriteMaterial `color` supplies
- * the ion/dust tint so one texture serves both tails.
- * @param THREE The three.js module.
- * @returns A CanvasTexture, or undefined without a 2d context.
- */
-function tailFor(THREE: ThreeModule): THREE_NS.Texture | undefined {
-  const c = texCanvas(TAIL_W, TAIL_H)
-
-  if (!c) return undefined
-
-  const { ctx, canvas } = c
-
-  ctx.clearRect(0, 0, TAIL_W, TAIL_H)
-
-  // Left→right fade — bright root at the nucleus, dissolving tip.
-  const g = ctx.createLinearGradient(0, 0, TAIL_W, 0)
-
-  g.addColorStop(0, 'rgba(255,255,255,1)')
-  g.addColorStop(0.25, 'rgba(255,255,255,0.55)')
-  g.addColorStop(1, 'rgba(255,255,255,0)')
-
-  ctx.fillStyle = g
-  ctx.fillRect(0, 0, TAIL_W, TAIL_H)
-
-  // Vertical taper — multiply a top/bottom roll-off into the alpha so
-  // the streak narrows toward the tip like a real dust fan.
-  const v = ctx.createLinearGradient(0, 0, 0, TAIL_H)
-
-  v.addColorStop(0, 'rgba(0,0,0,1)')
-  v.addColorStop(0.5, 'rgba(0,0,0,0)')
-  v.addColorStop(1, 'rgba(0,0,0,1)')
-
-  ctx.globalCompositeOperation = 'destination-out'
-  ctx.fillStyle = v
-  ctx.fillRect(0, 0, TAIL_W, TAIL_H)
-
-  ctx.globalCompositeOperation = 'source-over'
-
-  const out = new THREE.CanvasTexture(canvas)
-
-  out.colorSpace = THREE.SRGBColorSpace
-
-  return out
+  return pts
 }
 
 /**
  * Builds the comet composite: an irregular, nearly-black nucleus (the
  * real Halley albedo is ~0.04 — one of the darkest known bodies), a
- * soft additive coma sprite hugging it, and the ion + dust tail
- * sprites. The nucleus mesh becomes the node's `mesh`/`spinner` so it
+ * soft additive coma sprite hugging it, and the ion + dust particle
+ * tails. The nucleus mesh becomes the node's `mesh`/`spinner` so it
  * tumbles normally; coma rides inside it (a symmetric billboard is
  * indifferent to spin); the tails mount on `center` where local +x is
- * permanently anti-sunward.
+ * permanently anti-sunward. Each tail is two particle layers — a tight
+ * bright core stream and a wide dim sheath — so the column reads as a
+ * volume of gas with a dense spine, not a painted band.
  * @param THREE The three.js module.
- * @param def Catalog entry — `radius` sizes the nucleus; `ecc`/`orbit`
- *   drive the periapsis→apoapsis tail scaling in updateFx.
+ * @param def Catalog entry — `radius` sizes the nucleus AND every tail
+ *   dimension (length, spread, grain size all scale off it);
+ *   `ecc`/`orbit` drive the periapsis→apoapsis gating in updateFx.
  * @param texMap Loaded texture map (a comet with a real nucleus map
  *   uses it; Halley falls back to the seeded dark-ice surface).
- * @param glowTex Shared radial-glow texture for the coma sprite.
+ * @param glowTex Shared radial-glow texture — used for the coma sprite
+ *   AND as each tail particle's soft round map.
  * @returns `{ mesh, coma, ion, dust, ionGas, dustGas }` — the pickable
- *   nucleus group plus the sprites the caller attaches and records on
- *   `node.comet` (the gas layers are the streaming-filament sprites
- *   updateFx scrolls).
+ *   nucleus group, the coma sprite, and the four `Points` tail layers
+ *   the caller mounts on `center` and records on `node.comet`
+ *   (ion/ionGas = core+sheath of the ion stream; dust/dustGas likewise).
  */
 export function makeComet(
   THREE: ThreeModule,
@@ -231,8 +271,6 @@ export function makeComet(
 
   mesh.add(nucleus)
 
-  const tailTex = tailFor(THREE)
-
   // Coma — the sublimated gas envelope: a soft additive glow a few
   // radii wide hugging the nucleus.
   const coma = new THREE.Sprite(
@@ -256,129 +294,79 @@ export function makeComet(
 
   mesh.add(coma)
 
+  const r = def.radius
+
   /**
-   * One tail sprite — camera-facing, so the streak reads from every
-   * angle. Its center sits at `len/2` along +x so the texture's bright
-   * root edge lands on the nucleus and the fade runs anti-sunward.
-   * `tilt` swings the sprite's origin off the ecliptic plane so the
-   * dust fan visibly lags the ion streak.
+   * Ion tail — long, narrow, fast-streaming plasma column. Two layers:
+   * the core grains are small/bright (the dense spine) and the sheath
+   * grains are large/dim (the diffuse gas envelope the spine rides in).
    */
-  const tailSprite = (
-    len: number,
-    w: number,
-    color: number,
-    opacity: number,
-    tilt: number
-  ): THREE_NS.Sprite => {
-    const m = new THREE.SpriteMaterial(
-      matParams({
-        map: tailTex ?? glowTex,
-        color,
-        transparent: true,
-        opacity,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        rotation: tilt,
-      })
-    )
-
-    const spr = new THREE.Sprite(m)
-
-    spr.position.set(Math.cos(tilt) * len * 0.5, Math.sin(tilt) * len * 0.5, 0)
-
-    spr.scale.set(len, w, 1)
-
-    spr.raycast = () => undefined
-
-    return spr
-  }
-
-  const ion = tailSprite(
-    def.radius * SF_COMET.ION_LEN,
-    def.radius * SF_COMET.ION_W,
+  const ion = tailLayer(
+    THREE,
+    rand,
+    glowTex,
     SF_COLORS.COMET_ION,
+    r * SF_COMET.ION_LEN,
+    r * SF_COMET.SPREAD_ION,
+    SF_COMET.GROW_ION,
+    SF_COMET.PTS_CORE,
+    r * SF_COMET.PSZ_CORE,
     SF_COMET.ION_OPACITY,
+    SF_COMET.RATE_ION_LO,
+    SF_COMET.RATE_ION_HI,
     0
   )
 
-  const dust = tailSprite(
-    def.radius * SF_COMET.DUST_LEN,
-    def.radius * SF_COMET.DUST_W,
-    SF_COLORS.COMET_DUST,
-    SF_COMET.DUST_OPACITY,
-    SF_COMET.DUST_TILT
+  const ionGas = tailLayer(
+    THREE,
+    rand,
+    glowTex,
+    SF_COLORS.COMET_ION,
+    r * SF_COMET.ION_LEN,
+    r * SF_COMET.SPREAD_ION * SF_COMET.SHEATH_W,
+    SF_COMET.GROW_ION,
+    SF_COMET.PTS_HALO,
+    r * SF_COMET.PSZ_HALO,
+    SF_COMET.ION_OPACITY * SF_COMET.OP_HALO,
+    SF_COMET.RATE_ION_LO * SF_COMET.HALO_SLOW,
+    SF_COMET.RATE_ION_HI * SF_COMET.HALO_SLOW,
+    0
   )
 
   /**
-   * Gas layer — a highly tessellated PLANE that updateFx rolls around
-   * the tail axis to face the camera (a cylindrical billboard): unlike
-   * a camera-facing sprite it has true spatial extent (it is a real
-   * streak of gas sitting in the scene, not a postcard), and unlike a
-   * cone it can never expose a polygonal silhouette. The silhouette is
-   * carried by PER-VERTEX COLORS, not the texture: `b = ramp(t)·(1−w²)^p`
-   * fades axial position t (0 root → 1 tip) AND transverse offset w
-   * (−1…1), so every quad edge lands at black — which additive
-   * blending renders as fully transparent. Because the envelope is
-   * geometry-side, the seamless filament map can scroll `offset.x`
-   * forever without dragging the fade with it — gas genuinely streams
-   * anti-sunward through a static soft envelope.
+   * Dust tail — shorter, broader, slower: grains retain orbital
+   * momentum so the fan trails the radius vector (the `DUST_TILT` lag)
+   * and disperses wider than the magnetically-locked ion stream.
    */
-  const gasPlane = (color: number, opacity: number, tilt: number): THREE_NS.Object3D => {
-    const geo = new THREE.PlaneGeometry(1, 1, SF_COMET.GAS_U, SF_COMET.GAS_V)
-    const pos = geo.attributes.position
-    const col = new Float32Array(pos.count * 3)
-
-    for (let i = 0; i < pos.count; i++) {
-      const t = pos.getX(i) + 0.5
-      const w = pos.getY(i) * 2
-      const b = Math.min(1, t * 3.5) * Math.pow(1 - t, 1.3) * Math.pow(Math.max(0, 1 - w * w), 1.5)
-
-      col[i * 3] = b
-      col[i * 3 + 1] = b
-      col[i * 3 + 2] = b
-    }
-
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
-
-    const plane = new THREE.Mesh(
-      geo,
-      new THREE.MeshBasicMaterial(
-        matParams({
-          map: gasFor(THREE, rand) ?? glowTex,
-          color,
-          transparent: true,
-          opacity,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          vertexColors: true,
-          side: THREE.DoubleSide,
-        })
-      )
-    )
-
-    // Center sits at half the (unit) length along the streak direction —
-    // updateFx rescales `len` and re-anchors the same offset each frame.
-    plane.position.set(Math.cos(tilt) * 0.5, Math.sin(tilt) * 0.5, 0)
-
-    // Euler order ZXY — the camera roll (rotation.x) applies about the
-    // plane's own x axis BEFORE the fixed z-tilt swings the streak off
-    // the anti-sunward line, so rolling never pitches the tail out of
-    // its plane. The tilt is stashed so updateFx's roll math can
-    // un-rotate it back out of the camera vector.
-    plane.rotation.order = 'ZXY'
-    plane.rotation.z = tilt
-    plane.userData[SF_USER_GAS_TILT] = tilt
-
-    plane.raycast = () => undefined
-
-    return plane
-  }
-
-  const ionGas = gasPlane(SF_COLORS.COMET_ION, SF_COMET.ION_OPACITY * SF_COMET.GAS_ALPHA_ION, 0)
-
-  const dustGas = gasPlane(
+  const dust = tailLayer(
+    THREE,
+    rand,
+    glowTex,
     SF_COLORS.COMET_DUST,
-    SF_COMET.DUST_OPACITY * SF_COMET.GAS_ALPHA_DUST,
+    r * SF_COMET.DUST_LEN,
+    r * SF_COMET.SPREAD_DUST,
+    SF_COMET.GROW_DUST,
+    SF_COMET.PTS_CORE,
+    r * SF_COMET.PSZ_CORE * SF_COMET.DUST_PSIZE,
+    SF_COMET.DUST_OPACITY,
+    SF_COMET.RATE_DUST_LO,
+    SF_COMET.RATE_DUST_HI,
+    SF_COMET.DUST_TILT
+  )
+
+  const dustGas = tailLayer(
+    THREE,
+    rand,
+    glowTex,
+    SF_COLORS.COMET_DUST,
+    r * SF_COMET.DUST_LEN,
+    r * SF_COMET.SPREAD_DUST * SF_COMET.SHEATH_W,
+    SF_COMET.GROW_DUST,
+    SF_COMET.PTS_HALO,
+    r * SF_COMET.PSZ_HALO * SF_COMET.DUST_PSIZE,
+    SF_COMET.DUST_OPACITY * SF_COMET.OP_HALO,
+    SF_COMET.RATE_DUST_LO * SF_COMET.HALO_SLOW,
+    SF_COMET.RATE_DUST_HI * SF_COMET.HALO_SLOW,
     SF_COMET.DUST_TILT
   )
 

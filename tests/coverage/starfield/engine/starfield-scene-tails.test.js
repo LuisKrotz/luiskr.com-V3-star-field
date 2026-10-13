@@ -1049,40 +1049,54 @@ describe('day/night + axis-lock tails', () => {
 })
 
 describe('comet tail + plume fx tails', () => {
-  test('updateFx scales comet tails by conic radius and cycles plume puffs', async () => {
+  test('updateFx drives comet particle tails by conic radius and cycles plume puffs', async () => {
     const { updateFx } = await import('../../../../engine/frame/fx.js')
-    const { SF_USER_GAS_TILT } = await import('../../../../engine/bodies/comet.js')
+    const { SF_USER_GAS } = await import('../../../../engine/bodies/comet.js')
 
-    const mkTail = () => ({
-      position: { x: 0, y: 0 },
+    /**
+     * Particle-layer fixture — a Points-shaped object whose
+     * `userData.gasPts` carries real typed arrays so the sim loop
+     * writes positions/colors for real. `ud` is exposed on the fixture
+     * so assertions can read the buffers back.
+     */
+    const mkPts = () => {
+      const n = 4
+
+      const ud = {
+        pos: new Float32Array(n * 3),
+        col: new Float32Array(n * 3),
+        aMat: { needsUpdate: false },
+        aCol: { needsUpdate: false },
+        phase: Float32Array.from({ length: n }, (_, i) => i / n),
+        lat: Float32Array.from({ length: n }, () => 0.4),
+        latZ: Float32Array.from({ length: n }, () => 0.2),
+        rate: Float32Array.from({ length: n }, () => 0.1),
+        wobP: Float32Array.from({ length: n }, () => 0.3),
+        wobA: Float32Array.from({ length: n }, () => 0.5),
+        wobF: Float32Array.from({ length: n }, () => 0.8),
+        dim: Float32Array.from({ length: n }, () => 0.7),
+        len: 6,
+        spread: 0.7,
+        grow: 2,
+        rgb: [0.5, 0.7, 1],
+        op: 0.5,
+      }
+
+      return {
+        visible: true,
+        material: { opacity: 0 },
+        userData: { [SF_USER_GAS]: ud },
+        ud,
+      }
+    }
+
+    const mkComa = () => ({
       scale: { set: jest.fn() },
-      material: { opacity: 0.5 },
-      visible: true,
+      material: { opacity: 0.4 },
     })
 
-    // Gas layer — the cylindrical-billboard PLANE scrolls its seamless
-    // filament map on offset.x, rolls rotation.x toward the camera via
-    // parent.worldToLocal, and stashes its z-tilt in userData so the
-    // roll math can un-rotate it out of the camera vector.
-    const mkGas = () => ({
-      position: { x: 0, y: 0 },
-      rotation: { x: 0, z: 0 },
-      scale: { set: jest.fn() },
-      material: { opacity: 0.5, map: { offset: { x: 0 } } },
-      visible: true,
-      parent: { worldToLocal: (v) => v },
-      userData: { [SF_USER_GAS_TILT]: 0.1 },
-    })
-
-    const ion = mkTail()
-    const dust = mkTail()
-    const coma = mkTail()
-    const ionGas = mkGas()
-    const dustGas = mkGas()
-
-    // userData-less gas plane — the `userData?.[TILT] ?? 0` fallback
-    // arm (tilt resolves to 0 inside the camera roll).
-    delete dustGas.userData
+    const near = { ion: mkPts(), ionGas: mkPts(), dust: mkPts(), dustGas: mkPts() }
+    const far = { ion: mkPts(), ionGas: mkPts(), dust: mkPts(), dustGas: mkPts() }
 
     const jet = { material: { opacity: 0.4 } }
     const puff = {
@@ -1093,17 +1107,6 @@ describe('comet tail + plume fx tails', () => {
 
     const s = {
       t: 1.5,
-      // Camera + minimal THREE.Vector3 — the cylindrical-billboard roll
-      // drops the camera into each plane's parent frame; the scratch
-      // vector only needs `copy`.
-      camera: { position: { x: 10, y: 20, z: 30 } },
-      THREE: {
-        Vector3: class {
-          copy(v) {
-            return Object.assign(this, v)
-          }
-        },
-      },
       nodes: new Map([
         [
           // Periapsis — center.position.x = rMin → full-length tails.
@@ -1116,20 +1119,11 @@ describe('comet tail + plume fx tails', () => {
             mesh: { scale: {} },
             center: { position: { x: 30 } },
             comet: {
-              ion,
-              dust,
-              coma,
-              ionGas,
-              dustGas,
+              ...near,
+              coma: mkComa(),
               rMin: 30,
               rMax: 330,
-              ionScale: { x: 6, y: 0.7 },
-              dustScale: { x: 4, y: 1.8 },
               comaScale: { x: 3, y: 3 },
-              ionPhase: 0,
-              dustPhase: 1,
-              ionRate: 1,
-              dustRate: 1,
             },
           },
         ],
@@ -1145,26 +1139,21 @@ describe('comet tail + plume fx tails', () => {
             mesh: { scale: {} },
             center: { position: { x: 330 } },
             comet: {
-              ion: mkTail(),
-              dust: mkTail(),
-              coma: mkTail(),
-              ionGas: mkGas(),
-              dustGas: mkGas(),
+              ...far,
+              coma: mkComa(),
               rMin: 30,
               rMax: 330,
-              ionScale: { x: 6, y: 0.7 },
-              dustScale: { x: 4, y: 1.8 },
               comaScale: { x: 3, y: 3 },
-              ionPhase: 0,
-              dustPhase: 1,
-              ionRate: 1,
-              dustRate: 1,
             },
           },
         ],
         [
-          // Material-less sprites — the `material?.opacity` false arms
-          // (gas sprites carry no material/map at all here).
+          // Broken/sparse gas records — every fallback arm:
+          //   ion     — no userData at all (ud undefined → early return)
+          //   ionGas  — ud present, `pos` missing → `!ud.pos` return
+          //   dust    — `pos` present, `col` missing → `!ud.col` return
+          //   dustGas — `phase` missing → `n ?? 0` → `!n` return
+          //   coma    — material-less → `coma.material?.opacity` false arm
           'comet-bare',
           {
             def: { radius: 0.3 },
@@ -1174,27 +1163,33 @@ describe('comet tail + plume fx tails', () => {
             mesh: { scale: {} },
             center: { position: { x: 100 } },
             comet: {
-              ion: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
-              dust: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
+              ion: { visible: true },
+              ionGas: {
+                visible: true,
+                userData: { [SF_USER_GAS]: { col: new Float32Array(3), phase: [0] } },
+              },
+              dust: {
+                visible: true,
+                userData: { [SF_USER_GAS]: { pos: new Float32Array(3) } },
+              },
+              dustGas: {
+                visible: true,
+                userData: { [SF_USER_GAS]: { pos: new Float32Array(3), col: new Float32Array(3) } },
+              },
               coma: { scale: { set: () => {} } },
-              // Rotation but no parent → the wobble-only `else if` arm;
-              // no rotation at all → the `g.rotation && w2l` false arm.
-              ionGas: { position: { x: 0, y: 0 }, rotation: { x: 0 }, scale: { set: () => {} } },
-              dustGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               rMin: 30,
               rMax: 330,
-              ionScale: { x: 6, y: 0.7 },
-              dustScale: { x: 4, y: 1.8 },
               comaScale: { x: 3, y: 3 },
-              ionPhase: 0,
-              dustPhase: 1,
-              ionRate: 1,
-              dustRate: 1,
             },
           },
         ],
         [
-          // Circular orbit — rMin == rMax → the span-0 `f = 1` arm.
+          // Circular orbit — rMin == rMax → the span-0 `f = 1` arm, plus
+          // a SPARSE sim record: only pos/col/phase exist, so every
+          // `?? 0` / `?? 1` / `?? [1,1,1]` fallback fires inside the
+          // grain loop, aPos/aCol flags are skipped, and `ud.op ?? 1`
+          // feeds the material opacity. dustGas carries a record but NO
+          // material → the `p.material?.opacity` false arm.
           'comet-flat',
           {
             def: { radius: 0.3 },
@@ -1203,22 +1198,33 @@ describe('comet tail + plume fx tails', () => {
             satPivots: [],
             mesh: { scale: {} },
             comet: {
-              ion: mkTail(),
-              dust: mkTail(),
-              coma: mkTail(),
-              // Rotation-less ion plane — the else-arm `gasI.rotation`
-              // false branch (wobble skipped entirely).
-              ionGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
-              dustGas: mkGas(),
+              ion: {
+                visible: true,
+                material: { opacity: 0.9 },
+                userData: {
+                  [SF_USER_GAS]: {
+                    pos: new Float32Array(3),
+                    col: new Float32Array(3),
+                    phase: new Float32Array([0.5]),
+                  },
+                },
+              },
+              ionGas: mkPts(),
+              dust: mkPts(),
+              dustGas: {
+                visible: true,
+                userData: {
+                  [SF_USER_GAS]: {
+                    pos: new Float32Array(3),
+                    col: new Float32Array(3),
+                    phase: new Float32Array([0.5]),
+                  },
+                },
+              },
+              coma: mkComa(),
               rMin: 60,
               rMax: 60,
-              ionScale: { x: 5, y: 0.5 },
-              dustScale: { x: 3, y: 1.3 },
               comaScale: { x: 2, y: 2 },
-              ionPhase: 0,
-              dustPhase: 1,
-              ionRate: 1,
-              dustRate: 1,
             },
           },
         ],
@@ -1267,43 +1273,29 @@ describe('comet tail + plume fx tails', () => {
 
     updateFx(s)
 
-    // Periapsis — ion tail re-anchored at half its (full) length.
-    expect(ion.position.x).toBeCloseTo(3)
-    expect(ion.scale.set).toHaveBeenCalled()
-    expect(ion.material.opacity).toBeGreaterThan(0.4)
-    // Dust tail keeps its lag tilt — both position axes re-projected.
-    expect(dust.position.y).toBeGreaterThan(0)
+    // Periapsis — grains streamed along +x (x = d·len grows with each
+    // grain's age), colors lit by the envelope, buffers flagged for
+    // upload, material opacity = stored base × f (=1 at rMin).
+    const ionUd = near.ion.ud
 
-    const farIon = s.nodes.get('comet-far').comet.ion
+    expect(Array.from(ionUd.pos).some((v) => v > 0)).toBe(true)
+    expect(Array.from(ionUd.col).some((v) => v > 0)).toBe(true)
+    expect(ionUd.aMat.needsUpdate).toBe(true)
+    expect(ionUd.aCol.needsUpdate).toBe(true)
+    // phase = i/4, t·rate = 0.15 → grain 1 sits at d = 0.4 → x = 0.4·6.
+    expect(ionUd.pos[3]).toBeCloseTo(0.4 * 6)
+    expect(near.ion.material.opacity).toBeCloseTo(0.5)
+    expect(near.ion.visible).toBe(true)
 
     // Apoapsis — outside the periapsis window the tails switch off
     // entirely (a comet flying home carries no streak, only the coma
-    // floor), while at periapsis the gas layer scrolled anti-sunward.
-    expect(farIon.position.x).toBeLessThan(ion.position.x)
-    expect(farIon.material.opacity).toBeLessThan(ion.material.opacity)
-    expect(farIon.visible).toBe(false)
-    expect(ionGas.material.map.offset.x).toBeLessThan(0)
-    expect(ionGas.rotation.x).not.toBe(0)
+    // floor) and the sim is skipped (buffers untouched).
+    expect(far.ion.visible).toBe(false)
+    expect(Array.from(far.ion.ud.pos).every((v) => v === 0)).toBe(true)
 
     // Plume — puff rose along -y and faded mid-rise; jet shimmered.
     expect(puff.position.set).toHaveBeenCalled()
     expect(puff.scale.set).toHaveBeenCalled()
     expect(jet.material.opacity).toBeGreaterThan(0)
-
-    // Camera-less pass — the `cam`-false arm of the roll gate: gas
-    // planes keep only their turbulence wobble on rotation.x.
-    delete s.camera
-
-    updateFx(s)
-
-    expect(ionGas.rotation.x).not.toBe(0)
-
-    // Camera present but no THREE — the `s.THREE`-false arm.
-    s.camera = { position: { x: 1, y: 2, z: 3 } }
-    delete s.THREE
-
-    updateFx(s)
-
-    expect(ionGas.rotation.x).not.toBe(0)
   })
 })
