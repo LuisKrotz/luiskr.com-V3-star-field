@@ -1,7 +1,7 @@
 {
   "id": "bennu",
   "name": "Bennu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "L'asteroide pi attentamente monitorato vicino alla Terra: campionato da OSIRIS-REx nel 2020.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA · NASA Bennu Trek · OSIRIS-REx"
-    ]
+    "refs": ["NASA · NASA Bennu Trek · OSIRIS-REx"]
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Halleyscher Komet",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "Der bekanntste Komet vun alle — der eerste, wo sien Wiederkummen ausgerechnet wurt, all ~75 Johr widder do.",
   "facts": [
     {

@@ -1,7 +1,7 @@
 {
   "id": "vesta",
   "name": "Vesta",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "An domhan is gile ar an crios astaróideach - protaplanet a tháinig slán ó thús an Chórais Ghréine.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "NASA/JPL · NASA Vesta Trek · Dawn"
-    ]
+    "refs": ["NASA/JPL · NASA Vesta Trek · Dawn"]
   }
 }

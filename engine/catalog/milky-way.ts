@@ -7,7 +7,7 @@
 
 import { SF_COLORS } from '@core/tokens/starfield/params.js'
 import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
-import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_GROUPS, SF_KINDS, SF_SURFACES } from '@core/tokens/starfield/kinds.js'
 import type { SFBodyDef } from '../types.js'
 import { gpos } from './geo.js'
 
@@ -113,7 +113,11 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 0.8,
     inc: 0.03,
     dist: '4.246 ly',
-    color: SF_COLORS.PROXIMA_PLANET,
+    // Scorched inner rock — at 0.029 AU the equilibrium temperature is
+    // far past water's survival, so the surface recipe is lava crust:
+    // darkened regolith split by glowing fault veins.
+    color: SF_COLORS.PROXIMA_D,
+    surface: SF_SURFACES.LAVA,
   },
   {
     // Proxima b — the famous one: 1.07 M⊕ inside the habitable zone,
@@ -131,7 +135,13 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 2.9,
     inc: -0.04,
     dist: '4.246 ly',
-    color: SF_COLORS.PROXIMA_PLANET,
+    // Habitable-zone rock — weathered regolith under a thin warm haze;
+    // the atmosphere rim keys to its own host star via dayNight's
+    // parent-sun override (the terminator is Proxima-lit, not Sun-lit).
+    color: SF_COLORS.PROXIMA_B,
+    surface: SF_SURFACES.ROCK,
+    atmosphere: 0.55,
+    atmoColor: SF_COLORS.ATMO_ROCKY,
   },
   {
     // Proxima c — outer candidate (~1.5 AU, ~5.7-yr year, ~7 M⊕
@@ -148,7 +158,12 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 5.3,
     inc: 0.05,
     dist: '4.246 ly',
-    color: SF_COLORS.PROXIMA_PLANET,
+    // Mini-Neptune candidate — a cold hydrogen envelope over ice, so
+    // banded gas-cloud recipe + a thick cyan haze rim, nothing rocky.
+    color: SF_COLORS.PROXIMA_C,
+    surface: SF_SURFACES.GAS,
+    atmosphere: 1.1,
+    atmoColor: SF_COLORS.ATMO_ICEG,
   },
   {
     // Sirius A — A1V main-sequence star, the brightest in Earth's night
@@ -250,7 +265,11 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 0.2,
     inc: 0.05,
     dist: '40.7 ly',
+    // Innermost, baked — JWST photometry rules out a thick atmosphere,
+    // so the NASA concept is a bare lava-cracked rock: dark crust,
+    // glowing fault veins.
     color: SF_COLORS.TRAPPIST_B,
+    surface: SF_SURFACES.LAVA,
   },
   {
     // TRAPPIST-1c — 2.4-day year, Venus-mass sibling just outside b.
@@ -266,7 +285,12 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 0.9,
     inc: -0.03,
     dist: '40.7 ly',
+    // Venus-analog — models favor a hot rocky surface under a thin CO₂
+    // veil: lava-veined crust plus a sulfuric-amber atmosphere rim.
     color: SF_COLORS.TRAPPIST_C,
+    surface: SF_SURFACES.LAVA,
+    atmosphere: 0.8,
+    atmoColor: SF_COLORS.ATMO_VENUS,
   },
   {
     // TRAPPIST-1d — 4.05-day year, the lightest of the seven (~0.3 M⊕).
@@ -282,7 +306,10 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 2.1,
     inc: 0.02,
     dist: '40.7 ly',
+    // The lightest of the seven — a bare, warm rocky world with no
+    // meaningful atmosphere; plain cratered regolith.
     color: SF_COLORS.TRAPPIST_D,
+    surface: SF_SURFACES.ROCK,
   },
   {
     // TRAPPIST-1e — 6.1-day year, the densest Earth-like member and the
@@ -299,7 +326,11 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 3.4,
     inc: -0.05,
     dist: '40.7 ly',
+    // The flagship candidate — densest Earth-analog, best liquid-water
+    // odds: ocean recipe (seas, islands, polar caps) under a thin haze.
     color: SF_COLORS.TRAPPIST_E,
+    surface: SF_SURFACES.OCEAN,
+    atmosphere: 0.6,
   },
   {
     // TRAPPIST-1f — 9.2-day year, a water-rich world on the habitable
@@ -316,7 +347,11 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 4.6,
     inc: 0.04,
     dist: '40.7 ly',
+    // Water-rich HZ inner edge — global ocean with a thicker vapour
+    // haze than e; same recipe, different seed and rim depth.
     color: SF_COLORS.TRAPPIST_F,
+    surface: SF_SURFACES.OCEAN,
+    atmosphere: 0.9,
   },
   {
     // TRAPPIST-1g — 12.4-day year, the largest of the seven (~1.15 R⊕).
@@ -332,7 +367,12 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 5.5,
     inc: -0.02,
     dist: '40.7 ly',
+    // Largest sibling at the HZ outer edge — water world going slushy:
+    // ice streaks over the slate base with a thin cold haze.
     color: SF_COLORS.TRAPPIST_G,
+    surface: SF_SURFACES.ICE,
+    atmosphere: 0.5,
+    atmoColor: SF_COLORS.ATMO_ICEG,
   },
   {
     // TRAPPIST-1h — 18.8-day year, the cold outer edge of the resonant
@@ -349,7 +389,12 @@ export const MILKY_WAY: SFBodyDef[] = [
     phase: 1.2,
     inc: 0.06,
     dist: '40.7 ly',
+    // Frozen outer edge — an ice-cloaked world: fracture-streaked crust,
+    // no liquid water, faint cold haze at the limb.
     color: SF_COLORS.TRAPPIST_H,
+    surface: SF_SURFACES.ICE,
+    atmosphere: 0.35,
+    atmoColor: SF_COLORS.ATMO_ICEG,
   },
   {
     // Barnard's Star — M4V, the closest lone star and fastest mover
@@ -384,7 +429,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     ecc: 0.3,
     phase: 2.4,
     dist: '5.96 ly',
-    color: SF_COLORS.PROXIMA_PLANET,
+    color: SF_COLORS.BARNARD_PLANET,
   },
   {
     // Epsilon Eridani — K2V, the nearest young Sun-like star (~800 Myr),

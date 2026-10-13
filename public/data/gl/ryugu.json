@@ -1,7 +1,7 @@
 {
   "id": "ryugu",
   "name": "Ryugu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Un asteroide carbonoso xiratorio, mostrado por Hayabusa2 e regresado á Terra.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gl",
-    "refs": [
-      "JAXA · NASA Ryugu Trek · Hayabusa2"
-    ]
+    "refs": ["JAXA · NASA Ryugu Trek · Hayabusa2"]
   }
 }

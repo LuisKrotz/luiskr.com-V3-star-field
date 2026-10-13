@@ -1,7 +1,7 @@
 {
   "id": "bennu",
   "name": "Бенну",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Самый тщательно отслеживаемый астероид вблизи Земли, образцы которого были отобраны OSIRIS-REx в 2020 году.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ru",
-    "refs": [
-      "NASA · NASA Bennu Trek · OSIRIS-REx"
-    ]
+    "refs": ["NASA · NASA Bennu Trek · OSIRIS-REx"]
   }
 }

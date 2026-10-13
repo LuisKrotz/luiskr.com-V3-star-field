@@ -1,7 +1,7 @@
 {
   "id": "bennu",
   "name": "Bennu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "O asteroide máis coidadosamente seguido preto da Terra, mostrado por OSIRIS-REx en 2020.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gl",
-    "refs": [
-      "NASA · NASA Bennu Trek · OSIRIS-REx"
-    ]
+    "refs": ["NASA · NASA Bennu Trek · OSIRIS-REx"]
   }
 }

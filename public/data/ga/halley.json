@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Comet Halley",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "An comet is cáiliúla sa stair — an chéad chomet ar tuaradh a fhilleadh, ar ais gach ~75 bliain.",
   "facts": [
     {

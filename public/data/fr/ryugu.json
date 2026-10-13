@@ -1,7 +1,7 @@
 {
   "id": "ryugu",
   "name": "Ryugu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Un astéroïde carboné à toupie — échantillonné par Hayabusa2 et revenu sur Terre.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "fr",
-    "refs": [
-      "JAXA · NASA Ryugu Trek · Hayabusa2"
-    ]
+    "refs": ["JAXA · NASA Ryugu Trek · Hayabusa2"]
   }
 }

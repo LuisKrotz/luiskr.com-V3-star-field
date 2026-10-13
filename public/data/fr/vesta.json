@@ -1,7 +1,7 @@
 {
   "id": "vesta",
   "name": "Vesta",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Le monde le plus brillant de la ceinture d'astéroïdes : une protoplanète qui a survécu à l'aube du système solaire.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "fr",
-    "refs": [
-      "NASA/JPL · NASA Vesta Trek · Dawn"
-    ]
+    "refs": ["NASA/JPL · NASA Vesta Trek · Dawn"]
   }
 }

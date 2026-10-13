@@ -1,7 +1,7 @@
 {
   "id": "vesta",
   "name": "Vesta",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "El món més brillant del cinturó d'asteroides: un protoplaneta que va sobreviure a l'alba del Sistema Solar.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ca",
-    "refs": [
-      "NASA/JPL · NASA Vesta Trek · Dawn"
-    ]
+    "refs": ["NASA/JPL · NASA Vesta Trek · Dawn"]
   }
 }

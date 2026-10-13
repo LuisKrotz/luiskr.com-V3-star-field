@@ -7,7 +7,7 @@
 
 import { SF_COLORS } from '@core/tokens/starfield/params.js'
 import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
-import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_GROUPS, SF_KINDS, SF_SURFACES } from '@core/tokens/starfield/kinds.js'
 import type { SFBodyDef } from '../types.js'
 import { shrinkSolar } from './geo.js'
 
@@ -355,7 +355,10 @@ const SOLAR_RAW: SFBodyDef[] = [
   {
     id: 'vesta',
     name: 'Vesta',
-    kind: SF_KINDS.DWARF,
+    // Second-largest asteroid — a differentiated protoplanet, but NOT
+    // hydrostatic (the Rheasilvia basin broke its figure), so it is an
+    // asteroid in the official taxonomy, not a dwarf planet.
+    kind: SF_KINDS.ASTEROID,
     group: SF_GROUPS.SOLAR,
     radius: 0.32,
     orbit: 73,
@@ -558,7 +561,8 @@ const SOLAR_RAW: SFBodyDef[] = [
   {
     id: 'ryugu',
     name: 'Ryugu',
-    kind: SF_KINDS.DWARF,
+    // C-type near-Earth asteroid — a rubble pile, not a dwarf planet.
+    kind: SF_KINDS.ASTEROID,
     group: SF_GROUPS.SOLAR,
     radius: 0.12,
     orbit: 48,
@@ -580,7 +584,8 @@ const SOLAR_RAW: SFBodyDef[] = [
   {
     id: 'bennu',
     name: 'Bennu',
-    kind: SF_KINDS.DWARF,
+    // B-type carbonaceous asteroid — OSIRIS-REx's rubble pile.
+    kind: SF_KINDS.ASTEROID,
     group: SF_GROUPS.SOLAR,
     radius: 0.11,
     orbit: 46,
@@ -627,6 +632,162 @@ const SOLAR_RAW: SFBodyDef[] = [
     irregular: { amp: 0.22, axes: [1, 0.5, 0.55] },
     phase: 4.4,
   },
+  // ── Named belt residents — the debris fields' clickable members ──
+  {
+    // Pallas — 2nd discovered, ~512 km of B-type basaltic rock on the
+    // belt's wildest orbit: real inclination 34.8° (0.607 rad) pitches
+    // its ring far off the ecliptic, so it dives through the planet
+    // planes instead of cruising between them.
+    id: 'pallas',
+    name: 'Pallas',
+    kind: SF_KINDS.ASTEROID,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.28,
+    orbit: 71.5,
+    speed: 0.49,
+    ecc: 0.231,
+    inc: 0.607,
+    dist: '2.77 AU',
+    color: SF_COLORS.PALLAS,
+    meteors: true,
+    irregular: { amp: 0.1, axes: [1, 0.94, 0.87] },
+    phase: 0.8,
+  },
+  {
+    // Juno — ~234 km S-type stony-iron body, 3rd discovered; the real
+    // orbit is steeply eccentric for a belt resident (0.256) so its
+    // ring visibly stretches inside the band instead of circling it.
+    id: 'juno',
+    name: 'Juno',
+    kind: SF_KINDS.ASTEROID,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.2,
+    orbit: 68,
+    speed: 0.55,
+    ecc: 0.256,
+    inc: 0.227,
+    dist: '2.67 AU',
+    color: SF_COLORS.JUNO,
+    meteors: true,
+    irregular: { amp: 0.14, axes: [1, 0.85, 0.7] },
+    phase: 3.6,
+  },
+  {
+    // Hygiea — 4th-largest, ~434 km of dark C-type carbon; nearly round
+    // (2019 imaging showed it almost hydrostatic) but it rides the
+    // outer edge where Ceres-mass bodies thin out.
+    id: 'hygiea',
+    name: 'Hygiea',
+    kind: SF_KINDS.ASTEROID,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.24,
+    orbit: 76.5,
+    speed: 0.44,
+    ecc: 0.112,
+    inc: 0.066,
+    dist: '3.14 AU',
+    color: SF_COLORS.HYGIEA,
+    meteors: true,
+    irregular: { amp: 0.06, axes: [1, 0.97, 0.93] },
+    phase: 1.7,
+  },
+  {
+    // Eros — the NEAR Shoemaker orbiter's target: a 34×11×11 km NEO
+    // peanut (~[1, 0.32, 0.32]) that swings through Mars' crossing zone
+    // on a 10.8°-tipped orbit; the strong elongation must never read
+    // as a ball.
+    id: 'eros',
+    name: 'Eros',
+    kind: SF_KINDS.ASTEROID,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.09,
+    orbit: 52,
+    speed: 1.05,
+    ecc: 0.223,
+    inc: 0.188,
+    dist: '1.46 AU',
+    color: SF_COLORS.EROS,
+    meteors: true,
+    irregular: { amp: 0.2, axes: [1, 0.32, 0.32] },
+    phase: 4.9,
+  },
+  // ── Kuiper-belt residents — real TNOs riding the outer band ──
+  {
+    // Haumea — the collapsed-Jacobi ellipsoid: a 1960×1518×996 km
+    // cigar spinning a 3.9-hour day, sheathed in crystalline water
+    // ice (streaks recipe paints the bright fractured crust).
+    id: 'haumea',
+    name: 'Haumea',
+    kind: SF_KINDS.DWARF,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.3,
+    orbit: 320,
+    speed: 0.3,
+    ecc: 0.195,
+    inc: 0.492,
+    // The fastest spinner in the catalog — the real day is 3.9 h.
+    spin: 6,
+    dist: '43.3 AU',
+    color: SF_COLORS.HAUMEA,
+    surface: SF_SURFACES.ICE,
+    irregular: { amp: 0.1, axes: [1, 0.77, 0.51] },
+    phase: 2.9,
+  },
+  {
+    // Makemake — methane-ice dwarf on a 45.7 AU orbit; the red tholin
+    // frost layer over dark rock is the second-brightest KBO after
+    // Pluto.
+    id: 'makemake',
+    name: 'Makemake',
+    kind: SF_KINDS.DWARF,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.28,
+    orbit: 340,
+    speed: 0.26,
+    ecc: 0.159,
+    inc: 0.505,
+    dist: '45.7 AU',
+    color: SF_COLORS.MAKEMAKE,
+    surface: SF_SURFACES.ICE,
+    irregular: { amp: 0.07, axes: [1, 0.93, 0.9] },
+    phase: 5.8,
+  },
+  {
+    // Eris — the scattered-disc dwarf whose discovery forced Pluto's
+    // reclassification: a 44°-inclined 0.44-eccentric orbit carries it
+    // from 38 AU out to 98 AU, so its chart ellipse dwarfs the belt.
+    id: 'eris',
+    name: 'Eris',
+    kind: SF_KINDS.DWARF,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.29,
+    orbit: 430,
+    speed: 0.19,
+    ecc: 0.436,
+    inc: 0.77,
+    dist: '67.7 AU',
+    color: SF_COLORS.ERIS,
+    surface: SF_SURFACES.ICE,
+    phase: 0.4,
+  },
+  {
+    // Arrokoth — the New Horizons flyby contact binary: two fused
+    // planetesimal lobes (the deep neck groove) coated in cold-
+    // classical rust-red tholins; the bilobed amp reads as a snowman.
+    id: 'arrokoth',
+    name: 'Arrokoth',
+    kind: SF_KINDS.ASTEROID,
+    group: SF_GROUPS.SOLAR,
+    radius: 0.05,
+    orbit: 315,
+    speed: 0.31,
+    ecc: 0.042,
+    inc: 0.043,
+    dist: '44.6 AU',
+    color: SF_COLORS.ARROKOTH,
+    irregular: { amp: 0.28, axes: [1, 0.45, 0.55] },
+    phase: 1.2,
+  },
   {
     id: 'asteroid-belt',
     name: 'Asteroid Belt',
@@ -637,7 +798,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 0.015,
     dist: '2.06–3.27 AU',
     color: SF_COLORS.ASTEROID_BELT,
-    belt: { inner: 66, outer: 78, count: 6000 },
+    // ~140k points — dense enough that the belt reads as a continuous
+    // rubble band at the home camera, not a sparse scatter; the WASM
+    // fill worker generates the whole field in one batch.
+    belt: { inner: 66, outer: 78, count: 14000 },
   },
   {
     id: 'kuiper-belt',
@@ -649,7 +813,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 0.006,
     dist: '30–55 AU',
     color: SF_COLORS.KUIPER_BELT,
-    belt: { inner: 300, outer: 380, count: 9000, puff: 0.28, gapFreq: 0 },
+    belt: { inner: 300, outer: 380, count: 18000, puff: 0.28, gapFreq: 0 },
   },
 ]
 

@@ -1,7 +1,7 @@
 {
   "id": "ryugu",
   "name": "Рюгу",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Углеродистый астероид с вращающейся вершиной, отобранный Хаябусой-2 и возвращенный на Землю.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ru",
-    "refs": [
-      "JAXA · NASA Ryugu Trek · Hayabusa2"
-    ]
+    "refs": ["JAXA · NASA Ryugu Trek · Hayabusa2"]
   }
 }
