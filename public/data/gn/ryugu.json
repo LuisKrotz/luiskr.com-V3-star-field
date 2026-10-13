@@ -1,7 +1,7 @@
 {
   "id": "ryugu",
   "name": "Ryugu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Peteĩ asteroide carbonoso giratorio-top — ojejapo muestreo Hayabusa2 ha ojevy Yvýpe.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gn",
-    "refs": [
-      "JAXA · NASA Ryugu Trek · Hayabusa2"
-    ]
+    "refs": ["JAXA · NASA Ryugu Trek · Hayabusa2"]
   }
 }

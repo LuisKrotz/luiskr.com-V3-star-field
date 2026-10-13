@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Cometa de Halley",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "La cometa pi famosa de la storia — la prima che ghe xe sta predito el ritorno, che torna ogni ~75 ani.",
   "facts": [
     {

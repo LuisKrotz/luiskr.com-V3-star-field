@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Komeet van Halley",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "De beroemdste komeet uit de geschiedenis — de eerste waarvan de terugkeer werd voorspeld, elke ~75 jaar weer terug.",
   "facts": [
     {

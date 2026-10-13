@@ -1,7 +1,7 @@
 {
   "id": "bennu",
   "name": "Bennu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Der am sorgfältigsten verfolgte Asteroid in der Nähe der Erde – 2020 von OSIRIS-REx beprobt.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "de",
-    "refs": [
-      "NASA · NASA Bennu Trek · OSIRIS-REx"
-    ]
+    "refs": ["NASA · NASA Bennu Trek · OSIRIS-REx"]
   }
 }

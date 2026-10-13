@@ -1,7 +1,7 @@
 {
   "id": "ryugu",
   "name": "Ryugu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Asteroid carbónúil barr-sníomh - arna sampláil ag Hayabusa2 agus ar ais go dtí an Domhan.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "JAXA · NASA Ryugu Trek · Hayabusa2"
-    ]
+    "refs": ["JAXA · NASA Ryugu Trek · Hayabusa2"]
   }
 }

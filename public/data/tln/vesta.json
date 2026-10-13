@@ -1,7 +1,7 @@
 {
   "id": "vesta",
   "name": "Vesta",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Il mondo pi luminoso de la fascia dei asteroidi: un protopianeta sopravvissuto agli albori del Sistema Solare.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA/JPL · NASA Vesta Trek · Dawn"
-    ]
+    "refs": ["NASA/JPL · NASA Vesta Trek · Dawn"]
   }
 }

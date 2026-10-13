@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Cometa Halley",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "O cometa máis famoso da historia — o primeiro co regreso predicho, de volta cada ~75 anos.",
   "facts": [
     {

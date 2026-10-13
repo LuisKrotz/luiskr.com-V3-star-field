@@ -1,7 +1,7 @@
 {
   "id": "ryugu",
   "name": "Ryugu",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Un asteroide carbonioso co trottola: campionato da Hayabusa2 e riportato sulla Terra.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "JAXA · NASA Ryugu Trek · Hayabusa2"
-    ]
+    "refs": ["JAXA · NASA Ryugu Trek · Hayabusa2"]
   }
 }

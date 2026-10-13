@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Halleyscher Komet",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "Der berühmteste Komet der Geschichte — der erste, dessen Rückkehr vorhergesagt wurde, alle ~75 Jahre wieder da.",
   "facts": [
     {

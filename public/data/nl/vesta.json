@@ -1,7 +1,7 @@
 {
   "id": "vesta",
   "name": "Vesta",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "De helderste wereld van de asteroïdengordel: een protoplaneet die de dageraad van het zonnestelsel heeft overleefd.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "nl",
-    "refs": [
-      "NASA/JPL · NASA Vesta Trek · Dawn"
-    ]
+    "refs": ["NASA/JPL · NASA Vesta Trek · Dawn"]
   }
 }

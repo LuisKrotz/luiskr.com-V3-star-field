@@ -1,7 +1,7 @@
 {
   "id": "bennu",
   "name": "Bennu rehegua",
-  "kind": "dwarfPlanet",
+  "kind": "asteroid",
   "tagline": "Pe asteroide ojesareko porãvéva Yvy ypýpe — ojejapo muestreo OSIRIS-REx rupive ary 2020-pe.",
   "facts": [
     {
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gn",
-    "refs": [
-      "NASA · NASA Bennu Trek · OSIRIS-REx"
-    ]
+    "refs": ["NASA · NASA Bennu Trek · OSIRIS-REx"]
   }
 }
