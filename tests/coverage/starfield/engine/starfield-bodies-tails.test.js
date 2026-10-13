@@ -55,6 +55,7 @@ const fake2d = () => ({
   lineWidth: 0,
   globalCompositeOperation: '',
   fillRect: jest.fn(),
+  clearRect: jest.fn(),
   beginPath: jest.fn(),
   moveTo: jest.fn(),
   lineTo: jest.fn(),
@@ -828,5 +829,181 @@ describe('particle-body tails (belt / black-hole / structures)', () => {
 
     // Fire the shell + speckle-cloud raycast stubs.
     for (const inst of [...pts.list, ...msh.list]) inst.raycast?.()
+  })
+})
+
+describe('comet + plume tails', () => {
+  test('makeComet builds nucleus + coma + twin tails, with and without 2d/photo', async () => {
+    const { makeComet } = await import('../../../../engine/bodies/comet.js')
+
+    // Canvas up — the tail gradient + nucleus surface both paint.
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const def = {
+      id: 'halley-fixture',
+      kind: SF_KINDS.COMET,
+      radius: 0.4,
+      orbit: 180,
+      ecc: 0.83,
+      color: SF_COLORS.HALLEY,
+      irregular: { amp: 0.22, axes: [1, 0.5, 0.55] },
+    }
+
+    const withPhoto = makeComet(THREE, def, new Map([['/nucleus.jpg', fakePhoto()]]), fakePhoto())
+
+    expect(withPhoto.mesh).toBeTruthy()
+    expect(withPhoto.ion).toBeTruthy()
+    expect(withPhoto.dust).toBeTruthy()
+    expect(withPhoto.coma).toBeTruthy()
+
+    // Photo listed on the def — texMap hit arm inside the material.
+    const mapped = makeComet(
+      THREE,
+      { ...def, texture: '/nucleus.jpg' },
+      new Map([['/nucleus.jpg', fakePhoto()]]),
+      fakePhoto()
+    )
+
+    expect(mapped.mesh).toBeTruthy()
+  })
+
+  test('makeComet falls back to the glow map when the tail canvas fails', async () => {
+    const { makeComet } = await import('../../../../engine/bodies/comet.js')
+
+    // No 2d → tailFor yields undefined → `tailTex ?? glowTex` arm.
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
+
+    const out = makeComet(
+      THREE,
+      { id: 'noctx-comet', kind: SF_KINDS.COMET, radius: 0.3, orbit: 40, ecc: 0.5 },
+      new Map(),
+      fakePhoto()
+    )
+
+    expect(out.ion).toBeTruthy()
+  })
+
+  test('makePlumes guards config/glow and builds polar + scattered vents', async () => {
+    const { makePlumes } = await import('../../../../engine/bodies/plumes.js')
+
+    // Neither arm may build anything.
+    expect(makePlumes(THREE, { id: 'bare', radius: 1 }, fakePhoto())).toBeNull()
+    expect(
+      makePlumes(THREE, { id: 'noglow', radius: 1, plumes: { count: 2 } }, undefined)
+    ).toBeNull()
+
+    // Polar cluster — Enceladus tiger stripes; explicit count/color/height.
+    const polar = makePlumes(
+      THREE,
+      {
+        id: 'enceladus-fixture',
+        radius: 0.2,
+        plumes: { count: 4, polar: true, color: SF_COLORS.PLUME_ICE, height: 2.4 },
+      },
+      fakePhoto()
+    )
+
+    expect(polar.vents.length).toBe(4)
+
+    // Every polar vent points south — the tiger-stripe band.
+    for (const v of polar.vents) expect(v.dir.y).toBeLessThan(-0.5)
+
+    // Scattered volcanic vents with token defaults — Io's sulfur.
+    const volcanic = makePlumes(THREE, { id: 'io-fixture', radius: 0.4, plumes: {} }, fakePhoto())
+
+    expect(volcanic.vents.length).toBeGreaterThan(0)
+  })
+
+  test('buildStarBodies mounts a comet nucleus + center-frame tails and a plumed moon', () => {
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const s = {
+      canvas: null,
+      scene: new THREE.Scene(),
+      nodes: new Map(),
+      anchors: new Map(),
+      pickables: [],
+    }
+
+    const defs = [
+      // Comet — eccentric orbit feeds rMin/rMax on the node record.
+      {
+        id: 'comet-fixture',
+        name: 'Comet',
+        kind: SF_KINDS.COMET,
+        group: SF_GROUPS.SOLAR,
+        radius: 0.4,
+        orbit: 180,
+        speed: 0.5,
+        ecc: 0.83,
+        color: SF_COLORS.HALLEY,
+        irregular: { amp: 0.2 },
+      },
+      // Plumed moon — jet+puff vents on the surface.
+      {
+        id: 'plumed',
+        name: 'Plumed',
+        kind: SF_KINDS.MOON,
+        group: SF_GROUPS.SOLAR,
+        radius: 0.5,
+        orbit: 8,
+        speed: 1,
+        parent: 'comet-fixture',
+        plumes: { count: 3, polar: true },
+      },
+      // Position-pinned comet — no `orbit` → the `?? def.radius` arm,
+      // and ecc-less collapses the rMin==rMax span.
+      {
+        id: 'comet-circular',
+        name: 'Circular',
+        kind: SF_KINDS.COMET,
+        group: SF_GROUPS.SOLAR,
+        radius: 0.3,
+        pos: [5, 0, 5],
+      },
+    ]
+
+    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), fakePhoto())
+
+    const comet = s.nodes.get('comet-fixture')
+
+    expect(comet.comet).toBeTruthy()
+    expect(comet.comet.rMax).toBeGreaterThan(comet.comet.rMin)
+    expect(s.nodes.get('comet-circular').comet.rMax).toBe(s.nodes.get('comet-circular').comet.rMin)
+    expect(s.nodes.get('plumed').plumes.length).toBe(3)
+  })
+
+  test('comet tails and plume sprites never intercept pointer rays', async () => {
+    const { makeComet } = await import('../../../../engine/bodies/comet.js')
+    const { makePlumes } = await import('../../../../engine/bodies/plumes.js')
+
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    // Recording Sprite — the chain proxy swallows `raycast` assignment
+    // into its set trap; a real class keeps the no-op invocable.
+    const sprites = []
+
+    class RecSprite {
+      constructor() {
+        this.position = { x: 0, y: 0, set: jest.fn() }
+        this.scale = { x: 1, y: 1, set: jest.fn() }
+        sprites.push(this)
+      }
+    }
+
+    const T = { ...THREE, Sprite: RecSprite }
+
+    makeComet(
+      T,
+      { id: 'ray-comet', kind: SF_KINDS.COMET, radius: 0.3, orbit: 40, ecc: 0.5 },
+      new Map(),
+      fakePhoto()
+    )
+
+    makePlumes(T, { id: 'ray-plumed', radius: 0.5, plumes: { count: 2 } }, fakePhoto())
+
+    expect(sprites.length).toBeGreaterThan(0)
+
+    for (const sp of sprites) expect(sp.raycast()).toBeUndefined()
   })
 })

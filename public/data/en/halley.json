@@ -1,7 +1,7 @@
 {
   "id": "halley",
   "name": "Halley's Comet",
-  "kind": "dwarfPlanet",
+  "kind": "comet",
   "tagline": "The most famous comet in history — the first whose return was predicted, back every ~75 years.",
   "facts": [
     {

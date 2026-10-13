@@ -365,6 +365,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     dist: '2.36 AU',
     texture: SF_TEXTURES.VESTA,
     meteors: true,
+    // Not quite a planet, not a ball — the Rheasilvia impact basin
+    // flattened Vesta's south pole, so the protoplanet keeps a mild
+    // triaxial crumple.
+    irregular: { amp: 0.09, axes: [1, 0.9, 0.82] },
     phase: 2.7,
   },
   {
@@ -379,6 +383,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.004,
     dist: '421 700 km',
     texture: SF_TEXTURES.IO,
+    // The most volcanically active body in the system — sulfur/SO₂
+    // plumes umbrella hundreds of km off scattered vents (Pele,
+    // Prometheus), tinted sulfur-gold.
+    plumes: { count: 7, color: SF_COLORS.PLUME_SULFUR, height: 1.4 },
     phase: 0.9,
   },
   {
@@ -459,6 +467,10 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.005,
     dist: '238 000 km',
     texture: SF_TEXTURES.ENCELADUS,
+    // South-polar tiger stripes vent water-ice geysers into space —
+    // the plumes that feed Saturn's E ring. `polar` clusters the vents
+    // around the −y pole like the real fractures.
+    plumes: { count: 8, polar: true, color: SF_COLORS.PLUME_ICE, height: 2.4 },
     phase: 2.9,
   },
   {
@@ -503,6 +515,13 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.029,
     dist: '1.22 Gm',
     texture: SF_TEXTURES.TITAN,
+    // The texture IS the tholin haze — Voyager/Cassini see an opaque
+    // orange photochemical smog ball. The rim shell keeps the orange
+    // honest (`atmoColor` pins the limb tint) and lifts it past the
+    // surface so Titan reads as the only moon with a thick atmosphere,
+    // not a painted orange sphere.
+    atmosphere: 1.5,
+    atmoColor: SF_COLORS.TITAN_HAZE,
     phase: 3.3,
   },
   {
@@ -545,9 +564,17 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 48,
     speed: 0.88,
     ecc: 0.19,
+    // Real orbit tips 5.88° off the ecliptic — without it the NEO rides
+    // visually inside Earth's ring (44) and reads as a collision course;
+    // the inclination lifts its crossings clear of the planet's plane.
+    inc: 0.103,
     dist: '1.19 AU',
     texture: SF_TEXTURES.RYUGU,
     meteors: true,
+    // Hayabusa2's target — a spinning-top rubble pile whose equatorial
+    // ridge and strongly oblate figure (~880×880×460 m) must never read
+    // as a hydrostatic ball.
+    irregular: { amp: 0.16, axes: [1, 0.9, 0.55] },
     phase: 5.5,
   },
   {
@@ -559,9 +586,15 @@ const SOLAR_RAW: SFBodyDef[] = [
     orbit: 46,
     speed: 0.91,
     ecc: 0.204,
+    // Real 6.03° inclination — keeps the NEO's ring visually clear of
+    // Earth's orbit (44) instead of traversing it at every crossing.
+    inc: 0.105,
     dist: '1.13 AU',
     texture: SF_TEXTURES.BENNU,
     meteors: true,
+    // OSIRIS-REx's spinning-top rubble pile — equatorial ridge, mild
+    // oblateness; crumpled like its sibling Ryugu.
+    irregular: { amp: 0.13, axes: [1, 0.94, 0.98] },
     phase: 2.2,
   },
   {
@@ -569,18 +602,29 @@ const SOLAR_RAW: SFBodyDef[] = [
     // semi-major axis and `ecc` drives the conic radius in frame.ts, so it
     // plunges to a Venus-ward periapsis (~0.59 AU, between Mercury and
     // Venus on the chart) then coasts out past Neptune into the Kuiper
-    // belt (~35 AU) on a 75-year sweep.
+    // belt (~35 AU) on a 75-year sweep. The COMET kind swaps the planet
+    // sphere for an irregular nucleus + coma + ion/dust tails that
+    // stream anti-sunward and flare at periapsis.
     id: 'halley',
     name: "Halley's Comet",
-    kind: SF_KINDS.DWARF,
+    kind: SF_KINDS.COMET,
     group: SF_GROUPS.SOLAR,
-    radius: 0.2,
+    // Nucleus is chart-exaggerated (real ~8 km) so the tails — scaled
+    // off this radius — stretch far enough to read at select distance.
+    radius: 0.4,
     orbit: 180,
     speed: 0.5,
     ecc: 0.83,
     spin: 0.8,
+    // Real Halley is retrograde at 162° — the steep inclination lifts
+    // its eccentric ellipse out of the ecliptic so it dives through the
+    // planetary planes instead of tracing a ring inside them.
+    inc: 2.83,
     dist: '0.59–35.1 AU',
     color: SF_COLORS.HALLEY,
+    // The nucleus is a 15×8×8 km rubble brick — Giotto's "potato" —
+    // crumpled hard along its short axes.
+    irregular: { amp: 0.22, axes: [1, 0.5, 0.55] },
     phase: 4.4,
   },
   {
