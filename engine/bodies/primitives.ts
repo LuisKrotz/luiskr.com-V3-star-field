@@ -28,6 +28,16 @@ export const SF_USER_BODY = 'bodyId'
 export const SF_USER_PROXY = 'pickProxy'
 
 /**
+ * `userData` key overriding a detail object's LOD reveal distance —
+ * updateLod reads it as an absolute camera-to-anchor reach. Local-scale
+ * detail (the LEO satellite swarm, ISS-class orbiters) must not inherit
+ * the host's heliocentric `orbit` in the generic `PAD + size·SCALE`
+ * reach or Earth's near-field shell would render from halfway across
+ * the chart; these objects carry their own honest reach instead.
+ */
+export const SF_USER_DETAIL_R = 'detailReveal'
+
+/**
  * Invisible pick bubble for bodies too small to hit reliably — planets
  * and moons under `SF_DETAIL.PICK_MIN` world units subtend a handful of
  * pixels at the home camera, so a slightly larger transparent sphere
@@ -367,8 +377,14 @@ export function makeAtmoShell(
     smoothstep(SF_DETAIL.ATMO_DUSK_MID, SF_DETAIL.ATMO_DUSK_HI, ndl).oneMinus()
   )
 
-  const dayC = new THREE.Color(SF_COLORS.ATMO_DAY)
-  const duskC = new THREE.Color(SF_COLORS.ATMO_DUSK)
+  // Atmosphere tint — `def.atmoColor` pins the whole limb palette for
+  // bodies whose sky isn't Earth's nitrogen blue (Titan's opaque tholin
+  // haze glows orange day AND dusk); without an override the shell
+  // migrates the default day→dusk→night ramp across the terminator.
+  const haze = def.atmoColor != null ? new THREE.Color(def.atmoColor) : undefined
+
+  const dayC = haze ?? new THREE.Color(SF_COLORS.ATMO_DAY)
+  const duskC = haze ?? new THREE.Color(SF_COLORS.ATMO_DUSK)
   const nightC = new THREE.Color(SF_COLORS.ATMO_NIGHT)
 
   const tint = mix(

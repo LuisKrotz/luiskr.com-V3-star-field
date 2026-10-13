@@ -27,9 +27,11 @@ const _STYLE_STREAKS = 2
  * @param rand Seeded RNG.
  */
 function surfaceStyle(def: SFBodyDef, rand: () => number): number {
-  if (def.kind === SF_KINDS.MOON || def.kind === SF_KINDS.DWARF) {
+  if (def.kind === SF_KINDS.MOON || def.kind === SF_KINDS.DWARF || def.kind === SF_KINDS.COMET) {
     // Rocky bodies — mostly cratered mottle, an occasional icy streaked
-    // surface (Europa/Enceladus-like).
+    // surface (Europa/Enceladus-like). Comet nuclei join the club: a
+    // Halley-type body is a cratered ice-and-dust rubble pile, never a
+    // smooth gas-banded sphere.
     return rand() < 0.25 ? _STYLE_STREAKS : _STYLE_MOTTLE
   }
 
@@ -200,7 +202,7 @@ export function surfaceFor(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Texture
 
   if (style === _STYLE_STREAKS) streaks(ctx, base, rand)
 
-  if (def.kind === SF_KINDS.MOON || def.kind === SF_KINDS.DWARF) {
+  if (def.kind === SF_KINDS.MOON || def.kind === SF_KINDS.DWARF || def.kind === SF_KINDS.COMET) {
     craters(ctx, base, rand, 10 + Math.floor(rand() * 14))
   }
 
