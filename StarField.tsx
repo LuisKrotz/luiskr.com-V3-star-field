@@ -353,18 +353,9 @@ export class StarField extends BaseComponent {
 
       this._regRecords.set(kind, [...list, ...recs])
 
-      // The re-render recreates the drawer DOM — carrying the panel's
-      // scroll offset across keeps "load more" from kicking the user
-      // back to the top of the list they were browsing.
-      const scrollTop = this.$(`.${SF_CLASSES.SF_NAV_PANEL}`)?.scrollTop ?? 0
-
+      // _updateDom carries the panel scroll offset across the rebuild,
+      // so appending the shard never kicks the reader back to the top.
       this._updateDom()
-
-      if (scrollTop > 0) {
-        const panel = this.$(`.${SF_CLASSES.SF_NAV_PANEL}`)
-
-        if (panel) panel.scrollTop = scrollTop
-      }
     })
   }
 
@@ -683,8 +674,12 @@ export class StarField extends BaseComponent {
   }
 
   /**
-   * Re-renders the component template while preserving focus and cursor
-   * position if the search input was active, preventing autocomplete blur.
+   * Re-renders the component template while preserving three pieces of
+   * transient UI state that the wholesale shadow-DOM rebuild would drop:
+   * the search input's focus and cursor (autocomplete blur), and the
+   * navigator panel's scroll offset — without the carry, any state
+   * change (selection, dossier load, manifest arrival) bounces the
+   * drawer list back to its top.
    */
   override _updateDom(): void {
     const activeEl = this.shadowRoot?.activeElement as HTMLInputElement | null
@@ -697,7 +692,15 @@ export class StarField extends BaseComponent {
     const selEnd: number | null =
       isSearchFocused && activeEl?.selectionEnd != null ? activeEl.selectionEnd : null
 
+    const scrollTop = this.$(`.${SF_CLASSES.SF_NAV_PANEL}`)?.scrollTop ?? 0
+
     super._updateDom()
+
+    if (scrollTop > 0) {
+      const panel = this.$(`.${SF_CLASSES.SF_NAV_PANEL}`)
+
+      if (panel) panel.scrollTop = scrollTop
+    }
 
     if (isSearchFocused) {
       const input = this.$(`.${SF_CLASSES.SF_NAV_SEARCH}`) as HTMLInputElement | null

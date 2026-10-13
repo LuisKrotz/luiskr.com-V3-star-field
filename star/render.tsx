@@ -297,25 +297,30 @@ export function renderStarField(host: StarField) {
         role={ARIA_ATTRS.ROLE_NAVIGATION}
       >
         <div className={SF_CLASSES.SF_NAV_PANEL} id={NAV_PANEL_ID}>
-          <div className={SF_CLASSES.SF_NAV_HEAD}>
-            <h2 className={SF_CLASSES.SF_NAV_HEADING}>{t.explore}</h2>
-            <button
-              className={SF_CLASSES.SF_NAV_CLOSE}
-              type={FORM_ATTRS.BUTTON}
-              aria-label={appText(NAV_UI_KEYS.CLOSE)}
-              onClick={() => host._toggleNav()}
-            >
-              ✕
-            </button>
+          {/* Pinned strip — the scroll container (.sf-nav-panel) wraps the
+              list only, so heading + search stay docked to the top while
+              groups scroll beneath (position: sticky inside the panel). */}
+          <div className={SF_CLASSES.SF_NAV_PIN}>
+            <div className={SF_CLASSES.SF_NAV_HEAD}>
+              <h2 className={SF_CLASSES.SF_NAV_HEADING}>{t.explore}</h2>
+              <button
+                className={SF_CLASSES.SF_NAV_CLOSE}
+                type={FORM_ATTRS.BUTTON}
+                aria-label={appText(NAV_UI_KEYS.CLOSE)}
+                onClick={() => host._toggleNav()}
+              >
+                ✕
+              </button>
+            </div>
+            <input
+              className={SF_CLASSES.SF_NAV_SEARCH}
+              type={FORM_ATTRS.SEARCH}
+              placeholder={t.search}
+              aria-label={t.search}
+              value={host._search}
+              onInput={(e: Event) => host._setSearch((e.target as HTMLInputElement).value)}
+            />
           </div>
-          <input
-            className={SF_CLASSES.SF_NAV_SEARCH}
-            type={FORM_ATTRS.SEARCH}
-            placeholder={t.search}
-            aria-label={t.search}
-            value={host._search}
-            onInput={(e: Event) => host._setSearch((e.target as HTMLInputElement).value)}
-          />
           {SF_GROUP_ORDER.map((groupKey) => {
             const defs = (groups.get(groupKey) ?? []).filter((def) => host._matchesSearch(def))
 

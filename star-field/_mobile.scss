@@ -31,6 +31,17 @@
     min-height: 0;
   }
 
+  // The docked strip still reaches the card top (the panel's 3xl pad
+  // is unchanged) but a 40vh sheet can't afford the desktop header
+  // pad — tighter insets keep the list readable under it.
+  .#{$_B_SF}-nav-pin {
+    padding-top: to-rem($space-md);
+  }
+
+  .#{$_B_SF}-nav-search {
+    margin-bottom: to-rem($space-md);
+  }
+
   .#{$_B_SF}-panel {
     top: auto;
     left: to-rem($space-md);
