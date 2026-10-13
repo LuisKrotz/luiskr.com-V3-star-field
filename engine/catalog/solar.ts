@@ -211,6 +211,13 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.048,
     dist: '5.20 AU',
     texture: SF_TEXTURES.JUPITER,
+    // Jupiter's ring system — four tenuous dusty components (halo, main
+    // ring, Amalthea + Thebe gossamer) spanning ~1.4–2.5 R, far fainter
+    // than Saturn's plate. Seeded procedural strip supplies the bands.
+    shellRing: true,
+    ringInner: 1.4,
+    ringOuter: 2.5,
+    ringBands: 4,
     // Jovian auroras — the system's most powerful: tight, bright
     // cyan-violet hydrogen curtains (Jupiter's field emits mostly UV).
     aurora: {
@@ -267,6 +274,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     shellRing: true,
     ringInner: 1.55,
     ringOuter: 2.0,
+    ringBands: 13,
     // Uranian auroras — the palest of the giants, teal curtains on a
     // dipole tilted ~59° off a spin axis already lying on its side.
     aurora: {
@@ -297,6 +305,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     shellRing: true,
     ringInner: 1.7,
     ringOuter: 2.4,
+    ringBands: 5,
     // Neptunian auroras — faint violet-cyan curtains on a wildly offset
     // dipole (~47° tilt, offset half a radius), so the oval sits far off
     // the spin pole and wanders with longitude.

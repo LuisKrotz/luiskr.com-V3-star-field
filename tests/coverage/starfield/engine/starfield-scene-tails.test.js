@@ -1051,6 +1051,7 @@ describe('day/night + axis-lock tails', () => {
 describe('comet tail + plume fx tails', () => {
   test('updateFx scales comet tails by conic radius and cycles plume puffs', async () => {
     const { updateFx } = await import('../../../../engine/frame/fx.js')
+    const { SF_USER_GAS_TILT } = await import('../../../../engine/bodies/comet.js')
 
     const mkTail = () => ({
       position: { x: 0, y: 0 },
@@ -1059,15 +1060,18 @@ describe('comet tail + plume fx tails', () => {
       visible: true,
     })
 
-    // Gas layer — the filament CONE carries a doubly-tileable map whose
-    // offset.y updateFx scrolls axially, plus axial swirl on rotation.x
-    // and flicker on the material.
+    // Gas layer — the cylindrical-billboard PLANE scrolls its seamless
+    // filament map on offset.x, rolls rotation.x toward the camera via
+    // parent.worldToLocal, and stashes its z-tilt in userData so the
+    // roll math can un-rotate it out of the camera vector.
     const mkGas = () => ({
       position: { x: 0, y: 0 },
       rotation: { x: 0, z: 0 },
       scale: { set: jest.fn() },
-      material: { opacity: 0.5, map: { offset: { y: 0 } } },
+      material: { opacity: 0.5, map: { offset: { x: 0 } } },
       visible: true,
+      parent: { worldToLocal: (v) => v },
+      userData: { [SF_USER_GAS_TILT]: 0.1 },
     })
 
     const ion = mkTail()
@@ -1075,6 +1079,10 @@ describe('comet tail + plume fx tails', () => {
     const coma = mkTail()
     const ionGas = mkGas()
     const dustGas = mkGas()
+
+    // userData-less gas plane — the `userData?.[TILT] ?? 0` fallback
+    // arm (tilt resolves to 0 inside the camera roll).
+    delete dustGas.userData
 
     const jet = { material: { opacity: 0.4 } }
     const puff = {
@@ -1085,6 +1093,17 @@ describe('comet tail + plume fx tails', () => {
 
     const s = {
       t: 1.5,
+      // Camera + minimal THREE.Vector3 — the cylindrical-billboard roll
+      // drops the camera into each plane's parent frame; the scratch
+      // vector only needs `copy`.
+      camera: { position: { x: 10, y: 20, z: 30 } },
+      THREE: {
+        Vector3: class {
+          copy(v) {
+            return Object.assign(this, v)
+          }
+        },
+      },
       nodes: new Map([
         [
           // Periapsis — center.position.x = rMin → full-length tails.
@@ -1158,7 +1177,9 @@ describe('comet tail + plume fx tails', () => {
               ion: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               dust: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               coma: { scale: { set: () => {} } },
-              ionGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
+              // Rotation but no parent → the wobble-only `else if` arm;
+              // no rotation at all → the `g.rotation && w2l` false arm.
+              ionGas: { position: { x: 0, y: 0 }, rotation: { x: 0 }, scale: { set: () => {} } },
               dustGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               rMin: 30,
               rMax: 330,
@@ -1185,7 +1206,9 @@ describe('comet tail + plume fx tails', () => {
               ion: mkTail(),
               dust: mkTail(),
               coma: mkTail(),
-              ionGas: mkGas(),
+              // Rotation-less ion plane — the else-arm `gasI.rotation`
+              // false branch (wobble skipped entirely).
+              ionGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               dustGas: mkGas(),
               rMin: 60,
               rMax: 60,
@@ -1259,12 +1282,28 @@ describe('comet tail + plume fx tails', () => {
     expect(farIon.position.x).toBeLessThan(ion.position.x)
     expect(farIon.material.opacity).toBeLessThan(ion.material.opacity)
     expect(farIon.visible).toBe(false)
-    expect(ionGas.material.map.offset.y).toBeLessThan(0)
+    expect(ionGas.material.map.offset.x).toBeLessThan(0)
     expect(ionGas.rotation.x).not.toBe(0)
 
     // Plume — puff rose along -y and faded mid-rise; jet shimmered.
     expect(puff.position.set).toHaveBeenCalled()
     expect(puff.scale.set).toHaveBeenCalled()
     expect(jet.material.opacity).toBeGreaterThan(0)
+
+    // Camera-less pass — the `cam`-false arm of the roll gate: gas
+    // planes keep only their turbulence wobble on rotation.x.
+    delete s.camera
+
+    updateFx(s)
+
+    expect(ionGas.rotation.x).not.toBe(0)
+
+    // Camera present but no THREE — the `s.THREE`-false arm.
+    s.camera = { position: { x: 1, y: 2, z: 3 } }
+    delete s.THREE
+
+    updateFx(s)
+
+    expect(ionGas.rotation.x).not.toBe(0)
   })
 })

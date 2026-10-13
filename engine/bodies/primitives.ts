@@ -161,6 +161,13 @@ export function irregularGeometry(THREE: ThreeModule, def: SFBodyDef): THREE_NS.
       1 +
       vnoise(nx + ox, ny + oy, nz + oz) * amp +
       vnoise(
+        nx * SF_SCENE.ROCK_MID_FREQ + ox,
+        ny * SF_SCENE.ROCK_MID_FREQ + oy,
+        nz * SF_SCENE.ROCK_MID_FREQ + oz
+      ) *
+        amp *
+        SF_SCENE.ROCK_MID_AMP +
+      vnoise(
         nx * SF_SCENE.ROCK_FINE_FREQ + ox * 2,
         ny * SF_SCENE.ROCK_FINE_FREQ + oy * 2,
         nz * SF_SCENE.ROCK_FINE_FREQ + oz * 2
@@ -496,7 +503,11 @@ function ringStripFor(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Texture | un
 
   // Narrow dusty arcs — each band is a vertical gradient stroke at a
   // seeded radius, brighter inside its half-width, fading to nothing.
-  for (let i = 0; i < SF_DETAIL.RING_BANDS; i++) {
+  // `def.ringBands` pins the honest per-system count (Jupiter 4, Uranus
+  // 13, Neptune 5) when the catalog supplies it.
+  const bands = def.ringBands ?? SF_DETAIL.RING_BANDS
+
+  for (let i = 0; i < bands; i++) {
     const x = (0.2 + rand() * 0.72) * W
     const hw = (0.3 + rand() * 0.7) * SF_DETAIL.RING_BAND_W * W
     const alpha = SF_DETAIL.RING_ALPHA_MIN + rand() * SF_DETAIL.RING_ALPHA_MAX

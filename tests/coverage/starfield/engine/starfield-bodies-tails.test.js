@@ -882,23 +882,21 @@ describe('particle-body tails (belt / black-hole / structures)', () => {
 
 describe('comet + plume tails', () => {
   /**
-   * CylinderGeometry stand-in for the gas-cone vertex fade — the
+   * PlaneGeometry stand-in for the gas-plane vertex envelope — the
    * auto-mock's `attributes.position` proxy coerces to NaN so the
    * vertex-color loop would never iterate; four real verts spanning
-   * root→tip (x ∈ [-0.5, 0.5]) run it.
+   * root→tip × edge→center (x,y ∈ [-0.5, 0.5]) run it.
    */
-  const fakeCometCyl = () =>
+  const fakeCometPlane = () =>
     class {
       constructor() {
-        this.attributes = { position: { count: 4, getX: (i) => i / 3 - 0.5 } }
-      }
-
-      rotateZ() {
-        return this
-      }
-
-      translate() {
-        return this
+        this.attributes = {
+          position: {
+            count: 4,
+            getX: (i) => i / 3 - 0.5,
+            getY: (i) => (i % 2) - 0.5,
+          },
+        }
       }
 
       setAttribute() {}
@@ -910,7 +908,7 @@ describe('comet + plume tails', () => {
     // Canvas up — the tail gradient + nucleus surface both paint.
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    const T = { ...THREE, CylinderGeometry: fakeCometCyl() }
+    const T = { ...THREE, PlaneGeometry: fakeCometPlane() }
 
     const def = {
       id: 'halley-fixture',
@@ -947,7 +945,7 @@ describe('comet + plume tails', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
 
     const out = makeComet(
-      { ...THREE, CylinderGeometry: fakeCometCyl() },
+      { ...THREE, PlaneGeometry: fakeCometPlane() },
       { id: 'noctx-comet', kind: SF_KINDS.COMET, radius: 0.3, orbit: 40, ecc: 0.5 },
       new Map(),
       fakePhoto()
@@ -990,7 +988,7 @@ describe('comet + plume tails', () => {
   test('buildStarBodies mounts a comet nucleus + center-frame tails and a plumed moon', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    const T = { ...THREE, CylinderGeometry: fakeCometCyl() }
+    const T = { ...THREE, PlaneGeometry: fakeCometPlane() }
 
     const s = {
       canvas: null,
@@ -1103,6 +1101,7 @@ describe('comet + plume tails', () => {
         this.scale = { x: 1, y: 1, set: jest.fn() }
         this.rotation = { x: 0, y: 0, z: 0 }
         this.quaternion = { setFromUnitVectors: jest.fn() }
+        this.userData = {}
         meshes.push(this)
       }
     }
@@ -1111,7 +1110,7 @@ describe('comet + plume tails', () => {
       ...THREE,
       Sprite: RecSprite,
       Mesh: RecMesh,
-      CylinderGeometry: fakeCometCyl(),
+      PlaneGeometry: fakeCometPlane(),
     }
 
     makeComet(

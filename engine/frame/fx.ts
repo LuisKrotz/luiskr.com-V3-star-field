@@ -14,7 +14,16 @@ import {
   SF_SOLAR_WIND,
 } from '@core/tokens/starfield/params.js'
 import { armed } from './shared.js'
+import { SF_USER_GAS_TILT } from '../bodies/comet.js'
+import type * as THREE_NS from 'three'
 import type { SFState } from '../types.js'
+
+/**
+ * Module scratch vector — updateFx drops the camera position into each
+ * gas plane's parent-local frame once per frame; reusing one vector
+ * keeps the per-frame path allocation-free.
+ */
+let _camScratch: THREE_NS.Vector3 | undefined
 
 /**
  * Solar-wind level — the shared activity signal every wind-touched
@@ -197,54 +206,103 @@ export function updateFx(s: SFState): void {
       if (dust.material?.opacity != null) dust.material.opacity = SF_COMET.DUST_OPACITY * f
 
       /**
-       * Streaming gas — each tail's filament CONE scrolls its texture
-       * along the tail axis (the v axis runs root→tip, so RepeatWrapping
-       * `map.offset.y` streams anti-sunward), swirls around its own
-       * axis on `rotation.x` (the cone's axis of symmetry — axial spin
-       * makes the braided filaments visibly churn instead of sliding a
-       * 2D rotation), and flickers on a detuned sine, so the tail reads
-       * as plasma/dust blowing off the nucleus. The cone shadows the
-       * base tail's length each frame and scales its cross-section
-       * radius on both transverse axes (scale.y = scale.z = width).
+       * Streaming gas — each tail's tessellated plane is a CYLINDRICAL
+       * BILLBOARD: it rolls about its streak axis so the broad side
+       * faces the camera (a plane edge-on is a hairline, never a
+       * polygonal shell), while the vertex-color envelope keeps every
+       * quad edge at alpha 0 and the seamless filament map scrolls
+       * `offset.x` underneath so gas visibly streams anti-sunward. The
+       * roll solves `θ = atan2(−uy, lz)` in the tail-parent frame after
+       * rotating the dust tilt back out — the plane's +z normal then
+       * points at the camera; a slow wobble overlays it for turbulent
+       * shimmer, and a detuned sine flickers opacity like plasma
+       * gusts. The plane shadows the base tail's length each frame and
+       * scales its width on y only (z stays 1 — it is a surface, not
+       * a shell).
        */
       const gasI = co.ionGas as {
-        position: { x: number }
-        rotation?: { x: number }
+        position: { x: number; y: number }
+        rotation?: { x: number; order?: string }
         scale: { set(a: number, b: number, c: number): void }
         material?: {
           opacity?: number
-          map?: { offset?: { y: number } }
+          map?: { offset?: { x: number } }
         }
+        parent?: { worldToLocal?: (v: unknown) => { x: number; y: number; z: number } }
+        userData?: Record<string, unknown>
       }
       const gasD = co.dustGas as {
         position: { x: number; y: number }
-        rotation?: { x: number }
+        rotation?: { x: number; order?: string }
         scale: { set(a: number, b: number, c: number): void }
         material?: {
           opacity?: number
-          map?: { offset?: { y: number } }
+          map?: { offset?: { x: number } }
         }
+        parent?: { worldToLocal?: (v: unknown) => { x: number; y: number; z: number } }
+        userData?: Record<string, unknown>
       }
 
       const gasIW = co.ionScale.y * 0.85 * (0.5 + 0.5 * f)
       const gasDW = co.dustScale.y * 0.8 * (0.5 + 0.5 * f)
 
-      gasI.scale.set(ionLen, gasIW, gasIW)
+      gasI.scale.set(ionLen, gasIW, 1)
       gasI.position.x = ionLen / 2
-      gasD.scale.set(dustLen, gasDW, gasDW)
+      gasD.scale.set(dustLen, gasDW, 1)
       gasD.position.x = dust.position.x
       gasD.position.y = dust.position.y
 
       const iMap = gasI.material?.map
 
-      if (iMap?.offset) iMap.offset.y = -s.t * SF_COMET.GAS_FLOW_ION * (0.5 + f)
+      if (iMap?.offset) iMap.offset.x = -s.t * SF_COMET.GAS_FLOW_ION * (0.5 + f)
 
       const dMap = gasD.material?.map
 
-      if (dMap?.offset) dMap.offset.y = -s.t * SF_COMET.GAS_FLOW_DUST * (0.5 + f)
+      if (dMap?.offset) dMap.offset.x = -s.t * SF_COMET.GAS_FLOW_DUST * (0.5 + f)
 
-      if (gasI.rotation) {
-        gasI.rotation.x = Math.sin(s.t * SF_COMET.WOBBLE_FREQ + co.ionPhase) * SF_COMET.WOBBLE_AMP
+      /**
+       * Camera roll — the camera position drops into each plane's
+       * parent-local frame (+x anti-sunward), the dust tilt is rotated
+       * back out of the offset so the roll axis is the streak's own x,
+       * and the remaining transverse angle solves `θ = atan2(−uy, lz)`
+       * (normal +z → (0,−sinθ,cosθ) ∥ (uy,lz)). A lazy module scratch
+       * vector keeps this allocation-free; without a camera/parent the
+       * planes keep their built orientation plus the wobble.
+       */
+      const cam = s.camera?.position
+
+      if (cam && s.THREE) {
+        _camScratch = (_camScratch ?? new s.THREE.Vector3()).copy(cam)
+
+        for (const [g, phase] of [
+          [gasI, co.ionPhase],
+          [gasD, co.dustPhase],
+        ] as const) {
+          const w2l = g.parent?.worldToLocal
+
+          if (g.rotation && w2l) {
+            const lp = w2l.call(g.parent, _camScratch)
+            const tilt = (g.userData?.[SF_USER_GAS_TILT] as number) ?? 0
+            const lx = lp.x - g.position.x
+            const ly = lp.y - g.position.y
+            const uy = -lx * Math.sin(tilt) + ly * Math.cos(tilt)
+
+            g.rotation.x =
+              Math.atan2(-uy, lp.z) +
+              Math.sin(s.t * SF_COMET.WOBBLE_FREQ + phase) * SF_COMET.WOBBLE_AMP
+          } else if (g.rotation) {
+            g.rotation.x = Math.sin(s.t * SF_COMET.WOBBLE_FREQ + phase) * SF_COMET.WOBBLE_AMP
+          }
+        }
+      } else {
+        if (gasI.rotation) {
+          gasI.rotation.x = Math.sin(s.t * SF_COMET.WOBBLE_FREQ + co.ionPhase) * SF_COMET.WOBBLE_AMP
+        }
+
+        if (gasD.rotation) {
+          gasD.rotation.x =
+            Math.sin(s.t * SF_COMET.WOBBLE_FREQ * 0.7 + co.dustPhase) * SF_COMET.WOBBLE_AMP
+        }
       }
 
       if (gasI.material) {
@@ -254,11 +312,6 @@ export function updateFx(s: SFState): void {
           f *
           (1 +
             SF_COMET.FLICKER_AMP * Math.sin(s.t * SF_COMET.FLICKER_FREQ * co.ionRate + co.ionPhase))
-      }
-
-      if (gasD.rotation) {
-        gasD.rotation.x =
-          Math.sin(s.t * SF_COMET.WOBBLE_FREQ * 0.7 + co.dustPhase) * SF_COMET.WOBBLE_AMP
       }
 
       if (gasD.material) {
