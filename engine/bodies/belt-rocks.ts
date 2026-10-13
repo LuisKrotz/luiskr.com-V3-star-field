@@ -130,9 +130,10 @@ function rockTexture(
   ctx.fillRect(0, 0, W, H)
 
   // Grain field — every class gets speckle so the surface never reads
-  // as a smooth tint at texture zoom.
+  // as a smooth tint at texture zoom; wide ±0.7 shade swing so the
+  // regolith mottle survives downscaling instead of washing flat.
   for (let i = 0; i < SF_BELT_ROCK.TEX_GRAIN; i++) {
-    const k = (rand() - 0.5) * 0.5
+    const k = (rand() - 0.5) * 0.7
 
     blob(
       ctx,
@@ -140,21 +141,34 @@ function rockTexture(
       H,
       rand() * W,
       rand() * H,
-      0.8 + rand() * 6,
-      css(shade(base, k), 0.55),
+      0.8 + rand() * 8,
+      css(shade(base, k), 0.6),
       css(base, 0)
     )
   }
 
   if (cls.key === 'stone' || cls.key === 'carbon' || cls.key === 'hydro') {
     // Impact pits — shadowed bowl + lit rim, matching the moon recipe.
+    // Radii run 2–34 px so a handful of big basins anchor the terrain
+    // under the small-pit peppering (real rubble is crater-saturated
+    // at every scale), with deep −0.5 shadows so relief reads at
+    // fly-in distance.
     for (let i = 0; i < SF_BELT_ROCK.TEX_CRATERS; i++) {
       const x = rand() * W
       const y = rand() * H
-      const r = 2 + rand() * 14
+      const r = 2 + rand() * rand() * 32
 
-      blob(ctx, W, H, x, y, r, css(shade(base, -0.35), 0.6), css(base, 0))
-      blob(ctx, W, H, x - r * 0.25, y - r * 0.25, r * 0.6, css(shade(base, 0.3), 0.4), css(base, 0))
+      blob(ctx, W, H, x, y, r, css(shade(base, -0.5), 0.7), css(base, 0))
+      blob(
+        ctx,
+        W,
+        H,
+        x - r * 0.25,
+        y - r * 0.25,
+        r * 0.6,
+        css(shade(base, 0.45), 0.5),
+        css(base, 0)
+      )
     }
   } else if (cls.key === 'metal') {
     // Specular veins — thin bright strokes like polished iron faces.
@@ -239,6 +253,13 @@ function rockGeometry(
     const d =
       1 +
       vnoise(nx + ox, ny + oy, nz + oz) * jitter * 0.5 +
+      vnoise(
+        nx * SF_BELT_ROCK.MID_FREQ + ox,
+        ny * SF_BELT_ROCK.MID_FREQ + oy,
+        nz * SF_BELT_ROCK.MID_FREQ + oz
+      ) *
+        jitter *
+        SF_BELT_ROCK.MID_AMP +
       vnoise(
         nx * SF_BELT_ROCK.FINE_FREQ + ox * 2,
         ny * SF_BELT_ROCK.FINE_FREQ + oy * 2,

@@ -115,6 +115,13 @@ export interface SFBodyDef {
    */
   ringInner?: number
   ringOuter?: number
+  /**
+   * Procedural band count override for `ringStripFor` — default
+   * SF_DETAIL.RING_BANDS; real systems differ wildly (Jupiter 4 faint
+   * rings, Uranus 13 razor-thin arcs, Neptune 5 dusty arcs) so the
+   * catalog pins the honest count per body.
+   */
+  ringBands?: number
   /** Bump/relief map (Earth terrain shading) — lit-materials only. */
   normalTexture?: string
   /** Grayscale elevation map — bumpMap gives terrain real depth relief. */

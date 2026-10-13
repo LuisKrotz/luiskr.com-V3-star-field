@@ -8,19 +8,15 @@
  * dust tail (grains keep some orbital momentum, so the streak fans a
  * few degrees off the anti-sunward line — `SF_COMET.DUST_TILT`).
  *
- * Geometry trick: the tail envelopes are camera-facing sprites parented
- * to the body's `center` group, NOT the nucleus mesh — `center` is
- * translated along +x by the conic radius but never rotated, so local
- * +x always points away from the Sun sitting at the pivot origin. The
- * streaming GAS layers are instead tapered open-ended CONES rooted at
- * the nucleus: a true 3D volume reads correctly from every camera
- * angle (a billboard gas sprite drew its rectangular frame edge-on),
- * and a vertex-color axial fade dissolves the tip into space with no
- * hard rim. updateFx rescales length/width/opacity as `r` swings
- * between periapsis and apoapsis, scrolls `map.offset.y` along the
- * cone axis so filaments stream anti-sunward, and spins `rotation.x`
- * for axial swirl — sublimation scales steeply with solar flux, so
- * the tail grows toward periapsis and all but vanishes outbound.
+ * Geometry trick: the tails are camera-facing sprites parented to the
+ * body's `center` group, NOT the nucleus mesh — `center` is translated
+ * along +x by the conic radius but never rotated, so local +x always
+ * points away from the Sun sitting at the pivot origin. A static +x
+ * streak is therefore anti-sunward by construction at every orbital
+ * phase, with zero per-frame orientation math. updateFx only rescales
+ * length/opacity as `r` swings between periapsis and apoapsis —
+ * sublimation scales steeply with solar flux, so the tail grows toward
+ * periapsis and all but vanishes at the far end of the ellipse.
  */
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_COMET } from '@core/tokens/starfield/params.js'
@@ -33,23 +29,31 @@ import type { SFBodyDef } from '../types.js'
 
 type ThreeModule = typeof import('three')
 
+/**
+ * userData key stashing a gas plane's fixed z-tilt — updateFx reads it
+ * to un-rotate the camera vector back into the frame where the streak
+ * axis is local +x before solving the cylindrical-billboard roll.
+ */
+export const SF_USER_GAS_TILT = 'gasTilt'
+
 /** Tail gradient canvas — long narrow streak, alpha fades along +x. */
 const TAIL_W = 256
 const TAIL_H = 32
 
 /**
- * Paints the streaming-gas cone texture: a doubly TILEABLE filament
- * field — `wrapT = RepeatWrapping` so updateFx can roll `map.offset.y`
- * and gas visibly streams along the cone axis anti-sunward like plasma
- * riding the solar wind, while `wrapS` repeats it seamlessly around the
- * circumference. Both seams are guaranteed analytically: every wisp
- * follows `x(y) = mid + sin(2π·cycles·y/H + φ)·amp` with an INTEGER
- * cycle count, so its phase at the bottom edge equals the top edge;
- * strokes and knot clumps are each redrawn at `x ± W` / `y ± H` so
- * anything straddling a seam wraps to the far edge.
+ * Paints the streaming-gas layer texture: a horizontally TILEABLE
+ * filament field (`wrapS = RepeatWrapping`) so updateFx can roll
+ * `map.offset.x` and the gas visibly streams anti-sunward like plasma
+ * riding the solar wind. The tail silhouette is NOT painted here —
+ * it lives in the plane's vertex colors (scroll-invariant), so this
+ * texture must stay seamless: every wisp follows
+ * `y(x) = mid + sin(2π·cycles·x/W + φ)·amp` with an INTEGER cycle
+ * count, so the path's phase at the left edge equals the right edge;
+ * knot clumps are each drawn at `x ± W` to wrap blobs that straddle
+ * the seam.
  * @param THREE The three.js module.
  * @param seed Deterministic RNG stream (seeded per tail so the ion and
- *   dust cones stream different filament patterns).
+ *   dust layers stream different filament patterns).
  * @returns A tileable CanvasTexture, or undefined without a 2d context.
  */
 function gasFor(THREE: ThreeModule, seed: () => number): THREE_NS.Texture | undefined {
@@ -64,61 +68,54 @@ function gasFor(THREE: ThreeModule, seed: () => number): THREE_NS.Texture | unde
   ctx.clearRect(0, 0, W, H)
 
   /**
-   * Filaments — thin sinuous rays running the tail's length (vertical
-   * in canvas space: the cone's v axis runs root→tip). Integer
-   * `cycles` keeps the sine periodic across the canvas height so the
-   * v wrap seam is invisible; each streak is redrawn at `x ± W` so a
-   * filament hugging the u seam continues around the circumference.
-   * Alpha jitters per streak so the shell reads as braided streamers,
-   * not one uniform smear.
+   * Filaments — thin sinuous rays running the tail's length. Integer
+   * `cycles` keeps the sine periodic across the canvas width (the wrap
+   * seam is invisible); each streak's alpha jitters so the sheet reads
+   * as braided streamers, not one uniform smear.
    */
   for (let i = 0; i < SF_COMET.FILAMENTS; i++) {
-    const mid = (0.08 + 0.84 * seed()) * W
-    const amp = seed() * SF_COMET.WANDER * W
+    const mid = (0.08 + 0.84 * seed()) * H
+    const amp = seed() * SF_COMET.WANDER * H
     const cycles = 1 + Math.floor(seed() * 4)
     const phase = seed() * Math.PI * 2
     const alpha = SF_COMET.FILAMENT_W * (0.35 + 0.65 * seed())
 
     ctx.strokeStyle = `rgba(255,255,255,${alpha})`
     ctx.lineWidth = 1 + seed() * 1.5
+    ctx.beginPath()
 
-    for (const ox of [0, -W, W]) {
-      ctx.beginPath()
+    for (let x = 0; x <= W; x += 4) {
+      const y = mid + Math.sin((x / W) * Math.PI * 2 * cycles + phase) * amp
 
-      for (let y = 0; y <= H; y += 4) {
-        const x = mid + ox + Math.sin((y / H) * Math.PI * 2 * cycles + phase) * amp
-
-        if (y === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      }
-
-      ctx.stroke()
+      if (x === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
     }
+
+    ctx.stroke()
   }
 
   /**
-   * Knots — denser gas clumps the outgassing vents throw. Painted at
-   * all `x ± W` / `y ± H` offsets so a blob crossing either wrap seam
-   * shows its continuation on the far edge.
+   * Knots — denser gas clumps the outgassing vents throw, biased toward
+   * the root (real comae are thickest at the nucleus). Painted at
+   * both `x` and `x ± W` so a blob crossing the wrap seam shows its
+   * continuation on the far edge.
    */
   for (let i = 0; i < SF_COMET.KNOTS; i++) {
-    const kx = seed() * W
+    const kx = seed() * seed() * W
     const ky = (0.2 + 0.6 * seed()) * H
     const kr = (0.3 + 0.7 * seed()) * SF_COMET.KNOT_R * H
     const ka = SF_COMET.KNOT_W * (0.4 + 0.6 * seed())
 
     for (const ox of [0, -W, W]) {
-      for (const oy of [0, -H, H]) {
-        const g = ctx.createRadialGradient(kx + ox, ky + oy, 0, kx + ox, ky + oy, kr)
+      const g = ctx.createRadialGradient(kx + ox, ky, 0, kx + ox, ky, kr)
 
-        g.addColorStop(0, `rgba(255,255,255,${ka})`)
-        g.addColorStop(1, 'rgba(255,255,255,0)')
+      g.addColorStop(0, `rgba(255,255,255,${ka})`)
+      g.addColorStop(1, 'rgba(255,255,255,0)')
 
-        ctx.fillStyle = g
-        ctx.beginPath()
-        ctx.arc(kx + ox, ky + oy, kr, 0, Math.PI * 2)
-        ctx.fill()
-      }
+      ctx.fillStyle = g
+      ctx.beginPath()
+      ctx.arc(kx + ox, ky, kr, 0, Math.PI * 2)
+      ctx.fill()
     }
   }
 
@@ -126,7 +123,6 @@ function gasFor(THREE: ThreeModule, seed: () => number): THREE_NS.Texture | unde
 
   out.colorSpace = THREE.SRGBColorSpace
   out.wrapS = THREE.RepeatWrapping
-  out.wrapT = THREE.RepeatWrapping
 
   return out
 }
@@ -314,39 +310,28 @@ export function makeComet(
   )
 
   /**
-   * Gas layer — a tapered open-ended CONE instead of a billboard sprite
-   * (the sprite's rectangular frame showed edge-on as a square). The
-   * unit cylinder is rotated so +y→+x and scales to (len, w, w): the
-   * narrow `GAS_ROOT` mouth sits on the nucleus, the wide `GAS_TIP`
-   * dissolves anti-sunward. Per-vertex colors carry the axial fade —
-   * `b = min(1, 3.5t)·(1−t)^1.3` ramps up just past the root (the cone
-   * mouth would otherwise show a hard ring where it pierces the coma)
-   * then decays to black at the tip, which reads as transparency under
-   * additive blending. updateFx streams `map.offset.y` so filaments
-   * flow along the axis and spins `rotation.x` for axial swirl; `tilt`
-   * fans the dust cone off the ion line.
+   * Gas layer — a highly tessellated PLANE that updateFx rolls around
+   * the tail axis to face the camera (a cylindrical billboard): unlike
+   * a camera-facing sprite it has true spatial extent (it is a real
+   * streak of gas sitting in the scene, not a postcard), and unlike a
+   * cone it can never expose a polygonal silhouette. The silhouette is
+   * carried by PER-VERTEX COLORS, not the texture: `b = ramp(t)·(1−w²)^p`
+   * fades axial position t (0 root → 1 tip) AND transverse offset w
+   * (−1…1), so every quad edge lands at black — which additive
+   * blending renders as fully transparent. Because the envelope is
+   * geometry-side, the seamless filament map can scroll `offset.x`
+   * forever without dragging the fade with it — gas genuinely streams
+   * anti-sunward through a static soft envelope.
    */
-  const gasCone = (color: number, opacity: number, tilt: number): THREE_NS.Object3D => {
-    const geo = new THREE.CylinderGeometry(
-      SF_COMET.GAS_TIP,
-      SF_COMET.GAS_ROOT,
-      1,
-      SF_COMET.GAS_SEG,
-      SF_COMET.GAS_ROWS,
-      true
-    )
-
-    geo.rotateZ(-Math.PI / 2)
-
-    // Axial brightness ramp — written into a per-vertex color attribute
-    // that multiplies the filament map, so the tail tip fades into
-    // space regardless of what the texture wraps there.
+  const gasPlane = (color: number, opacity: number, tilt: number): THREE_NS.Object3D => {
+    const geo = new THREE.PlaneGeometry(1, 1, SF_COMET.GAS_U, SF_COMET.GAS_V)
     const pos = geo.attributes.position
     const col = new Float32Array(pos.count * 3)
 
     for (let i = 0; i < pos.count; i++) {
       const t = pos.getX(i) + 0.5
-      const b = Math.min(1, t * 3.5) * Math.pow(1 - t, 1.3)
+      const w = pos.getY(i) * 2
+      const b = Math.min(1, t * 3.5) * Math.pow(1 - t, 1.3) * Math.pow(Math.max(0, 1 - w * w), 1.5)
 
       col[i * 3] = b
       col[i * 3 + 1] = b
@@ -355,7 +340,7 @@ export function makeComet(
 
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
 
-    const cone = new THREE.Mesh(
+    const plane = new THREE.Mesh(
       geo,
       new THREE.MeshBasicMaterial(
         matParams({
@@ -373,20 +358,25 @@ export function makeComet(
 
     // Center sits at half the (unit) length along the streak direction —
     // updateFx rescales `len` and re-anchors the same offset each frame.
-    cone.position.set(Math.cos(tilt) * 0.5, Math.sin(tilt) * 0.5, 0)
+    plane.position.set(Math.cos(tilt) * 0.5, Math.sin(tilt) * 0.5, 0)
 
-    // The dust cone's lag lives on rotation.z — tilting the MESH (not
-    // a UV rotation) swings the whole volume off the anti-sunward line.
-    cone.rotation.z = tilt
+    // Euler order ZXY — the camera roll (rotation.x) applies about the
+    // plane's own x axis BEFORE the fixed z-tilt swings the streak off
+    // the anti-sunward line, so rolling never pitches the tail out of
+    // its plane. The tilt is stashed so updateFx's roll math can
+    // un-rotate it back out of the camera vector.
+    plane.rotation.order = 'ZXY'
+    plane.rotation.z = tilt
+    plane.userData[SF_USER_GAS_TILT] = tilt
 
-    cone.raycast = () => undefined
+    plane.raycast = () => undefined
 
-    return cone
+    return plane
   }
 
-  const ionGas = gasCone(SF_COLORS.COMET_ION, SF_COMET.ION_OPACITY * SF_COMET.GAS_ALPHA_ION, 0)
+  const ionGas = gasPlane(SF_COLORS.COMET_ION, SF_COMET.ION_OPACITY * SF_COMET.GAS_ALPHA_ION, 0)
 
-  const dustGas = gasCone(
+  const dustGas = gasPlane(
     SF_COLORS.COMET_DUST,
     SF_COMET.DUST_OPACITY * SF_COMET.GAS_ALPHA_DUST,
     SF_COMET.DUST_TILT
