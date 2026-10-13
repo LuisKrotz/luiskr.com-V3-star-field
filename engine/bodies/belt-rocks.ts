@@ -5,17 +5,19 @@
  * belt's annulus, textured per material class so the belt reads as a
  * real mix of bodies instead of bare points:
  *
- *   - `stone`  — silicate speckle + crater field, rough, flat-shaded.
+ *   - `stone`  — silicate speckle + crater field, rough.
  *   - `carbon` — near-black carbonaceous mottle (the dominant C-types).
  *   - `hydro`  — hydrated clay minerals (CM chondrites) — rust-dark mud.
  *   - `metal`  — iron-nickel glints over dark ground, low roughness.
  *   - `ice`    — pale cometary surface with bright fracture streaks.
  *   - `dust`   — soft regolith mottle, no features.
  *
- * Silhouettes come in two families: rounded irregular bodies (detail-1
- * icosahedra crumpled by seeded value noise) and collision FRAGMENTS
- * (tetrahedra sheared harder — the shard look is deliberate for
- * fragments only). Per-vertex spherical UVs (u = longitude, v =
+ * Silhouettes come in two families: rounded irregular bodies (detail-6
+ * icosahedra crumpled by two octaves of seeded value noise) and
+ * collision FRAGMENTS (tetrahedra sheared harder — the shard look is
+ * deliberate for fragments only). All classes shade smooth with the
+ * class texture doubling as a bump map — no flat-shaded facets, so no
+ * silhouette ever resolves into readable polygon edges. Per-vertex spherical UVs (u = longitude, v =
  * latitude) wrap each rock in its class canvas texture, and every rock
  * gets its own geometry seed so no two silhouettes match.
  *
@@ -26,17 +28,13 @@
  * clicks on the particle band itself.
  */
 import type * as THREE_NS from 'three'
-import { SF_BELT_ROCK, SF_COLORS } from '@core/tokens/starfield/params.js'
+import { SF_BELT_ROCK, SF_COLORS, SF_DETAIL } from '@core/tokens/starfield/params.js'
 import { lcg, seedFrom } from '../rand.js'
 import { matParams } from '../materials.js'
 import { blob, css, rgb, shade, texCanvas, vnoise } from './procedural/shared.js'
 import type { SFBodyDef, SFNode } from '../types.js'
 
 type ThreeModule = typeof import('three')
-
-/** Rock texture canvas size — small equirect, speckle hides seams. */
-const _TEX_W = 128
-const _TEX_H = 64
 
 /**
  * Material class descriptor — palette source + paint recipe + PBR
@@ -53,8 +51,6 @@ interface RockClass {
   roughness: number
   /** Material metalness — only the `metal` class is truly metallic. */
   metalness: number
-  /** Flat shading — stone/carbon keep facets, ice/dust stay smooth. */
-  flat: boolean
 }
 
 /**
@@ -68,7 +64,6 @@ const _CLASSES: readonly RockClass[] = [
     p: SF_BELT_ROCK.CLASS_STONE,
     roughness: 0.95,
     metalness: 0.05,
-    flat: true,
   },
   {
     key: 'carbon',
@@ -76,7 +71,6 @@ const _CLASSES: readonly RockClass[] = [
     p: SF_BELT_ROCK.CLASS_CARBON,
     roughness: 1.0,
     metalness: 0.0,
-    flat: true,
   },
   {
     key: 'hydro',
@@ -84,7 +78,6 @@ const _CLASSES: readonly RockClass[] = [
     p: SF_BELT_ROCK.CLASS_HYDRO,
     roughness: 0.9,
     metalness: 0.0,
-    flat: true,
   },
   {
     key: 'dust',
@@ -92,7 +85,6 @@ const _CLASSES: readonly RockClass[] = [
     p: SF_BELT_ROCK.CLASS_DUST,
     roughness: 1.0,
     metalness: 0.0,
-    flat: false,
   },
   {
     key: 'ice',
@@ -100,7 +92,6 @@ const _CLASSES: readonly RockClass[] = [
     p: SF_BELT_ROCK.CLASS_ICE,
     roughness: 0.5,
     metalness: 0.0,
-    flat: false,
   },
   {
     key: 'metal',
@@ -108,7 +99,6 @@ const _CLASSES: readonly RockClass[] = [
     p: 0,
     roughness: 0.35,
     metalness: 0.85,
-    flat: false,
   },
 ]
 
@@ -126,7 +116,10 @@ function rockTexture(
   cls: RockClass,
   rand: () => number
 ): THREE_NS.Texture | undefined {
-  const c = texCanvas(_TEX_W, _TEX_H)
+  const W = SF_BELT_ROCK.TEX_W
+  const H = SF_BELT_ROCK.TEX_H
+
+  const c = texCanvas(W, H)
 
   if (!c) return undefined
 
@@ -134,20 +127,20 @@ function rockTexture(
   const base = rgb(cls.color)
 
   ctx.fillStyle = css(base, 1)
-  ctx.fillRect(0, 0, _TEX_W, _TEX_H)
+  ctx.fillRect(0, 0, W, H)
 
   // Grain field — every class gets speckle so the surface never reads
   // as a smooth tint at texture zoom.
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < SF_BELT_ROCK.TEX_GRAIN; i++) {
     const k = (rand() - 0.5) * 0.5
 
     blob(
       ctx,
-      _TEX_W,
-      _TEX_H,
-      rand() * _TEX_W,
-      rand() * _TEX_H,
-      0.5 + rand() * 2.4,
+      W,
+      H,
+      rand() * W,
+      rand() * H,
+      0.8 + rand() * 6,
       css(shade(base, k), 0.55),
       css(base, 0)
     )
@@ -155,33 +148,24 @@ function rockTexture(
 
   if (cls.key === 'stone' || cls.key === 'carbon' || cls.key === 'hydro') {
     // Impact pits — shadowed bowl + lit rim, matching the moon recipe.
-    for (let i = 0; i < 12; i++) {
-      const x = rand() * _TEX_W
-      const y = rand() * _TEX_H
-      const r = 1.5 + rand() * 5
+    for (let i = 0; i < SF_BELT_ROCK.TEX_CRATERS; i++) {
+      const x = rand() * W
+      const y = rand() * H
+      const r = 2 + rand() * 14
 
-      blob(ctx, _TEX_W, _TEX_H, x, y, r, css(shade(base, -0.35), 0.6), css(base, 0))
-      blob(
-        ctx,
-        _TEX_W,
-        _TEX_H,
-        x - r * 0.25,
-        y - r * 0.25,
-        r * 0.6,
-        css(shade(base, 0.3), 0.4),
-        css(base, 0)
-      )
+      blob(ctx, W, H, x, y, r, css(shade(base, -0.35), 0.6), css(base, 0))
+      blob(ctx, W, H, x - r * 0.25, y - r * 0.25, r * 0.6, css(shade(base, 0.3), 0.4), css(base, 0))
     }
   } else if (cls.key === 'metal') {
     // Specular veins — thin bright strokes like polished iron faces.
-    for (let i = 0; i < 7; i++) {
-      const x = rand() * _TEX_W
-      const y = rand() * _TEX_H
-      const len = _TEX_W * (0.1 + rand() * 0.35)
+    for (let i = 0; i < SF_BELT_ROCK.TEX_VEINS; i++) {
+      const x = rand() * W
+      const y = rand() * H
+      const len = W * (0.1 + rand() * 0.35)
       const ang = rand() * Math.PI
 
       ctx.strokeStyle = css(shade(base, 0.55), 0.5)
-      ctx.lineWidth = 0.6 + rand() * 1.2
+      ctx.lineWidth = 1 + rand() * 3
       ctx.beginPath()
       ctx.moveTo(x, y)
       ctx.lineTo(x + Math.cos(ang) * len, y + Math.sin(ang) * len)
@@ -189,10 +173,10 @@ function rockTexture(
     }
   } else if (cls.key === 'ice') {
     // Fracture streaks — pale cracks over dirty-ice ground.
-    for (let i = 0; i < 5; i++) {
-      const x0 = rand() * _TEX_W
-      const y0 = rand() * _TEX_H
-      const len = _TEX_W * (0.3 + rand() * 0.5)
+    for (let i = 0; i < SF_BELT_ROCK.TEX_STREAKS; i++) {
+      const x0 = rand() * W
+      const y0 = rand() * H
+      const len = W * (0.3 + rand() * 0.5)
       const ang = rand() * Math.PI
       const g = ctx.createLinearGradient(x0, y0, x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len)
 
@@ -201,7 +185,7 @@ function rockTexture(
       g.addColorStop(1, css(base, 0))
 
       ctx.strokeStyle = g
-      ctx.lineWidth = 0.8 + rand() * 2
+      ctx.lineWidth = 1.5 + rand() * 5
       ctx.beginPath()
       ctx.moveTo(x0, y0)
       ctx.lineTo(x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len)
@@ -252,7 +236,15 @@ function rockGeometry(
     const ny = pos.getY(i)
     const nz = pos.getZ(i)
 
-    const d = 1 + vnoise(nx + ox, ny + oy, nz + oz) * jitter * 0.5
+    const d =
+      1 +
+      vnoise(nx + ox, ny + oy, nz + oz) * jitter * 0.5 +
+      vnoise(
+        nx * SF_BELT_ROCK.FINE_FREQ + ox * 2,
+        ny * SF_BELT_ROCK.FINE_FREQ + oy * 2,
+        nz * SF_BELT_ROCK.FINE_FREQ + oz * 2
+      ) *
+        SF_BELT_ROCK.FINE_AMP
 
     pos.setXYZ(i, nx * d, ny * d, nz * d)
 
@@ -320,13 +312,19 @@ export function makeBeltRocks(
 
     if (cached) return cached
 
+    const tex = rockTexture(THREE, cls, lcg(seedFrom(`${def.id}:${cls.key}:tex`)))
+
+    // Smooth-shaded everywhere — flat facets were what made rocks read
+    // as low-poly at distance. The class texture doubles as a bump map
+    // so crater rims and grain perturb the shading normal.
     const mat = new THREE.MeshStandardMaterial(
       matParams({
-        map: rockTexture(THREE, cls, lcg(seedFrom(`${def.id}:${cls.key}:tex`))),
+        map: tex,
+        bumpMap: tex,
+        bumpScale: SF_DETAIL.BUMP_SCALE,
         color: cls.color,
         roughness: cls.roughness,
         metalness: cls.metalness,
-        flatShading: cls.flat,
       })
     )
 

@@ -101,8 +101,20 @@ export interface SFBodyDef {
   activity?: number
   /** Secondary texture for translucent shells (Venus atmosphere, Saturn ring). */
   shellTexture?: string
-  /** Shell is a flat ring disc (Saturn) rather than an atmosphere sphere. */
+  /**
+   * Shell is a flat ring disc rather than an atmosphere sphere — with
+   * no `shellTexture` a seeded procedural band strip is painted instead
+   * (Uranus/Neptune's thin dusty arcs), so any body can carry rings.
+   */
   shellRing?: boolean
+  /**
+   * Ring radii as body-radius multiples — default to Saturn's strip
+   * (SF_DETAIL.RING_INNER/OUTER); ice giants override with their honest
+   * narrower spans (Uranus's rings hug 1.6–2.0 R, not Saturn's wide
+   * plate).
+   */
+  ringInner?: number
+  ringOuter?: number
   /** Bump/relief map (Earth terrain shading) — lit-materials only. */
   normalTexture?: string
   /** Grayscale elevation map — bumpMap gives terrain real depth relief. */

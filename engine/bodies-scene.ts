@@ -391,7 +391,11 @@ export function buildStarBodies(
 
     const detail: THREE_NS.Object3D[] = []
 
-    if (def.shellTexture) detail.push(makeShell(THREE, def, def.shellTexture, mesh, texMap))
+    // Ringed bodies build with or without an authored strip — a bare
+    // `shellRing` paints the seeded procedural band texture.
+    if (def.shellTexture || def.shellRing) {
+      detail.push(makeShell(THREE, def, def.shellTexture, mesh, texMap))
+    }
 
     const cloudTex = def.cloudTexture ? texMap.get(def.cloudTexture) : undefined
 

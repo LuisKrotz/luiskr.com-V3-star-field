@@ -197,50 +197,57 @@ export function updateFx(s: SFState): void {
       if (dust.material?.opacity != null) dust.material.opacity = SF_COMET.DUST_OPACITY * f
 
       /**
-       * Streaming gas — each tail's filament layer scrolls its texture
-       * along +x (the anti-sunward direction, via RepeatWrapping
-       * `map.offset.x`), wobbles a few hundredths of a radian and
-       * flickers on a detuned sine, so the tail reads as churning
-       * plasma/dust blowing off the nucleus instead of a painted streak.
-       * The gas sprite shadows the base tail's position/scale by copying
-       * the rescaled length each frame.
+       * Streaming gas — each tail's filament CONE scrolls its texture
+       * along the tail axis (the v axis runs root→tip, so RepeatWrapping
+       * `map.offset.y` streams anti-sunward), swirls around its own
+       * axis on `rotation.x` (the cone's axis of symmetry — axial spin
+       * makes the braided filaments visibly churn instead of sliding a
+       * 2D rotation), and flickers on a detuned sine, so the tail reads
+       * as plasma/dust blowing off the nucleus. The cone shadows the
+       * base tail's length each frame and scales its cross-section
+       * radius on both transverse axes (scale.y = scale.z = width).
        */
       const gasI = co.ionGas as {
         position: { x: number }
+        rotation?: { x: number }
         scale: { set(a: number, b: number, c: number): void }
         material?: {
           opacity?: number
-          rotation?: number
-          map?: { offset?: { x: number } }
+          map?: { offset?: { y: number } }
         }
       }
       const gasD = co.dustGas as {
         position: { x: number; y: number }
+        rotation?: { x: number }
         scale: { set(a: number, b: number, c: number): void }
         material?: {
           opacity?: number
-          rotation?: number
-          map?: { offset?: { x: number } }
+          map?: { offset?: { y: number } }
         }
       }
 
-      gasI.scale.set(ionLen, co.ionScale.y * 0.85 * (0.5 + 0.5 * f), 1)
+      const gasIW = co.ionScale.y * 0.85 * (0.5 + 0.5 * f)
+      const gasDW = co.dustScale.y * 0.8 * (0.5 + 0.5 * f)
+
+      gasI.scale.set(ionLen, gasIW, gasIW)
       gasI.position.x = ionLen / 2
-      gasD.scale.set(dustLen, co.dustScale.y * 0.8 * (0.5 + 0.5 * f), 1)
+      gasD.scale.set(dustLen, gasDW, gasDW)
       gasD.position.x = dust.position.x
       gasD.position.y = dust.position.y
 
       const iMap = gasI.material?.map
 
-      if (iMap?.offset) iMap.offset.x = -s.t * SF_COMET.GAS_FLOW_ION * (0.5 + f)
+      if (iMap?.offset) iMap.offset.y = -s.t * SF_COMET.GAS_FLOW_ION * (0.5 + f)
 
       const dMap = gasD.material?.map
 
-      if (dMap?.offset) dMap.offset.x = -s.t * SF_COMET.GAS_FLOW_DUST * (0.5 + f)
+      if (dMap?.offset) dMap.offset.y = -s.t * SF_COMET.GAS_FLOW_DUST * (0.5 + f)
+
+      if (gasI.rotation) {
+        gasI.rotation.x = Math.sin(s.t * SF_COMET.WOBBLE_FREQ + co.ionPhase) * SF_COMET.WOBBLE_AMP
+      }
 
       if (gasI.material) {
-        gasI.material.rotation =
-          Math.sin(s.t * SF_COMET.WOBBLE_FREQ + co.ionPhase) * SF_COMET.WOBBLE_AMP
         gasI.material.opacity =
           SF_COMET.ION_OPACITY *
           SF_COMET.GAS_ALPHA_ION *
@@ -249,10 +256,12 @@ export function updateFx(s: SFState): void {
             SF_COMET.FLICKER_AMP * Math.sin(s.t * SF_COMET.FLICKER_FREQ * co.ionRate + co.ionPhase))
       }
 
-      if (gasD.material) {
-        gasD.material.rotation =
-          SF_COMET.DUST_TILT +
+      if (gasD.rotation) {
+        gasD.rotation.x =
           Math.sin(s.t * SF_COMET.WOBBLE_FREQ * 0.7 + co.dustPhase) * SF_COMET.WOBBLE_AMP
+      }
+
+      if (gasD.material) {
         gasD.material.opacity =
           SF_COMET.DUST_OPACITY *
           SF_COMET.GAS_ALPHA_DUST *
