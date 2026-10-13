@@ -257,6 +257,14 @@ export interface SFBodyDef {
     axes?: [number, number, number]
   }
   /**
+   * Procedural-surface recipe pin — one of `SF_SURFACES` (`rock`,
+   * `ice`, `gas`, `lava`, `ocean`). The painter's kind bias still seeds
+   * the grain, but the recipe forces the read: a molten Proxima d can
+   * never draw water bands, an oceanic TRAPPIST-1e always carries seas.
+   * Absent → seeded pick inside the kind's palette as before.
+   */
+  surface?: string
+  /**
    * Authored distance label for the hover tooltip — semi-major axis in
    * AU for Solar-System bodies, light-years for deep-sky objects. Units
    * are universal abbreviations so the string needs no translation.
@@ -472,7 +480,19 @@ export interface SFState {
    * so lights stay dark on the lit hemisphere and the rim migrates
    * with the terminator.
    */
-  dayNight: Array<{ anchor: THREE_NS.Object3D; dir: THREE_NS.Vector3 }>
+  dayNight: Array<{
+    anchor: THREE_NS.Object3D
+    dir: THREE_NS.Vector3
+    /**
+     * Light-source anchor override — galactic planets (TRAPPIST-1's
+     * worlds, Proxima's) are lit by their host star, not the solar
+     * Sun, so their day/night vector resolves against the parent's
+     * anchor instead of the default `sunLight`. Moons of planets
+     * (Io, Enceladus) keep the default: they orbit a planet but are
+     * still lit by the real Sun.
+     */
+    sun?: THREE_NS.Object3D
+  }>
   /** ids whose dossier was already prefetched — approach fires once. */
   approached: Set<string>
   /**
@@ -716,6 +736,14 @@ export interface SFNode {
     ion: THREE_NS.Object3D
     dust: THREE_NS.Object3D
     coma: THREE_NS.Object3D
+    /**
+     * Scrolling gas-filament layers composited over each tail — their
+     * textures tile horizontally so updateFx can stream `map.offset.x`
+     * anti-sunward (the solar-wind flow) while `WOBBLE`/`FLICKER` wiggle
+     * and breathe them like live plasma.
+     */
+    ionGas: THREE_NS.Object3D
+    dustGas: THREE_NS.Object3D
     /** Periapsis/apoapsis distances (chart units) — the scale window. */
     rMin: number
     rMax: number
@@ -723,6 +751,11 @@ export interface SFNode {
     ionScale: { x: number; y: number }
     dustScale: { x: number; y: number }
     comaScale: { x: number; y: number }
+    /** Seeded wobble phases/rates — each tail stirs at its own beat. */
+    ionPhase: number
+    dustPhase: number
+    ionRate: number
+    dustRate: number
   }
   /**
    * Cryovolcanic plume system — per-vent jet + cycling puff sprite
@@ -731,7 +764,7 @@ export interface SFNode {
    * eruption with zero per-frame allocation.
    */
   plumes?: Array<{
-    /** Steady jet sprite rooted at the vent (shimmering base). */
+    /** Steady tapered-cone jet rooted at the vent (shimmering column). */
     jet: THREE_NS.Object3D
     /** Rising ejecta puff cycling outward along `dir`. */
     puff: THREE_NS.Object3D
@@ -745,6 +778,12 @@ export interface SFNode {
     height: number
     /** Puff base width (world units) — grows as it rises. */
     width: number
+    /**
+     * Shared body-local sun direction — the dayNight registry fills it
+     * each frame; updateFx dots it against `dir` so vents only jet when
+     * the sun lights their hemisphere (Elysium-dark vents go smudge).
+     */
+    sunDir?: THREE_NS.Vector3
   }>
 }
 

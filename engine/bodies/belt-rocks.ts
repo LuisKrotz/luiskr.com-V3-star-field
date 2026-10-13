@@ -7,6 +7,7 @@
  *
  *   - `stone`  — silicate speckle + crater field, rough, flat-shaded.
  *   - `carbon` — near-black carbonaceous mottle (the dominant C-types).
+ *   - `hydro`  — hydrated clay minerals (CM chondrites) — rust-dark mud.
  *   - `metal`  — iron-nickel glints over dark ground, low roughness.
  *   - `ice`    — pale cometary surface with bright fracture streaks.
  *   - `dust`   — soft regolith mottle, no features.
@@ -19,9 +20,10 @@
  * gets its own geometry seed so no two silhouettes match.
  *
  * Rocks ride `satPivots` entries — fx.ts sweeps the pivot (orbit) and
- * tumbles the child mesh. They are never raycast-pickable (same
- * contract as the particle annulus — thousands of small bodies would
- * swallow pointer rays).
+ * tumbles the child mesh. The group joins `pickables` so a direct
+ * click on a hero rock resolves to the belt body (the parent chain
+ * carries `SF_USER_BODY`), while the invisible annulus proxy catches
+ * clicks on the particle band itself.
  */
 import type * as THREE_NS from 'three'
 import { SF_BELT_ROCK, SF_COLORS } from '@core/tokens/starfield/params.js'
@@ -73,6 +75,14 @@ const _CLASSES: readonly RockClass[] = [
     color: SF_COLORS.ROCK_CARBON,
     p: SF_BELT_ROCK.CLASS_CARBON,
     roughness: 1.0,
+    metalness: 0.0,
+    flat: true,
+  },
+  {
+    key: 'hydro',
+    color: SF_COLORS.ROCK_HYDRO,
+    p: SF_BELT_ROCK.CLASS_HYDRO,
+    roughness: 0.9,
     metalness: 0.0,
     flat: true,
   },
@@ -143,7 +153,7 @@ function rockTexture(
     )
   }
 
-  if (cls.key === 'stone' || cls.key === 'carbon') {
+  if (cls.key === 'stone' || cls.key === 'carbon' || cls.key === 'hydro') {
     // Impact pits — shadowed bowl + lit rim, matching the moon recipe.
     for (let i = 0; i < 12; i++) {
       const x = rand() * _TEX_W
@@ -221,7 +231,9 @@ function rockGeometry(
   frag: boolean,
   rand: () => number
 ): THREE_NS.BufferGeometry {
-  const geo = frag ? new THREE.TetrahedronGeometry(1, 1) : new THREE.IcosahedronGeometry(1, 1)
+  const geo = frag
+    ? new THREE.TetrahedronGeometry(1, SF_BELT_ROCK.FRAG_DETAIL)
+    : new THREE.IcosahedronGeometry(1, SF_BELT_ROCK.DETAIL)
 
   const pos = geo.attributes.position
 

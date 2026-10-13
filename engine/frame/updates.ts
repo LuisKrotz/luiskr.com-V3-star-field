@@ -334,9 +334,16 @@ export function updateDayNight(s: SFState): void {
   const sun = { ...anchorWorldPos(s.sunLight as never) }
 
   for (const dn of s.dayNight) {
-    const p = anchorWorldPos(dn.anchor as never)
+    // Copy — anchorWorldPos returns the shared scratch vector, so the
+    // body position must be lifted before the light source resolves or
+    // the second call would overwrite the first.
+    const p = { ...anchorWorldPos(dn.anchor as never) }
 
-    dn.dir.set(sun.x - p.x, sun.y - p.y, sun.z - p.z)
+    // Light source — galactic planets carry `sun` (their host star's
+    // anchor) so the terminator orients to TRAPPIST-1, not our Sun.
+    const src = dn.sun ? { ...anchorWorldPos(dn.sun as never) } : sun
+
+    dn.dir.set(src.x - p.x, src.y - p.y, src.z - p.z)
 
     const len = Math.hypot(dn.dir.x, dn.dir.y, dn.dir.z)
 

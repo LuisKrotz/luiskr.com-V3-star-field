@@ -21,6 +21,7 @@
 import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_COMET } from '@core/tokens/starfield/params.js'
 import { matParams } from '../materials.js'
+import { lcg, seedFrom } from '../rand.js'
 import { texCanvas } from './procedural/shared.js'
 import { irregularGeometry } from './primitives.js'
 import { surfaceFor } from './procedural.js'
@@ -31,6 +32,93 @@ type ThreeModule = typeof import('three')
 /** Tail gradient canvas — long narrow streak, alpha fades along +x. */
 const TAIL_W = 256
 const TAIL_H = 32
+
+/**
+ * Paints the streaming-gas layer texture: a horizontally TILEABLE
+ * filament field (`wrapS = RepeatWrapping`) so updateFx can roll
+ * `map.offset.x` and the gas visibly streams anti-sunward like plasma
+ * riding the solar wind. Seamlessness is guaranteed analytically —
+ * every wisp follows `y(x) = mid + sin(2π·cycles·x/W + φ)·amp` with an
+ * INTEGER cycle count, so the path's phase at the left edge equals the
+ * right edge; knot clumps are each drawn twice at `x` and `x − W` to
+ * wrap blobs that straddle the seam. A faint envelope gradient keeps
+ * the layer brightest near the nucleus root without breaking the wrap
+ * (the envelope is applied by the OTHER static tail sprite — this layer
+ * stays uniform so scrolling never smears a ramp).
+ * @param THREE The three.js module.
+ * @param seed Deterministic RNG stream (seeded per tail so the ion and
+ *   dust layers stream different filament patterns).
+ * @returns A tileable CanvasTexture, or undefined without a 2d context.
+ */
+function gasFor(THREE: ThreeModule, seed: () => number): THREE_NS.Texture | undefined {
+  const c = texCanvas(SF_COMET.GAS_W, SF_COMET.GAS_H)
+
+  if (!c) return undefined
+
+  const { ctx, canvas } = c
+  const W = SF_COMET.GAS_W
+  const H = SF_COMET.GAS_H
+
+  ctx.clearRect(0, 0, W, H)
+
+  /**
+   * Filaments — thin sinuous rays running the tail's length. Integer
+   * `cycles` keeps the sine periodic across the canvas width (the wrap
+   * seam is invisible); each streak's alpha jitters so the sheet reads
+   * as braided streamers, not one uniform smear.
+   */
+  for (let i = 0; i < SF_COMET.FILAMENTS; i++) {
+    const mid = (0.08 + 0.84 * seed()) * H
+    const amp = seed() * SF_COMET.WANDER * H
+    const cycles = 1 + Math.floor(seed() * 4)
+    const phase = seed() * Math.PI * 2
+    const alpha = SF_COMET.FILAMENT_W * (0.35 + 0.65 * seed())
+
+    ctx.strokeStyle = `rgba(255,255,255,${alpha})`
+    ctx.lineWidth = 1 + seed() * 1.5
+    ctx.beginPath()
+
+    for (let x = 0; x <= W; x += 4) {
+      const y = mid + Math.sin((x / W) * Math.PI * 2 * cycles + phase) * amp
+
+      if (x === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+
+    ctx.stroke()
+  }
+
+  /**
+   * Knots — denser gas clumps the outgassing vents throw. Painted at
+   * both `x` and `x ± W` so a blob crossing the wrap seam shows its
+   * continuation on the far edge.
+   */
+  for (let i = 0; i < SF_COMET.KNOTS; i++) {
+    const kx = seed() * W
+    const ky = (0.2 + 0.6 * seed()) * H
+    const kr = (0.3 + 0.7 * seed()) * SF_COMET.KNOT_R * H
+    const ka = SF_COMET.KNOT_W * (0.4 + 0.6 * seed())
+
+    for (const ox of [0, -W, W]) {
+      const g = ctx.createRadialGradient(kx + ox, ky, 0, kx + ox, ky, kr)
+
+      g.addColorStop(0, `rgba(255,255,255,${ka})`)
+      g.addColorStop(1, 'rgba(255,255,255,0)')
+
+      ctx.fillStyle = g
+      ctx.beginPath()
+      ctx.arc(kx + ox, ky, kr, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  const out = new THREE.CanvasTexture(canvas)
+
+  out.colorSpace = THREE.SRGBColorSpace
+  out.wrapS = THREE.RepeatWrapping
+
+  return out
+}
 
 /**
  * Paints the shared tail sprite texture: a horizontal gradient that is
@@ -96,8 +184,10 @@ function tailFor(THREE: ThreeModule): THREE_NS.Texture | undefined {
  * @param texMap Loaded texture map (a comet with a real nucleus map
  *   uses it; Halley falls back to the seeded dark-ice surface).
  * @param glowTex Shared radial-glow texture for the coma sprite.
- * @returns `{ mesh, coma, ion, dust }` — the pickable nucleus group
- *   plus the sprites the caller attaches and records on `node.comet`.
+ * @returns `{ mesh, coma, ion, dust, ionGas, dustGas }` — the pickable
+ *   nucleus group plus the sprites the caller attaches and records on
+ *   `node.comet` (the gas layers are the streaming-filament sprites
+ *   updateFx scrolls).
  */
 export function makeComet(
   THREE: ThreeModule,
@@ -109,7 +199,10 @@ export function makeComet(
   coma: THREE_NS.Object3D
   ion: THREE_NS.Object3D
   dust: THREE_NS.Object3D
+  ionGas: THREE_NS.Object3D
+  dustGas: THREE_NS.Object3D
 } {
+  const rand = lcg(seedFrom(`${def.id}:comet`))
   const geo = irregularGeometry(THREE, def)
 
   // The nucleus is much darker than the body's display color — Halley's
@@ -209,5 +302,58 @@ export function makeComet(
     SF_COMET.DUST_TILT
   )
 
-  return { mesh, coma, ion, dust }
+  /**
+   * Gas layers — a second filament sprite over each tail whose texture
+   * wraps horizontally: updateFx streams `map.offset.x` so the gas
+   * visibly flows anti-sunward (the ion wind is the faster, plasma is
+   * field-entrained while dust drifts). Each layer gets its own
+   * CanvasTexture so the scroll offsets don't fight.
+   */
+  const gasLayer = (
+    len: number,
+    w: number,
+    color: number,
+    opacity: number,
+    tilt: number
+  ): THREE_NS.Sprite => {
+    const m = new THREE.SpriteMaterial(
+      matParams({
+        map: gasFor(THREE, rand) ?? glowTex,
+        color,
+        transparent: true,
+        opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        rotation: tilt,
+      })
+    )
+
+    const spr = new THREE.Sprite(m)
+
+    spr.position.set(Math.cos(tilt) * len * 0.5, Math.sin(tilt) * len * 0.5, 0)
+
+    spr.scale.set(len, w, 1)
+
+    spr.raycast = () => undefined
+
+    return spr
+  }
+
+  const ionGas = gasLayer(
+    def.radius * SF_COMET.ION_LEN,
+    def.radius * SF_COMET.ION_W * 0.85,
+    SF_COLORS.COMET_ION,
+    SF_COMET.ION_OPACITY * SF_COMET.GAS_ALPHA_ION,
+    0
+  )
+
+  const dustGas = gasLayer(
+    def.radius * SF_COMET.DUST_LEN,
+    def.radius * SF_COMET.DUST_W * 0.8,
+    SF_COLORS.COMET_DUST,
+    SF_COMET.DUST_OPACITY * SF_COMET.GAS_ALPHA_DUST,
+    SF_COMET.DUST_TILT
+  )
+
+  return { mesh, coma, ion, dust, ionGas, dustGas }
 }

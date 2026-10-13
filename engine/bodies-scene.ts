@@ -15,6 +15,7 @@ import {
   SF_CONSTELLATION,
   SF_DETAIL,
   SF_SCALE,
+  SF_SCENE,
   SF_SPIRAL,
 } from '@core/tokens/starfield/params.js'
 import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
@@ -88,6 +89,12 @@ export function buildStarBodies(
     let nebulaFx: SFNode['nebula']
     let cometFx: SFNode['comet']
     let plumes: SFNode['plumes']
+    /**
+     * Body-local sun direction — created only for bodies whose shading
+     * depends on illumination (emissive maps, atmosphere rims, plume
+     * vents); updateDayNight rewrites it per frame in `mesh` space.
+     */
+    let bodySunDir: THREE_NS.Vector3 | undefined
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
       // Nebulae get an irregular wispy mask so they look like gas clouds;
@@ -113,20 +120,44 @@ export function buildStarBodies(
       mesh = bh.group
       spinner = bh.spin
     } else if (def.kind === SF_KINDS.BELT) {
-      // Small-body annulus — a seeded Points disc; like structures it
-      // stays out of the raycast set so its pebbles can't intercept
-      // every pointer ray, but the navigator flies to its anchor.
+      // Small-body annulus — a seeded Points disc. The particle cloud
+      // itself stays un-raycastable (thousands of pebbles would swallow
+      // every pointer ray), but the belt IS selectable: an invisible
+      // flat ring filling the annulus catches clicks inside the band
+      // (a click on the belt's dust selects the belt dossier), and the
+      // hero rocks below carry the body's id so a direct rock hit
+      // resolves the same way. SF_USER_PROXY on the ring means a real
+      // planet crossing the ray still wins.
       mesh = makeBelt(THREE, def, glowTex)
 
-      // Hero rocks — irregular seeded meshes (stone/carbon/dust/ice/
-      // metal, fragments through large bodies) on individual Keplerian
-      // pivots, so a fly-in resolves real varied debris above the
-      // particle rubble rather than a dotted hairline.
+      const ringGeo = new THREE.RingGeometry(
+        def.belt?.inner ?? 0,
+        def.belt?.outer ?? 0,
+        SF_SCENE.RING_SEGMENTS
+      )
+
+      ringGeo.rotateX(-Math.PI / 2)
+
+      const ringPick = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ visible: false }))
+
+      ringPick.userData[SF_USER_BODY] = def.id
+      ringPick.userData[SF_USER_PROXY] = true
+
+      mesh.add(ringPick)
+      s.pickables.push(ringPick)
+
+      // Hero rocks — irregular seeded meshes (stone/carbon/hydrated/
+      // dust/ice/metal, fragments through large bodies) on individual
+      // Keplerian pivots, so a fly-in resolves real varied debris above
+      // the particle rubble rather than a dotted hairline. The group
+      // joins pickables: rock hits walk up to the belt id via the parent
+      // chain (the Points `mesh` is tagged with `def.id` below).
       const rocks = makeBeltRocks(THREE, def)
 
       beltRockGroup = rocks.group
 
       mesh.add(rocks.group)
+      s.pickables.push(rocks.group)
 
       rockPivots.push(...rocks.pivots)
     } else if (def.kind === SF_KINDS.COMET) {
@@ -139,20 +170,29 @@ export function buildStarBodies(
       mesh = comet.mesh
       spinner = comet.mesh
 
-      // Peri/apoapsis window from the conic — updateFx rescales the
-      // tails between them (sublimation ≈ solar flux ∝ 1/r²).
+      // Peri/apoapsis window from the conic — updateFx scales the tails
+      // inside a periapsis-only sublimation window and streams the gas
+      // layers (sublimation ≈ solar flux ∝ 1/r²). Seeded wobble phases
+      // keep every comet's gas stirring at its own beat.
       const a = def.orbit ?? def.radius
       const e = def.ecc ?? 0
+      const crand = lcg(seedFrom(`${def.id}:cometfx`))
 
       cometFx = {
         ion: comet.ion,
         dust: comet.dust,
         coma: comet.coma,
+        ionGas: comet.ionGas,
+        dustGas: comet.dustGas,
         rMin: a * (1 - e),
         rMax: a * (1 + e),
         ionScale: { x: comet.ion.scale.x, y: comet.ion.scale.y },
         dustScale: { x: comet.dust.scale.x, y: comet.dust.scale.y },
         comaScale: { x: comet.coma.scale.x, y: comet.coma.scale.y },
+        ionPhase: crand() * Math.PI * 2,
+        dustPhase: crand() * Math.PI * 2,
+        ionRate: 0.8 + crand() * 0.5,
+        dustRate: 0.8 + crand() * 0.5,
       }
     } else if (def.kind === SF_KINDS.GALAXY || def.kind === SF_KINDS.DWARF_GALAXY) {
       if (def.spiralDisc) {
@@ -201,14 +241,31 @@ export function buildStarBodies(
       } else {
         // Day/night registry — a shared sun-direction vector per body
         // whose shading depends on illumination (night-lights emissive
-        // gating, atmosphere rim tint); updateDayNight rewrites it each
-        // frame so the TSL uniforms stay live.
-        const sunDir =
-          def.emissiveTexture || def.atmosphere ? new THREE.Vector3(1, 0, 0) : undefined
+        // gating, atmosphere rim tint) AND for plume-bearing worlds so
+        // updateFx can gate each vent by `dot(ventDir, sunDirLocal)` —
+        // night-side geysers smudge instead of glowing. updateDayNight
+        // rewrites the vector each frame so the TSL uniforms and the
+        // vent gate stay live.
+        bodySunDir =
+          def.emissiveTexture || def.atmosphere || def.plumes
+            ? new THREE.Vector3(1, 0, 0)
+            : undefined
 
-        mesh = makeSphere(THREE, deps, def, texMap, sunDir)
+        mesh = makeSphere(THREE, deps, def, texMap, bodySunDir)
 
-        if (sunDir) s.dayNight?.push({ anchor: mesh, dir: sunDir })
+        if (bodySunDir) {
+          // Galactic planets orbit their own star — the terminator must
+          // key on the parent star's anchor (TRAPPIST-1 lights its
+          // worlds), not the solar Sun. Moons of planets are excluded:
+          // a Jovian moon is still sunlit by the Sun.
+          const pk = def.parent ? s.nodes.get(def.parent)?.def.kind : undefined
+          const starParent =
+            pk === SF_KINDS.STAR || pk === SF_KINDS.SYSTEM
+              ? s.anchors.get(def.parent as string)
+              : undefined
+
+          s.dayNight?.push({ anchor: mesh, dir: bodySunDir, sun: starParent })
+        }
 
         // Sub-pixel bodies get an invisible pick bubble inside the mesh so
         // they stay clickable at the home zoom; the bubble is a proxy — a
@@ -327,7 +384,9 @@ export function buildStarBodies(
     // along +x is anti-sunward at every orbital phase for free.
     if (cometFx) {
       center.add(cometFx.ion)
+      center.add(cometFx.ionGas)
       center.add(cometFx.dust)
+      center.add(cometFx.dustGas)
     }
 
     const detail: THREE_NS.Object3D[] = []
@@ -623,6 +682,11 @@ export function buildStarBodies(
       detail.push(plumeSys.group)
 
       plumes = plumeSys.vents
+
+      // Sun gate — hand every vent the shared dayNight vector so
+      // updateFx can dim jets on the dark hemisphere. The plume group
+      // rides `mesh`, so the mesh-local vector is the correct frame.
+      for (const vent of plumes) vent.sunDir = bodySunDir
     }
 
     // Meteor strikes — pooled flash sprites on cratered airless bodies;
