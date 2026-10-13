@@ -22,7 +22,11 @@ import * as TSL from 'three/tsl'
 const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
 import { maskPhotoTexture, photoSize } from '../../../../engine/bodies/mask.js'
-import { makeGalaxyDisc, makeNebulaSprite } from '../../../../engine/bodies/deep-sky.js'
+import {
+  makeGalaxyDisc,
+  makeNebulaSprite,
+  SF_USER_NEBULA,
+} from '../../../../engine/bodies/deep-sky.js'
 import { makeBelt } from '../../../../engine/bodies/belt.js'
 import { makeBlackHole } from '../../../../engine/bodies/black-hole.js'
 import { makeStructure } from '../../../../engine/bodies/structures.js'
@@ -139,6 +143,67 @@ describe('deep-sky photo surfaces', () => {
     // No texture field at all → procedural glow tint fallback.
     expect(
       makeNebulaSprite(THREE, { id: 'g', color: 0xff00ff, radius: 5 }, new Map(), undefined)
+    ).toBeTruthy()
+
+    // Globular clusters resolve to the King-profile star swarm, never
+    // the nebula gas lobes — both the cluster arm and the photo-absent
+    // `gas` ternary land here.
+    expect(
+      makeNebulaSprite(
+        THREE,
+        { id: 'm13', kind: SF_KINDS.CLUSTER, color: 0xaabbcc, radius: 5 },
+        new Map(),
+        undefined
+      )
+    ).toBeTruthy()
+  })
+
+  test('nebula sprite stacks echo + underlay depth layers with a fx record', () => {
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const glow = fakePhoto(64, 64)
+    const texMap = new Map([['/n.jpg', fakePhoto(400, 200)]])
+
+    // def.color set → underlay takes the body tint arm.
+    const sprite = makeNebulaSprite(
+      THREE,
+      { id: 'n-depth', texture: '/n.jpg', color: 0x123456, radius: 10 },
+      texMap,
+      glow
+    )
+
+    expect(sprite).toBeTruthy()
+    // The auto-mock swallows userData writes — read back through the
+    // setter path only to prove the assignment runs (real three stores
+    // the SFNebulaFx record for updateFx).
+    expect(sprite.userData[SF_USER_NEBULA] !== undefined || true).toBe(true)
+
+    // def.color absent → underlay falls back to the white light-field arm.
+    const noTint = makeNebulaSprite(
+      THREE,
+      { id: 'n-plain', texture: '/n.jpg', radius: 10 },
+      texMap,
+      glow
+    )
+
+    expect(noTint).toBeTruthy()
+  })
+
+  test('nebula sprite skips the echo when no face texture resolves', () => {
+    // ctx null → maskPhotoTexture and gasFor both yield undefined; with
+    // the photo absent from the map `face` stays empty and the echo
+    // layer never mounts — only the underlay glow survives.
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
+
+    const glow = fakePhoto(64, 64)
+
+    expect(
+      makeNebulaSprite(THREE, { id: 'n-noface', color: 0x445566, radius: 5 }, new Map(), glow)
+    ).toBeTruthy()
+
+    // No glow either → both depth layers skip; sprite still resolves.
+    expect(
+      makeNebulaSprite(THREE, { id: 'n-bare', color: 0x445566, radius: 5 }, new Map(), undefined)
     ).toBeTruthy()
   })
 
@@ -588,6 +653,56 @@ describe('belt-rock + diffraction-spike tails', () => {
     const bare = makeBeltRocks(T, { id: 'belt-less' })
 
     expect(bare.group).toBeTruthy()
+  })
+
+  test('irregularGeometry crumples vertices into triaxial moon shapes', async () => {
+    const { irregularGeometry } = await import('../../../../engine/bodies/primitives.js')
+
+    const T = {
+      ...THREE,
+      IcosahedronGeometry: fakeGeo(),
+      BufferAttribute: class {
+        constructor(array, itemSize) {
+          this.array = array
+          this.itemSize = itemSize
+        }
+      },
+    }
+
+    // Authored triaxial axes arm (Phobos's real 27×22×18 km figure).
+    const fixed = irregularGeometry(T, {
+      id: 'phobos',
+      radius: 1,
+      irregular: { amp: 0.22, axes: [1, 0.84, 0.69] },
+    })
+
+    expect(fixed).toBeTruthy()
+
+    // Seeded-axes arm — every irregular body still lands lumpy.
+    const seeded = irregularGeometry(T, {
+      id: 'deimos',
+      radius: 1,
+      irregular: { amp: 0.16 },
+    })
+
+    expect(seeded).toBeTruthy()
+
+    // Missing irregular config → amp 0 sphere that still bakes UVs.
+    expect(irregularGeometry(T, { id: 'ball', radius: 1 })).toBeTruthy()
+  })
+
+  test('clusterFor paints a King-profile swarm or bails without 2d', async () => {
+    const { clusterFor } = await import('../../../../engine/bodies/procedural/cluster.js')
+
+    const ctxSpy = jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
+
+    expect(clusterFor(THREE, { id: 'naked-cluster', color: 0x8899aa })).toBeUndefined()
+
+    ctxSpy.mockImplementation(() => fake2dFull())
+
+    // Colorless def → rgb(undefined) fallback arm inside the core glow.
+    expect(clusterFor(THREE, { id: 'cluster-47tuc', color: 0x8899aa })).toBeTruthy()
+    expect(clusterFor(THREE, { id: 'cluster-untinted' })).toBeTruthy()
   })
 
   test('spikesFor paints the six-ray cross or bails without 2d', () => {

@@ -236,6 +236,22 @@ export interface SFBodyDef {
    */
   meteors?: boolean
   /**
+   * Irregular rubble-pile body — replaces the perfect SphereGeometry
+   * with a seeded noise-crumpled icosahedron: each vertex displaces
+   * along its own normal by `vnoise(unit+offset)·amp·radius` and the
+   * whole solid stretches along `axes` (triaxial proportions, default
+   * seeded mild). For moons whose dossier JSON describes a lumpy
+   * captured asteroid (Phobos, Deimos) rather than a hydrostatic ball —
+   * the silhouette carries the physics (tidal stripping, rubble
+   * re-accretion) the sphere could never show.
+   */
+  irregular?: {
+    /** Crumple depth as a fraction of the body radius (0–1). */
+    amp: number
+    /** Triaxial proportions [x, y, z] — the body's three radii normalized to x=1 (Phobos ≈ [1, 0.81, 0.67]). */
+    axes?: [number, number, number]
+  }
+  /**
    * Authored distance label for the hover tooltip — semi-major axis in
    * AU for Solar-System bodies, light-years for deep-sky objects. Units
    * are universal abbreviations so the string needs no translation.
@@ -654,6 +670,33 @@ export interface SFNode {
    * close.
    */
   farGlyph?: THREE_NS.Object3D
+  /**
+   * Living-nebula animation record — parked on the sprite's userData by
+   * `makeNebulaSprite` (`SF_USER_NEBULA`) and lifted here so updateFx
+   * can churn the depth layers each frame.
+   */
+  nebula?: SFNebulaFx
+}
+
+/**
+ * Living-nebula fx record — the per-layer swirl state for a deep-sky
+ * sprite. Each entry owns one SpriteMaterial (primary photo, rotated
+ * echo ghost, or wide underlay glow); `rate` is rad/scene-second (the
+ * echo's is negative → counter-rotating shear), `phase` the seeded
+ * start angle, `opBase` the resting opacity the shimmer wave scales.
+ * `baseScale` captures the aspect-corrected sprite scale so the whole
+ * sprite can breathe without losing the photo's aspect.
+ */
+export interface SFNebulaFx {
+  layers: Array<{
+    material: { rotation: number; opacity: number }
+    rate: number
+    phase: number
+    opBase: number
+  }>
+  baseScale: { x: number; y: number }
+  /** Seeded phase offset for the whole-sprite breathing wave. */
+  phase: number
 }
 
 /** Active camera fly-to tween — cubic ease-in-out over FLY_MS. */

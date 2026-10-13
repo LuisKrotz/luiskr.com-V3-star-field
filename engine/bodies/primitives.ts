@@ -10,6 +10,8 @@ import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL, SF_SCENE } from '@core/tokens/starfield/params.js'
 import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { haloFor, pointGlowFor, starSurfaceFor, surfaceFor } from './procedural.js'
+import { vnoise } from './procedural/shared.js'
+import { lcg, seedFrom } from '../rand.js'
 import { matParams } from '../materials.js'
 import type { SFBodyDef, SFNode, SFNodeDeps } from '../types.js'
 
@@ -103,6 +105,64 @@ export function makeGlowSphereMaterial(
 }
 
 /**
+ * Triaxial rubble-pile geometry for `def.irregular` bodies — a detail-4
+ * icosahedron crumpled by seeded value noise so the silhouette dimples
+ * like a captured asteroid instead of reading as a hydrostatic ball.
+ * Every vertex sits on the sphere (r = def.radius); the displacement
+ * `d = 1 + vnoise(unit·octaves)·amp` pushes it along its own normal,
+ * then `axes` stretches the solid into the body's true triaxial
+ * proportions (Phobos ≈ 27×22×18 km → [1, 0.81, 0.67]). Per-vertex
+ * spherical UVs (u = atan2 longitude, v = asin latitude) are baked
+ * from the PRE-stretch unit direction so an equirect map still wraps
+ * pole-to-pole without smearing across the crumpled facets.
+ * @param THREE The three.js module.
+ * @param def Catalog entry — `irregular` carries amp + optional axes.
+ * @returns Crumpled geometry with spherical UVs + smooth normals.
+ */
+export function irregularGeometry(THREE: ThreeModule, def: SFBodyDef): THREE_NS.BufferGeometry {
+  const geo = new THREE.IcosahedronGeometry(def.radius, SF_SCENE.ROCK_DETAIL)
+
+  const rand = lcg(seedFrom(`${def.id}:shape`))
+
+  const ox = rand() * 40
+  const oy = rand() * 40
+  const oz = rand() * 40
+
+  const amp = def.irregular?.amp ?? 0
+
+  const axes = def.irregular?.axes ?? ([1, 0.88 + rand() * 0.1, 0.82 + rand() * 0.12] as const)
+
+  const pos = geo.attributes.position
+
+  const uv = new Float32Array(pos.count * 2)
+
+  for (let i = 0; i < pos.count; i++) {
+    const nx = pos.getX(i)
+    const ny = pos.getY(i)
+    const nz = pos.getZ(i)
+
+    // Unit direction of the untessellated vertex — all icosahedron
+    // vertices lie on the circumsphere, so |p| = def.radius exactly.
+    const il = 1 / Math.max(Math.hypot(nx, ny, nz), 1e-6)
+
+    const d = 1 + vnoise(nx + ox, ny + oy, nz + oz) * amp
+
+    pos.setXYZ(i, nx * d * axes[0], ny * d * axes[1], nz * d * axes[2])
+
+    // Spherical equirect UV from the unit direction — the photo map
+    // keeps landing pole-to-pole no matter how hard the solid crumples.
+    uv[i * 2] = Math.atan2(nz, nx) / (Math.PI * 2) + 0.5
+    uv[i * 2 + 1] = Math.asin(Math.max(-1, Math.min(1, ny * il))) / Math.PI + 0.5
+  }
+
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
+
+  geo.computeVertexNormals()
+
+  return geo
+}
+
+/**
  * Sphere + material for a solid body — textured when the catalog maps one,
  * tinted procedural otherwise. Stars/systems use the fresnel-limb node
  * material (they emit their own light); planets and smaller get lit
@@ -124,11 +184,12 @@ export function makeSphere(
   texMap: Map<string, THREE_NS.Texture>,
   sunDir?: THREE_NS.Vector3
 ) {
-  const geo = new THREE.SphereGeometry(
-    def.radius,
-    SF_SCENE.SPHERE_SEGMENTS,
-    SF_SCENE.SPHERE_SEGMENTS / 2
-  )
+  // Irregular bodies (Phobos, Deimos) swap the perfect sphere for a
+  // crumpled triaxial icosahedron — the equirect UVs are baked per
+  // vertex so the real photo map still wraps correctly.
+  const geo = def.irregular
+    ? irregularGeometry(THREE, def)
+    : new THREE.SphereGeometry(def.radius, SF_SCENE.SPHERE_SEGMENTS, SF_SCENE.SPHERE_SEGMENTS / 2)
 
   const luminous = def.kind === SF_KINDS.STAR || def.kind === SF_KINDS.SYSTEM
 

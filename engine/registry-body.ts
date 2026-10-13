@@ -264,7 +264,10 @@ function buildDso(s: SFState, THREE: ThreeModule, rec: SFRegistryRecord): THREE_
  * Disposes every geometry/material/owned texture under a spawned
  * registry group — canvas-generated textures (procedural surfaces) are
  * theirs to release; the shared `glowTex` sprite is excluded so
- * eviction never corrupts the scene's shared sprite.
+ * eviction never corrupts the scene's shared sprite. Every material
+ * slot is scanned (map/normalMap/emissiveMap/…) — procedural bodies
+ * carry several textures and freeing only `map` would leak the rest on
+ * each LRU eviction.
  * @param s Engine state (shared glowTex to exclude).
  * @param root The spawned group to strip.
  */
@@ -278,9 +281,11 @@ function disposeRegistryTree(s: SFState, root: THREE_NS.Object3D): void {
 
     if (!mat) return
 
-    const map = (mat as unknown as { map?: THREE_NS.Texture }).map
+    for (const v of Object.values(mat as unknown as Record<string, unknown>)) {
+      const slot = v as { isTexture?: boolean; dispose?: () => void } | null | undefined
 
-    if (map && map !== s.glowTex) map.dispose?.()
+      if (slot?.isTexture && slot !== s.glowTex) slot.dispose?.()
+    }
 
     mat.dispose?.()
   })
