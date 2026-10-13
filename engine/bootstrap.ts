@@ -19,33 +19,57 @@ import { armFrame, handleStarResize, tickStar } from './frame.js'
 import { buildStarPostPipeline } from './post.js'
 import type * as THREE_NS from 'three'
 import { SF_CATALOG } from './catalog.js'
-import type { SFState } from './types.js'
+import type { SFBodyDef, SFState } from './types.js'
 import { devWarn } from '@core/devlog.js'
 
 type ThreeModule = typeof import('three')
 
 /**
- * Collects every texture URL the catalog + skybox needs and loads them in
- * parallel — progress reports per completed file so the loader bar climbs
- * smoothly across the ~14 fetches. A single failed texture resolves as
- * undefined (the body falls back to its procedural color) rather than
- * sinking the whole boot.
- * @returns URL → texture map (missing textures absent).
+ * Collects every texture URL a catalog slice + the skybox needs — all
+ * six body texture slots plus each companion satellite's own photo
+ * (`sat.texture`), so an authored companion map preloads with its
+ * host's and `makeSatellites` never lands the not-in-map fallback for
+ * a real file. Exported so the satellite arm is unit-testable on a
+ * fixture slice — the live catalog's own scan happens inside
+ * `bootstrapStarField` where no fixture can inject a textured sat.
+ * @param defs Catalog entries to scan.
+ * @returns The deduplicated URL set (skybox included).
  */
-async function loadStarTextures(
-  THREE: ThreeModule,
-  s: SFState
-): Promise<Map<string, THREE_NS.Texture>> {
+export function catalogTextureUrls(defs: readonly SFBodyDef[]): Set<string> {
   const urls = new Set<string>([SF_TEXTURES.SKYBOX])
 
-  for (const def of SF_CATALOG) {
+  for (const def of defs) {
     if (def.texture) urls.add(def.texture)
     if (def.shellTexture) urls.add(def.shellTexture)
     if (def.normalTexture) urls.add(def.normalTexture)
     if (def.emissiveTexture) urls.add(def.emissiveTexture)
     if (def.cloudTexture) urls.add(def.cloudTexture)
     if (def.bumpTexture) urls.add(def.bumpTexture)
+
+    // Companion satellites can declare their own photo — preload it
+    // with the host's maps so makeSatellites never hits the
+    // not-in-map fallback for an authored texture.
+    for (const sat of def.satellites ?? []) {
+      if (sat.texture) urls.add(sat.texture)
+    }
   }
+
+  return urls
+}
+
+/**
+ * Loads `catalogTextureUrls(SF_CATALOG)` in parallel — progress reports
+ * per completed file so the loader bar climbs smoothly across the ~14
+ * fetches. A single failed texture resolves as undefined (the body
+ * falls back to its procedural color) rather than sinking the whole
+ * boot.
+ * @returns URL → texture map (missing textures absent).
+ */
+async function loadStarTextures(
+  THREE: ThreeModule,
+  s: SFState
+): Promise<Map<string, THREE_NS.Texture>> {
+  const urls = catalogTextureUrls(SF_CATALOG)
 
   const loader = new THREE.TextureLoader()
 

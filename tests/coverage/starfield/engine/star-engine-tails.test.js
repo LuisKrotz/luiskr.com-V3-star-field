@@ -13,6 +13,7 @@ import { POINTER_EVENTS, MOUSE_EVENTS, WINDOW_EVENTS } from '@core/tokens/events
 import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { SF_KINDS, SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 import { SF_LOD } from '@core/tokens/starfield/params.js'
+import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
 import { getDevLog, clearDevLog } from '@core/devlog.js'
 import { LOG_LEVELS } from '@core/tokens/data/log.js'
 
@@ -178,6 +179,39 @@ describe('initStarRenderer', () => {
 
     expect(await initStarRenderer(s, WebGPURenderer)).toBe(true)
     expect(s.renderer).toBeTruthy()
+  })
+})
+
+describe('catalogTextureUrls', () => {
+  test('collects every texture slot incl. satellite photos + the skybox', async () => {
+    const { catalogTextureUrls } = await import('../../../../engine/bootstrap.js')
+
+    const urls = catalogTextureUrls([
+      {
+        id: 'host',
+        kind: 'planet',
+        radius: 1,
+        texture: '/a.jpg',
+        shellTexture: '/b.jpg',
+        normalTexture: '/c.jpg',
+        emissiveTexture: '/d.jpg',
+        cloudTexture: '/e.jpg',
+        bumpTexture: '/f.jpg',
+        satellites: [
+          { radius: 0.1, orbit: 2, speed: 1, texture: '/sat.jpg' },
+          { radius: 0.1, orbit: 3, speed: 1 },
+        ],
+      },
+      { id: 'plain', kind: 'planet', radius: 1 },
+    ])
+
+    expect(urls.has(SF_TEXTURES.SKYBOX)).toBe(true)
+
+    for (const u of ['/a.jpg', '/b.jpg', '/c.jpg', '/d.jpg', '/e.jpg', '/f.jpg', '/sat.jpg']) {
+      expect(urls.has(u)).toBe(true)
+    }
+
+    expect(urls.size).toBe(8)
   })
 })
 
@@ -1033,11 +1067,13 @@ describe('buildStarBodies', () => {
     buildStarBodies(s, three, NODE_DEPS, SF_CATALOG, new Map(), undefined)
 
     // Every def lands as a node, plus each dossier-backed satellite
-    // (the ISS); structures + belts stay out of the raycast set by
+    // (the ISS) and dossier-backed constellation shell (the near-Earth
+    // swarm); structures + belts stay out of the raycast set by
     // design (giant shells/pebbles would eat pointer rays).
-    const satIds = SF_CATALOG.flatMap((d) =>
-      (d.satellites ?? []).filter((sat) => sat.id).map((sat) => sat.id)
-    )
+    const satIds = SF_CATALOG.flatMap((d) => [
+      ...(d.satellites ?? []).filter((sat) => sat.id).map((sat) => sat.id),
+      ...(d.constellation?.id ? [d.constellation.id] : []),
+    ])
     const pickable = SF_CATALOG.filter(
       (d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT
     )
