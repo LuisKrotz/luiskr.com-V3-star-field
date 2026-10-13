@@ -12,6 +12,7 @@ import { describe, test, expect } from '@jest/globals'
 import { shrinkSolar, SF_CATALOG } from '../../../../engine/catalog.js'
 import { sfChartDist, sfGalacticPos } from '../../../../engine/scale.js'
 import { SF_SCALE } from '@core/tokens/starfield/params.js'
+import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
 
 describe('catalog honest-placement tails', () => {
   test('sfChartDist/sfGalacticPos return the origin for a zero-distance body', () => {
@@ -77,6 +78,19 @@ describe('catalog honest-placement tails', () => {
 
     expect(d.orbit).toBeLessThan(b.orbit)
     expect(b.orbit).toBeLessThan(c.orbit)
+  })
+
+  test('Kepler-452 wears the real solar photosphere map as a G2V Sun twin', () => {
+    // The host resolved as a bare fresnel glow — the seeded-granulation
+    // fallback washed flat under the corona at fly-to range. Pinning
+    // the honest stand-in (same spectral class) keeps the disc a
+    // textured star, and the Earth-cousin planet still orbits it.
+    const kepler = SF_CATALOG.find((b) => b.id === 'kepler-452')
+
+    const planet = SF_CATALOG.find((b) => b.id === 'kepler-452-b')
+
+    expect(kepler.texture).toBe(SF_TEXTURES.SUN)
+    expect(planet.parent).toBe('kepler-452')
   })
 
   test('shrinkSolar scales radius/orbit/belt/satellites and keeps absent fields absent', () => {

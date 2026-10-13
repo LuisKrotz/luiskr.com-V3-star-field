@@ -6,6 +6,7 @@
  */
 
 import { SF_COLORS } from '@core/tokens/starfield/params.js'
+import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
 import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import type { SFBodyDef } from '../types.js'
 import { gpos } from './geo.js'
@@ -663,6 +664,9 @@ export const MILKY_WAY: SFBodyDef[] = [
   {
     // Kepler-452 — a G2V Sun twin (~1.04 M☉, ~20% more luminous) hosting
     // the first Earth-sized world found in a Sun-like habitable zone.
+    // Wears the real solar photosphere map (same spectral class, honest
+    // stand-in) re-tinted to its paler gold by the fresnel material so
+    // the disc resolves as a textured star, not a bare glow point.
     id: 'kepler-452',
     name: 'Kepler-452',
     kind: SF_KINDS.SYSTEM,
@@ -670,6 +674,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     radius: 12,
     pos: gpos(79.41, 11.72, 1800),
     dist: '1 800 ly',
+    texture: SF_TEXTURES.SUN,
     color: SF_COLORS.KEPLER_STAR,
     spin: 0.3,
     activity: 1.0,
