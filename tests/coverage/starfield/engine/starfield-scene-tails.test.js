@@ -1047,3 +1047,177 @@ describe('day/night + axis-lock tails', () => {
     expect(Array.from(col).some((v) => v !== 0)).toBe(true)
   })
 })
+
+describe('comet tail + plume fx tails', () => {
+  test('updateFx scales comet tails by conic radius and cycles plume puffs', async () => {
+    const { updateFx } = await import('../../../../engine/frame/fx.js')
+
+    const mkTail = () => ({
+      position: { x: 0, y: 0 },
+      scale: { set: jest.fn() },
+      material: { opacity: 0.5 },
+    })
+
+    const ion = mkTail()
+    const dust = mkTail()
+    const coma = mkTail()
+
+    const jet = { material: { opacity: 0.4 } }
+    const puff = {
+      position: { set: jest.fn() },
+      scale: { set: jest.fn() },
+      material: { opacity: 0 },
+    }
+
+    const s = {
+      t: 1.5,
+      nodes: new Map([
+        [
+          // Periapsis — center.position.x = rMin → full-length tails.
+          'comet-near',
+          {
+            def: { radius: 0.4 },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: {} },
+            center: { position: { x: 30 } },
+            comet: {
+              ion,
+              dust,
+              coma,
+              rMin: 30,
+              rMax: 330,
+              ionScale: { x: 6, y: 0.7 },
+              dustScale: { x: 4, y: 1.8 },
+              comaScale: { x: 3, y: 3 },
+            },
+          },
+        ],
+        [
+          // Apoapsis + no center — the `?? co.rMin` fallback and the
+          // TAIL_FLOOR arm (r reads rMax here so the tail shrinks).
+          'comet-far',
+          {
+            def: { radius: 0.4 },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: {} },
+            center: { position: { x: 330 } },
+            comet: {
+              ion: mkTail(),
+              dust: mkTail(),
+              coma: mkTail(),
+              rMin: 30,
+              rMax: 330,
+              ionScale: { x: 6, y: 0.7 },
+              dustScale: { x: 4, y: 1.8 },
+              comaScale: { x: 3, y: 3 },
+            },
+          },
+        ],
+        [
+          // Material-less sprites — the `material?.opacity` false arms.
+          'comet-bare',
+          {
+            def: { radius: 0.3 },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: {} },
+            center: { position: { x: 100 } },
+            comet: {
+              ion: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
+              dust: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
+              coma: { scale: { set: () => {} } },
+              rMin: 30,
+              rMax: 330,
+              ionScale: { x: 6, y: 0.7 },
+              dustScale: { x: 4, y: 1.8 },
+              comaScale: { x: 3, y: 3 },
+            },
+          },
+        ],
+        [
+          // Circular orbit — rMin == rMax → the span-0 `f = 1` arm.
+          'comet-flat',
+          {
+            def: { radius: 0.3 },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: {} },
+            comet: {
+              ion: mkTail(),
+              dust: mkTail(),
+              coma: mkTail(),
+              rMin: 60,
+              rMax: 60,
+              ionScale: { x: 5, y: 0.5 },
+              dustScale: { x: 3, y: 1.3 },
+              comaScale: { x: 2, y: 2 },
+            },
+          },
+        ],
+        [
+          // Plumed moon — the puff cycle + jet shimmer arms.
+          'plumed',
+          {
+            def: { radius: 0.5 },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: {} },
+            plumes: [
+              {
+                jet,
+                puff,
+                dir: { x: 0, y: -1, z: 0 },
+                phase: 0.25,
+                rate: 0.3,
+                radius: 0.5,
+                height: 1.2,
+                width: 0.1,
+              },
+              // Material-less sprites — `?.opacity` false arms.
+              {
+                jet: {},
+                puff: {
+                  position: { set: () => {} },
+                  scale: { set: () => {} },
+                },
+                dir: { x: 1, y: 0, z: 0 },
+                phase: 0,
+                rate: 0.2,
+                radius: 0.5,
+                height: 1,
+                width: 0.1,
+              },
+            ],
+          },
+        ],
+      ]),
+    }
+
+    updateFx(s)
+
+    // Periapsis — ion tail re-anchored at half its (full) length.
+    expect(ion.position.x).toBeCloseTo(3)
+    expect(ion.scale.set).toHaveBeenCalled()
+    expect(ion.material.opacity).toBeGreaterThan(0.4)
+    // Dust tail keeps its lag tilt — both position axes re-projected.
+    expect(dust.position.y).toBeGreaterThan(0)
+
+    const farIon = s.nodes.get('comet-far').comet.ion
+
+    // Apoapsis — the TAIL_FLOOR stub: a tenth of the resting length.
+    expect(farIon.position.x).toBeLessThan(ion.position.x)
+    expect(farIon.material.opacity).toBeLessThan(ion.material.opacity)
+
+    // Plume — puff rose along -y and faded mid-rise; jet shimmered.
+    expect(puff.position.set).toHaveBeenCalled()
+    expect(puff.scale.set).toHaveBeenCalled()
+    expect(jet.material.opacity).toBeGreaterThan(0)
+  })
+})
