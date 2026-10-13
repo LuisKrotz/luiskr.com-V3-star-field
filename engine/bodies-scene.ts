@@ -238,6 +238,12 @@ export function buildStarBodies(
       center.position.x = def.orbit
 
       pivot.rotation.y = def.phase ?? 0
+
+      // Orbital inclination — rotation.y is rewritten every frame by the
+      // sweep, but rotation.x persists: the +x orbit arm sweeps out a
+      // plane tipped `inc` radians about the parent's x-axis, so sibling
+      // planets share a near-coplanar system without ever lining up.
+      if (def.inc) pivot.rotation.x = def.inc
     } else if (def.pos) {
       pivot.position.set(def.pos[0], def.pos[1], def.pos[2])
     }

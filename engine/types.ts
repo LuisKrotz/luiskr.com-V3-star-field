@@ -64,6 +64,15 @@ export interface SFBodyDef {
   /** Starting angle on the orbit (radians). */
   phase?: number
   /**
+   * Orbital inclination about the parent's x-axis (radians) — tilts the
+   * whole orbit plane, not the body. Real multi-planet systems share
+   * near-coplanar planes but are never perfectly aligned; small nonzero
+   * values break the edge-on straight-line illusion while still reading
+   * as a resonant chain. Written to `pivot.rotation.x` at build so it
+   * survives the per-frame `rotation.y` orbit sweep.
+   */
+  inc?: number
+  /**
    * Orbital eccentricity 0–1 — when set, the pivot still sweeps the
    * angle uniformly but the mesh's radial distance follows the conic
    * `r = a(1−e²)/(1+e·cos θ)` so the body draws a visible ellipse

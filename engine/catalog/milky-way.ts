@@ -111,6 +111,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 2.6,
     ecc: 0.04,
     phase: 0.8,
+    inc: 0.03,
     dist: '4.246 ly',
     color: SF_COLORS.PROXIMA_PLANET,
   },
@@ -128,6 +129,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 1.7,
     ecc: 0.11,
     phase: 2.9,
+    inc: -0.04,
     dist: '4.246 ly',
     color: SF_COLORS.PROXIMA_PLANET,
   },
@@ -144,6 +146,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 0.35,
     ecc: 0.3,
     phase: 5.3,
+    inc: 0.05,
     dist: '4.246 ly',
     color: SF_COLORS.PROXIMA_PLANET,
   },
@@ -245,8 +248,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 2.6,
     ecc: 0.006,
     phase: 0.2,
+    inc: 0.05,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_B,
   },
   {
     // TRAPPIST-1c — 2.4-day year, Venus-mass sibling just outside b.
@@ -260,8 +264,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 1.6,
     ecc: 0.007,
     phase: 0.9,
+    inc: -0.03,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_C,
   },
   {
     // TRAPPIST-1d — 4.05-day year, the lightest of the seven (~0.3 M⊕).
@@ -275,8 +280,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 0.97,
     ecc: 0.008,
     phase: 2.1,
+    inc: 0.02,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_D,
   },
   {
     // TRAPPIST-1e — 6.1-day year, the densest Earth-like member and the
@@ -291,8 +297,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 0.64,
     ecc: 0.005,
     phase: 3.4,
+    inc: -0.05,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_E,
   },
   {
     // TRAPPIST-1f — 9.2-day year, a water-rich world on the habitable
@@ -307,8 +314,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 0.42,
     ecc: 0.01,
     phase: 4.6,
+    inc: 0.04,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_F,
   },
   {
     // TRAPPIST-1g — 12.4-day year, the largest of the seven (~1.15 R⊕).
@@ -322,8 +330,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 0.31,
     ecc: 0.002,
     phase: 5.5,
+    inc: -0.02,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_G,
   },
   {
     // TRAPPIST-1h — 18.8-day year, the cold outer edge of the resonant
@@ -338,8 +347,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     speed: 0.2,
     ecc: 0.006,
     phase: 1.2,
+    inc: 0.06,
     dist: '40.7 ly',
-    color: SF_COLORS.TRAPPIST_PLANET,
+    color: SF_COLORS.TRAPPIST_H,
   },
   {
     // Barnard's Star — M4V, the closest lone star and fastest mover
