@@ -21,6 +21,7 @@
   padding: to-rem($space-sm) to-rem($space-lg);
   color: var(--sf-ink);
   background: var(--sf-chrome-2);
+  -webkit-backdrop-filter: blur(to-rem($space-xs));
   backdrop-filter: blur(to-rem($space-xs));
   white-space: nowrap;
   transition: opacity 0.2s ease;
@@ -119,6 +120,7 @@
     overscroll-behavior: contain;
     padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xl);
     background: var(--sf-chrome);
+    -webkit-backdrop-filter: blur(to-rem($space-md));
     backdrop-filter: blur(to-rem($space-md));
     border: var(--space-hairline) solid var(--sf-line);
     border-radius: var(--radius-md);
@@ -138,6 +140,7 @@
     margin: calc(-1 * to-rem($space-3xl)) calc(-1 * to-rem($space-xl)) 0;
     padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xs);
     background: var(--sf-chrome);
+    -webkit-backdrop-filter: blur(to-rem($space-md));
     backdrop-filter: blur(to-rem($space-md));
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     border-bottom: var(--space-hairline) solid var(--sf-line);

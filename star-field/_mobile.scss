@@ -68,6 +68,7 @@
     overscroll-behavior: contain;
     padding: to-rem($space-xl);
     background: var(--sf-chrome);
+    -webkit-backdrop-filter: blur(to-rem($space-md));
     backdrop-filter: blur(to-rem($space-md));
     border: var(--space-hairline) solid var(--sf-line);
     border-radius: var(--radius-md);
