@@ -134,10 +134,12 @@ export function updateFx(s: SFState): void {
       }
     }
 
-    // Comet tails — sublimation scales steeply with solar flux, so the
-    // tail factor follows the conic radius: 1 at periapsis (full ion +
-    // dust streak), TAIL_FLOOR at apoapsis (a whisper — real comets
-    // never fully switch off). `center.position.x` IS the live radius —
+    // Comet tails — sublimation scales steeply with solar flux (≈1/r²),
+    // so outgassing ignites only inside a periapsis window: `f` runs 1
+    // at rMin and hard-decays to 0 at `rMin + span·ACTIVE_FRAC`, meaning
+    // the tails vanish entirely on the outer leg — a comet flying back
+    // from apoapsis shows just a dark nucleus under a faint coma, never
+    // a phantom streak. `center.position.x` IS the live radius —
     // frame.ts writes `r = a(1−e²)/(1+e·cosθ)` onto it each tick; the
     // tails themselves are parented to `center` where +x is permanently
     // anti-sunward, so only length/opacity need animating.
@@ -146,12 +148,22 @@ export function updateFx(s: SFState): void {
 
       const span = co.rMax - co.rMin
       const r = node.center?.position.x ?? co.rMin
+      const rCut = co.rMin + span * SF_COMET.ACTIVE_FRAC
 
       const f =
         span > 0
-          ? SF_COMET.TAIL_FLOOR +
-            (1 - SF_COMET.TAIL_FLOOR) * Math.min(1, Math.max(0, (co.rMax - r) / span))
+          ? Math.pow(
+              Math.min(1, Math.max(0, (rCut - r) / Math.max(rCut - co.rMin, 1e-6))),
+              SF_COMET.GAMMA
+            )
           : 1
+
+      // Tails fully unmount outside the window — no apoapsis ghost.
+      const live = f > SF_COMET.TAIL_OFF
+
+      for (const spr of [co.ion, co.dust, co.ionGas, co.dustGas]) {
+        ;(spr as { visible?: boolean }).visible = live
+      }
 
       const ion = co.ion as {
         position: { x: number; y: number }
@@ -184,7 +196,75 @@ export function updateFx(s: SFState): void {
       if (ion.material?.opacity != null) ion.material.opacity = SF_COMET.ION_OPACITY * f
       if (dust.material?.opacity != null) dust.material.opacity = SF_COMET.DUST_OPACITY * f
 
-      const ck = 0.6 + 0.4 * f
+      /**
+       * Streaming gas — each tail's filament layer scrolls its texture
+       * along +x (the anti-sunward direction, via RepeatWrapping
+       * `map.offset.x`), wobbles a few hundredths of a radian and
+       * flickers on a detuned sine, so the tail reads as churning
+       * plasma/dust blowing off the nucleus instead of a painted streak.
+       * The gas sprite shadows the base tail's position/scale by copying
+       * the rescaled length each frame.
+       */
+      const gasI = co.ionGas as {
+        position: { x: number }
+        scale: { set(a: number, b: number, c: number): void }
+        material?: {
+          opacity?: number
+          rotation?: number
+          map?: { offset?: { x: number } }
+        }
+      }
+      const gasD = co.dustGas as {
+        position: { x: number; y: number }
+        scale: { set(a: number, b: number, c: number): void }
+        material?: {
+          opacity?: number
+          rotation?: number
+          map?: { offset?: { x: number } }
+        }
+      }
+
+      gasI.scale.set(ionLen, co.ionScale.y * 0.85 * (0.5 + 0.5 * f), 1)
+      gasI.position.x = ionLen / 2
+      gasD.scale.set(dustLen, co.dustScale.y * 0.8 * (0.5 + 0.5 * f), 1)
+      gasD.position.x = dust.position.x
+      gasD.position.y = dust.position.y
+
+      const iMap = gasI.material?.map
+
+      if (iMap?.offset) iMap.offset.x = -s.t * SF_COMET.GAS_FLOW_ION * (0.5 + f)
+
+      const dMap = gasD.material?.map
+
+      if (dMap?.offset) dMap.offset.x = -s.t * SF_COMET.GAS_FLOW_DUST * (0.5 + f)
+
+      if (gasI.material) {
+        gasI.material.rotation =
+          Math.sin(s.t * SF_COMET.WOBBLE_FREQ + co.ionPhase) * SF_COMET.WOBBLE_AMP
+        gasI.material.opacity =
+          SF_COMET.ION_OPACITY *
+          SF_COMET.GAS_ALPHA_ION *
+          f *
+          (1 +
+            SF_COMET.FLICKER_AMP * Math.sin(s.t * SF_COMET.FLICKER_FREQ * co.ionRate + co.ionPhase))
+      }
+
+      if (gasD.material) {
+        gasD.material.rotation =
+          SF_COMET.DUST_TILT +
+          Math.sin(s.t * SF_COMET.WOBBLE_FREQ * 0.7 + co.dustPhase) * SF_COMET.WOBBLE_AMP
+        gasD.material.opacity =
+          SF_COMET.DUST_OPACITY *
+          SF_COMET.GAS_ALPHA_DUST *
+          f *
+          (1 +
+            SF_COMET.FLICKER_AMP *
+              Math.sin(s.t * SF_COMET.FLICKER_FREQ * co.dustRate + co.dustPhase))
+      }
+
+      // The coma never fully dies — a dormant nucleus still vents a
+      // thin background envelope; it just thins toward apoapsis.
+      const ck = SF_COMET.COMA_FLOOR + (1 - SF_COMET.COMA_FLOOR) * f
 
       coma.scale.set(co.comaScale.x * ck, co.comaScale.y * ck, 1)
 
@@ -193,7 +273,12 @@ export function updateFx(s: SFState): void {
 
     // Cryovolcanic plumes — each vent's puff cycles outward along its
     // axis: spawn compact at the surface, rise, expand, fade, recycle;
-    // the steady jet shimmers at the vent base. Zero allocation.
+    // the steady jet cone shimmers at the vent base. Sun gating:
+    // `dot(ventDir, sunDirLocal)` drives a smoothstep between SUN_LO
+    // and SUN_HI — a vent on the night hemisphere drops to DARK_FLOOR
+    // (the plume barely scatters without sunlight), so geysers read on
+    // the lit limb the way the Enceladus backscatter images show them.
+    // Zero allocation.
     if (node.plumes) {
       for (const pl of node.plumes) {
         const cyc = (s.t * pl.rate + pl.phase) % 1
@@ -211,15 +296,33 @@ export function updateFx(s: SFState): void {
 
         puff.scale.set(w, w, 1)
 
+        // Vent sun factor — the shared vector updateDayNight rewrites
+        // each frame; absent → assume lit (tests, non-solar bodies).
+        const lit = pl.sunDir
+          ? Math.min(
+              1,
+              Math.max(
+                0,
+                (pl.dir.x * pl.sunDir.x +
+                  pl.dir.y * pl.sunDir.y +
+                  pl.dir.z * pl.sunDir.z -
+                  SF_PLUME.SUN_LO) /
+                  (SF_PLUME.SUN_HI - SF_PLUME.SUN_LO)
+              )
+            )
+          : 1
+
+        const shade = SF_PLUME.DARK_FLOOR + (1 - SF_PLUME.DARK_FLOOR) * lit
+
         if (puff.material?.opacity != null) {
-          puff.material.opacity = SF_PLUME.PUFF_OPACITY * (1 - cyc) * cyc * 4
+          puff.material.opacity = SF_PLUME.PUFF_OPACITY * (1 - cyc) * cyc * 4 * shade
         }
 
         const jet = pl.jet as { material?: { opacity?: number } }
 
         if (jet.material?.opacity != null) {
           jet.material.opacity =
-            SF_PLUME.OPACITY * (0.7 + 0.3 * Math.sin(s.t * pl.rate * 9 + pl.phase * 11))
+            SF_PLUME.OPACITY * (0.7 + 0.3 * Math.sin(s.t * pl.rate * 9 + pl.phase * 11)) * shade
         }
       }
     }
