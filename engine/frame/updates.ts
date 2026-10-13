@@ -14,6 +14,7 @@ import {
   SF_STRUCTURE,
 } from '@core/tokens/starfield/params.js'
 import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_USER_DETAIL_R } from '../bodies/primitives.js'
 import { registryWorldPos } from '../registry.js'
 import { anchorScreenPos, anchorWorldPos, worldScreenPos } from './camera.js'
 import type { SFState } from '../types.js'
@@ -121,16 +122,23 @@ export function updateLod(s: SFState): void {
 
     const size = Math.max(node.def.radius, node.def.orbit ?? 0)
 
-    const near = dist < SF_LOD.PAD + size * SF_LOD.SCALE
+    const reach = SF_LOD.PAD + size * SF_LOD.SCALE
 
+    // Per-object reveal override — detail that lives at LOCAL scale
+    // (the LEO satellite swarm, catalogued orbiters like the ISS)
+    // carries `userData[SF_USER_DETAIL_R]` as an absolute distance so
+    // it stays invisible past lunar range even though the host's
+    // heliocentric `orbit` inflates the generic reach past 500 units.
     for (const obj of node.detail) {
-      obj.visible = near
+      const reveal = obj.userData?.[SF_USER_DETAIL_R] as number | undefined
+
+      obj.visible = dist < (reveal ?? reach)
     }
 
     // Far-glyph swap — while the star's near-field group is hidden the
     // flat point glow carries the body; once the photosphere resolves
     // the glyph would smear the disc edge, so it stands down.
-    if (node.farGlyph) node.farGlyph.visible = !near
+    if (node.farGlyph) node.farGlyph.visible = dist >= reach
   }
 }
 

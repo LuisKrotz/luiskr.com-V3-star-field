@@ -6,7 +6,13 @@
  * armed warm/ice ramp; star corona sprites slowly rotate and shimmer.
  * Split out of frame.ts.
  */
-import { SF_METEOR, SF_NEBULA_DEPTH, SF_SOLAR_WIND } from '@core/tokens/starfield/params.js'
+import {
+  SF_COMET,
+  SF_METEOR,
+  SF_NEBULA_DEPTH,
+  SF_PLUME,
+  SF_SOLAR_WIND,
+} from '@core/tokens/starfield/params.js'
 import { armed } from './shared.js'
 import type { SFState } from '../types.js'
 
@@ -125,6 +131,96 @@ export function updateFx(s: SFState): void {
         const sc = f.base * (SF_SOLAR_WIND.FLARE_MIN_SCALE + SF_SOLAR_WIND.FLARE_MAX_STRETCH * k)
 
         spr.scale.set(sc, sc, 1)
+      }
+    }
+
+    // Comet tails — sublimation scales steeply with solar flux, so the
+    // tail factor follows the conic radius: 1 at periapsis (full ion +
+    // dust streak), TAIL_FLOOR at apoapsis (a whisper — real comets
+    // never fully switch off). `center.position.x` IS the live radius —
+    // frame.ts writes `r = a(1−e²)/(1+e·cosθ)` onto it each tick; the
+    // tails themselves are parented to `center` where +x is permanently
+    // anti-sunward, so only length/opacity need animating.
+    if (node.comet) {
+      const co = node.comet
+
+      const span = co.rMax - co.rMin
+      const r = node.center?.position.x ?? co.rMin
+
+      const f =
+        span > 0
+          ? SF_COMET.TAIL_FLOOR +
+            (1 - SF_COMET.TAIL_FLOOR) * Math.min(1, Math.max(0, (co.rMax - r) / span))
+          : 1
+
+      const ion = co.ion as {
+        position: { x: number; y: number }
+        scale: { set(a: number, b: number, c: number): void }
+        material?: { opacity?: number }
+      }
+      const dust = co.dust as {
+        position: { x: number; y: number }
+        scale: { set(a: number, b: number, c: number): void }
+        material?: { opacity?: number }
+      }
+      const coma = co.coma as {
+        scale: { set(a: number, b: number, c: number): void }
+        material?: { opacity?: number }
+      }
+
+      ion.scale.set(co.ionScale.x * f, co.ionScale.y * (0.5 + 0.5 * f), 1)
+      dust.scale.set(co.dustScale.x * f, co.dustScale.y * (0.5 + 0.5 * f), 1)
+
+      // The tail root re-anchors at the nucleus: sprite center sits at
+      // half the (scaled) length along its streak direction — the dust
+      // tail carries its lag tilt, so its center re-projects both axes.
+      const ionLen = co.ionScale.x * f
+      const dustLen = co.dustScale.x * f
+
+      ion.position.x = ionLen / 2
+      dust.position.x = (Math.cos(SF_COMET.DUST_TILT) * dustLen) / 2
+      dust.position.y = (Math.sin(SF_COMET.DUST_TILT) * dustLen) / 2
+
+      if (ion.material?.opacity != null) ion.material.opacity = SF_COMET.ION_OPACITY * f
+      if (dust.material?.opacity != null) dust.material.opacity = SF_COMET.DUST_OPACITY * f
+
+      const ck = 0.6 + 0.4 * f
+
+      coma.scale.set(co.comaScale.x * ck, co.comaScale.y * ck, 1)
+
+      if (coma.material?.opacity != null) coma.material.opacity = SF_COMET.COMA_OPACITY * ck
+    }
+
+    // Cryovolcanic plumes — each vent's puff cycles outward along its
+    // axis: spawn compact at the surface, rise, expand, fade, recycle;
+    // the steady jet shimmers at the vent base. Zero allocation.
+    if (node.plumes) {
+      for (const pl of node.plumes) {
+        const cyc = (s.t * pl.rate + pl.phase) % 1
+        const h = pl.radius + cyc * pl.height
+
+        const puff = pl.puff as {
+          position: { set(a: number, b: number, c: number): void }
+          scale: { set(a: number, b: number, c: number): void }
+          material?: { opacity?: number }
+        }
+
+        puff.position.set(pl.dir.x * h, pl.dir.y * h, pl.dir.z * h)
+
+        const w = pl.width * (1 + cyc * 1.6)
+
+        puff.scale.set(w, w, 1)
+
+        if (puff.material?.opacity != null) {
+          puff.material.opacity = SF_PLUME.PUFF_OPACITY * (1 - cyc) * cyc * 4
+        }
+
+        const jet = pl.jet as { material?: { opacity?: number } }
+
+        if (jet.material?.opacity != null) {
+          jet.material.opacity =
+            SF_PLUME.OPACITY * (0.7 + 0.3 * Math.sin(s.t * pl.rate * 9 + pl.phase * 11))
+        }
       }
     }
 

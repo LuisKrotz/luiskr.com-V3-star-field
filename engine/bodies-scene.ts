@@ -41,8 +41,11 @@ import {
   makeSphere,
   makeStarHalo,
   SF_USER_BODY,
+  SF_USER_DETAIL_R,
   SF_USER_PROXY,
 } from './bodies/primitives.js'
+import { makeComet } from './bodies/comet.js'
+import { makePlumes } from './bodies/plumes.js'
 import { matParams } from './materials.js'
 import { lcg, seedFrom } from './rand.js'
 import type { SFBodyDef, SFNode, SFNodeDeps, SFState } from './types.js'
@@ -83,6 +86,8 @@ export function buildStarBodies(
     let farGlyph: THREE_NS.Object3D | undefined
     const rockPivots: SFNode['satPivots'] = []
     let nebulaFx: SFNode['nebula']
+    let cometFx: SFNode['comet']
+    let plumes: SFNode['plumes']
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
       // Nebulae get an irregular wispy mask so they look like gas clouds;
@@ -124,6 +129,31 @@ export function buildStarBodies(
       mesh.add(rocks.group)
 
       rockPivots.push(...rocks.pivots)
+    } else if (def.kind === SF_KINDS.COMET) {
+      // Comet — the pickable group is the irregular dark nucleus plus
+      // its coma; the ion/dust tails are carried separately so they can
+      // mount on `center` (whose local +x is permanently anti-sunward)
+      // instead of tumbling with the nucleus inside the lock.
+      const comet = makeComet(THREE, def, texMap, glowTex)
+
+      mesh = comet.mesh
+      spinner = comet.mesh
+
+      // Peri/apoapsis window from the conic — updateFx rescales the
+      // tails between them (sublimation ≈ solar flux ∝ 1/r²).
+      const a = def.orbit ?? def.radius
+      const e = def.ecc ?? 0
+
+      cometFx = {
+        ion: comet.ion,
+        dust: comet.dust,
+        coma: comet.coma,
+        rMin: a * (1 - e),
+        rMax: a * (1 + e),
+        ionScale: { x: comet.ion.scale.x, y: comet.ion.scale.y },
+        dustScale: { x: comet.dust.scale.x, y: comet.dust.scale.y },
+        comaScale: { x: comet.coma.scale.x, y: comet.coma.scale.y },
+      }
     } else if (def.kind === SF_KINDS.GALAXY || def.kind === SF_KINDS.DWARF_GALAXY) {
       if (def.spiralDisc) {
         const spiral = makeSpiralGalaxy(
@@ -289,6 +319,15 @@ export function buildStarBodies(
       center.add(mesh)
 
       if (sphereTilt) mesh.rotation.z = def.tilt as number
+    }
+
+    // Comet tails ride `center` — not `mesh`/`lock`: center is only
+    // translated along +x by the orbit arm, so its local +x axis always
+    // points away from the Sun at the pivot origin. A sprite streaked
+    // along +x is anti-sunward at every orbital phase for free.
+    if (cometFx) {
+      center.add(cometFx.ion)
+      center.add(cometFx.dust)
     }
 
     const detail: THREE_NS.Object3D[] = []
@@ -457,6 +496,12 @@ export function buildStarBodies(
 
       rec.mesh.userData[SF_USER_BODY] = sat.id
 
+      // Near-field reveal — a dossier-backed orbiter (the ISS) is a
+      // LEO-scale body: it resolves only inside the Moon's orbital
+      // neighborhood, never from interplanetary range where its host's
+      // heliocentric orbit would inflate the generic LOD reach.
+      rec.pivot.userData[SF_USER_DETAIL_R] = SF_CONSTELLATION.REVEAL
+
       const proxy = makePickProxy(THREE, sat.radius)
 
       proxy.userData[SF_USER_BODY] = sat.id
@@ -503,6 +548,12 @@ export function buildStarBodies(
 
     if (swarm && swarmCfg) {
       const holder = new THREE.Object3D()
+
+      // Near-field reveal — the LEO shell is invisible past lunar range:
+      // absolute camera distance overrides the generic LOD formula that
+      // keys on the host's heliocentric orbit (44 units for Earth would
+      // reveal the swarm from interplanetary space).
+      holder.userData[SF_USER_DETAIL_R] = SF_CONSTELLATION.REVEAL
 
       holder.add(swarm)
       center.add(holder)
@@ -561,6 +612,19 @@ export function buildStarBodies(
       }
     }
 
+    // Cryovolcanic plumes — Enceladus' south-polar geysers, Io's
+    // volcanic vents: jets/puffs parent to the mesh so the vents spin
+    // with their terrain scars. LOD detail — they vanish at range.
+    const plumeSys = def.plumes ? makePlumes(THREE, def, glowTex) : null
+
+    if (plumeSys) {
+      mesh.add(plumeSys.group)
+
+      detail.push(plumeSys.group)
+
+      plumes = plumeSys.vents
+    }
+
     // Meteor strikes — pooled flash sprites on cratered airless bodies;
     // updateFx schedules and fades the impacts.
     const meteorPool = def.meteors ? makeMeteorPool(THREE, def, glowTex) : undefined
@@ -585,6 +649,8 @@ export function buildStarBodies(
       flares,
       meteorPool,
       nebula: nebulaFx,
+      comet: cometFx,
+      plumes,
       meteorNext: def.meteors ? 2 + Math.random() * 4 : undefined,
       farGlow,
       farPick,

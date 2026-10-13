@@ -405,6 +405,31 @@ export function makeSpiralGalaxy(
 
   group.add(core)
 
+  // Dwarf-galaxy backing halo — elliptical fills are size-attenuated
+  // Points that collapse to sub-pixel dust at Local-Group standoff
+  // distances, so a soft tinted sprite spanning the whole smudge keeps
+  // the body readable as a fuzzy unresolved patch (the way a dwarf
+  // spheroidal looks in a real long-exposure frame) instead of
+  // vanishing entirely when the camera backs off.
+  if (!photoTex && def.spiralDisc?.elliptical) {
+    const haloMat = new THREE.SpriteMaterial({
+      map: glowTex,
+      color: def.color ?? SF_COLORS.DWARF_SPH,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      opacity: SF_SPIRAL.DWARF_HALO_OPACITY,
+    })
+
+    const halo = new THREE.Sprite(haloMat)
+
+    const haloSize = def.radius * SF_SPIRAL.DWARF_HALO_SCALE
+
+    halo.scale.set(haloSize, haloSize, 1)
+
+    group.add(halo)
+  }
+
   const pick = new THREE.Mesh(
     new THREE.SphereGeometry(def.radius * 0.5, 16, 8),
     new THREE.MeshBasicMaterial({ visible: false })
