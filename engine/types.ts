@@ -298,6 +298,29 @@ export interface SFBodyDef {
      *  around the circular pivot sweep. */
     ecc?: number
   }>
+  /**
+   * Atmosphere tint override (SF_COLORS hex) — the rim shell normally
+   * migrates Earth's day/dusk/night palette; bodies with a chemically
+   * different sky (Titan's tholin haze) pin the limb to their own hue.
+   */
+  atmoColor?: number
+  /**
+   * Cryovolcanic/volcanic plume system — animated geyser/volcano vents
+   * that throw ejecta sprites into space (Enceladus' south-polar tiger
+   * stripes, Io's scattered sulfur plumes). `polar` clusters the vents
+   * around the south pole; `color` tints the jets (water-ice vs
+   * sulfur), `height` overrides the reach as a body-radius multiple.
+   */
+  plumes?: {
+    /** Vent count — defaults to `SF_PLUME.VENTS`. */
+    count?: number
+    /** True → vents cluster at the south pole (Enceladus tiger stripes). */
+    polar?: boolean
+    /** Plume tint (SF_COLORS hex) — ejecta particle color. */
+    color?: number
+    /** Jet reach × body radius — defaults to `SF_PLUME.HEIGHT`. */
+    height?: number
+  }
 }
 
 /**
@@ -681,6 +704,48 @@ export interface SFNode {
    * can churn the depth layers each frame.
    */
   nebula?: SFNebulaFx
+  /**
+   * Comet tail/coma animation record — updateFx reads the live conic
+   * radius off `center.position.x` (frame.ts writes it for `ecc`
+   * orbits) and rescales/re-lights the tail sprites between `rMin`
+   * (periapsis — full streak) and `rMax` (apoapsis — near-invisible
+   * stub), reproducing how sublimation scales with solar flux.
+   */
+  comet?: {
+    /** Ion + dust tail sprites and the coma sprite (order matters: ion first). */
+    ion: THREE_NS.Object3D
+    dust: THREE_NS.Object3D
+    coma: THREE_NS.Object3D
+    /** Periapsis/apoapsis distances (chart units) — the scale window. */
+    rMin: number
+    rMax: number
+    /** Resting sprite scales captured at build, multiplied by the factor. */
+    ionScale: { x: number; y: number }
+    dustScale: { x: number; y: number }
+    comaScale: { x: number; y: number }
+  }
+  /**
+   * Cryovolcanic plume system — per-vent jet + cycling puff sprite
+   * records built by `makePlumes`; updateFx rises each puff along its
+   * vent direction, expands and fades it, and recycles it — continuous
+   * eruption with zero per-frame allocation.
+   */
+  plumes?: Array<{
+    /** Steady jet sprite rooted at the vent (shimmering base). */
+    jet: THREE_NS.Object3D
+    /** Rising ejecta puff cycling outward along `dir`. */
+    puff: THREE_NS.Object3D
+    /** Unit vent direction (body-local) — the ejecta axis. */
+    dir: { x: number; y: number; z: number }
+    /** Seeded cycle phase (0–1) and rate multiplier. */
+    phase: number
+    rate: number
+    /** Body radius (spawn height) and jet reach (world units). */
+    radius: number
+    height: number
+    /** Puff base width (world units) — grows as it rises. */
+    width: number
+  }>
 }
 
 /**
