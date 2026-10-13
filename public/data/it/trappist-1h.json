@@ -6,37 +6,37 @@
   "facts": [
     {
       "label": "Distanza",
-      "value": "40.7 light-years"
+      "value": "40,7 anni luce"
     },
     {
       "label": "Orbita",
-      "value": "0.062 AU — 18.77-day year"
+      "value": "0,062 UA — anno di 18,77 giorni"
     },
     {
       "label": "Dimensione",
-      "value": "0.77 Earth radii"
+      "value": "0,77 raggi terrestri"
     },
     {
       "label": "Massa",
-      "value": "~0.33 Earth masses"
+      "value": "~0,33 masse terrestri"
     },
     {
       "label": "Zona",
-      "value": "Beyond the habitable zone — a frozen shell world"
+      "value": "Fuori dalla zona abitabile — un mondo dalla crosta congelata"
     },
     {
       "label": "Scoperto",
-      "value": "2017 — Spitzer follow-up"
+      "value": "2017 — seguito Spitzer"
     }
   ],
-  "history": "TRAPPIST-1h is the outer sentinel — Mars-size and cold, receiving less starlight than Mars does from our Sun. Its water is almost certainly locked as ice, though a hydrogen blanket or subsurface ocean remains conceivable. It was the last of the seven to be pinned down — its single transits had to be decoded through the resonance pattern its siblings kept. As the chain's outer link it carries the formation story: these worlds assembled farther out where volatiles were cheap, then slid inward together into the tight harmony seen today.",
-  "source": "Spitzer / transit-timing analysis",
+  "history": "TRAPPIST-1h è la sentinella esterna — delle dimensioni di Marte e fredda, ricevendo meno luce stellare di quanta Marte ne riceva dal Sole. La sua acqua è quasi certamente intrappolata come ghiaccio, sebbene una coperta d'idrogeno o un oceano sotterraneo restino concepibili. Fu l'ultima delle sette a essere definita — i suoi transiti isolati dovettero essere decodificati dal pattern di risonanza che le sorelle mantenevano. Anello esterno della catena, porta la firma della migrazione.",
+  "source": "Seguito Spitzer (2017) · decodifica risonante",
   "meta": {
-    "acquired": "2026-10-12",
-    "translated": "2026-10-12",
+    "acquired": "2026-10-22",
+    "translated": "2026-10-13",
     "locale": "it",
     "refs": [
-      "https://en.wikipedia.org/wiki/TRAPPIST-1",
+      "https://it.wikipedia.org/wiki/TRAPPIST-1",
       "https://exoplanets.nasa.gov/exoplanet-catalog/7183/trappist-1-h/"
     ]
   }

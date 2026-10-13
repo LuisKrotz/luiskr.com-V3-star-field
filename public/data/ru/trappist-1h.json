@@ -6,37 +6,37 @@
   "facts": [
     {
       "label": "Расстояние",
-      "value": "40.7 light-years"
+      "value": "40,7 световых года"
     },
     {
       "label": "Орбита",
-      "value": "0.062 AU — 18.77-day year"
+      "value": "0,062 а.е. — год 18,77 суток"
     },
     {
       "label": "Размер",
-      "value": "0.77 Earth radii"
+      "value": "0,77 радиуса Земли"
     },
     {
       "label": "Масса",
-      "value": "~0.33 Earth masses"
+      "value": "~0,33 массы Земли"
     },
     {
       "label": "Зона",
-      "value": "Beyond the habitable zone — a frozen shell world"
+      "value": "Вне обитаемой зоны — мир с замёрзшей корой"
     },
     {
       "label": "Открыто",
-      "value": "2017 — Spitzer follow-up"
+      "value": "2017 — сопровождение Spitzer"
     }
   ],
-  "history": "TRAPPIST-1h is the outer sentinel — Mars-size and cold, receiving less starlight than Mars does from our Sun. Its water is almost certainly locked as ice, though a hydrogen blanket or subsurface ocean remains conceivable. It was the last of the seven to be pinned down — its single transits had to be decoded through the resonance pattern its siblings kept. As the chain's outer link it carries the formation story: these worlds assembled farther out where volatiles were cheap, then slid inward together into the tight harmony seen today.",
-  "source": "Spitzer / transit-timing analysis",
+  "history": "TRAPPIST-1h — внешний часовой, размером с Марс и холодный, получающий меньше звёздного света, чем Марс от Солнца. Его вода почти наверняка заперта во льду, хотя водородное покрывало или подповерхностный океан остаются мыслимыми. Он был последним из семёрки, кого удалось определить — его единичные транзиты пришлось расшифровывать по резонансному узору, который держали сёстры. Как внешнее звено цепи, он несёт подпись миграции.",
+  "source": "Сопровождение Spitzer (2017) · резонансная расшифровка",
   "meta": {
-    "acquired": "2026-10-12",
-    "translated": "2026-10-12",
+    "acquired": "2026-10-22",
+    "translated": "2026-10-13",
     "locale": "ru",
     "refs": [
-      "https://en.wikipedia.org/wiki/TRAPPIST-1",
+      "https://ru.wikipedia.org/wiki/TRAPPIST-1",
       "https://exoplanets.nasa.gov/exoplanet-catalog/7183/trappist-1-h/"
     ]
   }
