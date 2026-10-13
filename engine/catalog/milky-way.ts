@@ -51,6 +51,9 @@ export const MILKY_WAY: SFBodyDef[] = [
     // Alpha Centauri B — Toliman, K1V, ~0.9 M☉: smaller, cooler, orange.
     // A parented orbit (not a decorative satellite) so the pair really
     // sweeps a shared barycentric track — real eccentricity e≈0.518.
+    // Semi-major 58 keeps periapsis (~28) outside the photosphere sum
+    // (14+9) so the pair never overlaps; real separation is ~11–35 AU
+    // (~2 000× the stellar radii — far wider than any readable glyph).
     // K dwarfs run a little more magnetically active than G twins.
     id: 'alpha-centauri-b',
     name: 'Alpha Centauri B',
@@ -58,7 +61,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     group: SF_GROUPS.MILKY_WAY,
     radius: 9,
     parent: 'alpha-centauri',
-    orbit: 26,
+    orbit: 58,
     speed: 0.5,
     ecc: 0.518,
     phase: 1.9,
@@ -74,7 +77,8 @@ export const MILKY_WAY: SFBodyDef[] = [
     // versus the AB separation (real ratio ~550:1 won't fit a glyph),
     // but the ordering is honest: the binary is a tight inner pair and
     // Proxima a remote third light — e≈0.5, ~550 000-yr period, so its
-    // crawl against the 80-yr waltz is nearly imperceptible. A flare
+    // crawl against the 80-yr waltz is nearly imperceptible. Semi-major
+    // 185 keeps its periapsis (~93) clear of B's apoapsis (~88). A flare
     // star: high activity spots the photosphere and live prominences
     // crown the limb on approach.
     id: 'proxima-centauri',
@@ -83,7 +87,7 @@ export const MILKY_WAY: SFBodyDef[] = [
     group: SF_GROUPS.MILKY_WAY,
     radius: 2.5,
     parent: 'alpha-centauri',
-    orbit: 84,
+    orbit: 185,
     speed: 0.05,
     ecc: 0.5,
     phase: 4.1,

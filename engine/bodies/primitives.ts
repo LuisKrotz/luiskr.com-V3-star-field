@@ -188,17 +188,21 @@ export function makeSphere(
 
   if (emiTex) {
     if (sunDir && deps.mats.MeshStandardNodeMaterial) {
-      const { dot, normalWorld, smoothstep, texture, uniform, vec3 } = deps.TSL
+      const { dot, normalLocal, smoothstep, texture, uniform, vec3 } = deps.TSL
 
       const eC = new THREE.Color(SF_COLORS.SUN_LIGHT)
 
-      // Twilight gate — `dot(worldNormal, sunDir)` smoothstepped so city
+      // Twilight gate — `dot(normalLocal, sunDir)` smoothstepped so city
       // lights bloom only past the terminator and fade in through dusk;
-      // the lit hemisphere contributes zero emissive.
+      // the lit hemisphere contributes zero emissive. `sunDir` arrives in
+      // the mesh's object space (updateDayNight carries the world vector
+      // through R⁻¹), so it pairs with normalLocal, not normalWorld —
+      // a world normal would keep the gate glued to one texture face as
+      // the planet spins and leak lights onto the lit hemisphere.
       const dayF = smoothstep(
         SF_DETAIL.NIGHT_LO,
         SF_DETAIL.NIGHT_HI,
-        dot(normalWorld, uniform(sunDir))
+        dot(normalLocal, uniform(sunDir))
       )
 
       ;(mat as unknown as { emissiveNode: unknown }).emissiveNode = texture(emiTex)
@@ -270,6 +274,7 @@ export function makeAtmoShell(
     cameraPosition,
     dot,
     mix,
+    normalLocal,
     normalWorld,
     normalize,
     positionWorld,
@@ -291,7 +296,9 @@ export function makeAtmoShell(
   const viewDir = normalize(cameraPosition.sub(positionWorld))
   const fres = pow(dot(viewDir, normalWorld).abs().oneMinus(), SF_DETAIL.ATMO_POW)
 
-  const ndl = dot(normalWorld, uniform(sunDir))
+  // Local normal — the shared sunDir rides the surface mesh's object
+  // space; the shell is a direct child so its local frame matches.
+  const ndl = dot(normalLocal, uniform(sunDir))
 
   // Day factor + a dusk band centered just past the terminator.
   const dayF = smoothstep(SF_DETAIL.ATMO_DAY_LO, SF_DETAIL.ATMO_DAY_HI, ndl)
