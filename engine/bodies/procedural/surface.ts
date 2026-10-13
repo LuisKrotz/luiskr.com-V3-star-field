@@ -80,13 +80,13 @@ function mottle(
   for (let i = 0; i < patches; i++) {
     const light = rand() < 0.5
 
-    const k = 0.06 + rand() * 0.14
+    const k = 0.1 + rand() * 0.22
 
     const x = rand() * SURFACE_W
     const y = rand() * SURFACE_H
     const r = SURFACE_H * (0.08 + rand() * 0.3)
 
-    blob(ctx, SURFACE_W, SURFACE_H, x, y, r, css(shade(base, light ? k : -k), 0.5), css(base, 0))
+    blob(ctx, SURFACE_W, SURFACE_H, x, y, r, css(shade(base, light ? k : -k), 0.55), css(base, 0))
   }
 }
 
@@ -108,10 +108,16 @@ function craters(
   for (let i = 0; i < count; i++) {
     const x = rand() * SURFACE_W
     const y = rand() * SURFACE_H
-    const r = 1.5 + rand() * 5
+    // Crater radius scales WITH the canvas — a fixed 1.5–6.5 px bowl is
+    // sub-texel at 1024×512, which is why procedural rocks rendered as
+    // untextured balloons. H·(0.008–0.05) puts 4–26 px bowls on the
+    // 512-row strip: real asteroid imagery (Dawn/OSIRIS frames) is
+    // dominated by that bowl size at globe-view resolutions.
+    const r = SURFACE_H * (0.008 + rand() * 0.042)
 
-    // Shadowed bowl first, then a lit-rim arc nudged sunward.
-    blob(ctx, SURFACE_W, SURFACE_H, x, y, r, css(shade(base, -0.3), 0.55), css(base, 0))
+    // Shadowed bowl first, then a lit-rim arc nudged sunward — deepened
+    // so bowls stay legible through the sRGB→light multiply.
+    blob(ctx, SURFACE_W, SURFACE_H, x, y, r, css(shade(base, -0.45), 0.7), css(base, 0))
     blob(
       ctx,
       SURFACE_W,
@@ -119,7 +125,7 @@ function craters(
       x - r * 0.25,
       y - r * 0.25,
       r * 0.6,
-      css(shade(base, 0.25), 0.4),
+      css(shade(base, 0.3), 0.5),
       css(base, 0)
     )
   }
@@ -333,7 +339,10 @@ export function surfaceFor(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Texture
     def.kind === SF_KINDS.ASTEROID ||
     style === _STYLE_LAVA
   ) {
-    craters(ctx, crust, rand, 10 + Math.floor(rand() * 14))
+    // 60–140 bowls per hemisphere-strip: real rubble bodies (Ryugu,
+    // Bennu, the Dawn Vesta frames) are saturated with overlapping
+    // craters, so the count stays high — sparse specks read as noise.
+    craters(ctx, crust, rand, 60 + Math.floor(rand() * 80))
   }
 
   const out = new THREE.CanvasTexture(canvas)

@@ -31,7 +31,7 @@ import type * as THREE_NS from 'three'
 import { SF_BELT_ROCK, SF_COLORS, SF_DETAIL } from '@core/tokens/starfield/params.js'
 import { lcg, seedFrom } from '../rand.js'
 import { matParams } from '../materials.js'
-import { blob, css, rgb, shade, texCanvas, vnoise } from './procedural/shared.js'
+import { blob, css, rgb, shade, texCanvas, vnoise, weldGeometry } from './procedural/shared.js'
 import type { SFBodyDef, SFNode } from '../types.js'
 
 type ThreeModule = typeof import('three')
@@ -229,9 +229,17 @@ function rockGeometry(
   frag: boolean,
   rand: () => number
 ): THREE_NS.BufferGeometry {
-  const geo = frag
-    ? new THREE.TetrahedronGeometry(1, SF_BELT_ROCK.FRAG_DETAIL)
-    : new THREE.IcosahedronGeometry(1, SF_BELT_ROCK.DETAIL)
+  // Welded BEFORE displacement — the stock polyhedra emit duplicated
+  // per-face vertices whose `computeVertexNormals` output is per-face
+  // flat shading (the polygonal "wart" look); welding indexes the mesh
+  // so normals average across faces and the crumpled surface shades as
+  // continuous rock. Vertex count also drops ~6×.
+  const geo = weldGeometry(
+    THREE,
+    frag
+      ? new THREE.TetrahedronGeometry(1, SF_BELT_ROCK.FRAG_DETAIL)
+      : new THREE.IcosahedronGeometry(1, SF_BELT_ROCK.DETAIL)
+  )
 
   const pos = geo.attributes.position
 

@@ -171,12 +171,12 @@ export function buildStarBodies(
       spinner = comet.mesh
 
       // Peri/apoapsis window from the conic — updateFx scales the tails
-      // inside a periapsis-only sublimation window and streams the gas
-      // layers (sublimation ≈ solar flux ∝ 1/r²). Seeded wobble phases
-      // keep every comet's gas stirring at its own beat.
+      // inside a periapsis-only sublimation window and streams the
+      // particle grains (sublimation ≈ solar flux ∝ 1/r²). Each tail
+      // layer carries its own seeded field in `userData.gasPts`, so
+      // nothing per-comet needs seeding here.
       const a = def.orbit ?? def.radius
       const e = def.ecc ?? 0
-      const crand = lcg(seedFrom(`${def.id}:cometfx`))
 
       cometFx = {
         ion: comet.ion,
@@ -186,13 +186,7 @@ export function buildStarBodies(
         dustGas: comet.dustGas,
         rMin: a * (1 - e),
         rMax: a * (1 + e),
-        ionScale: { x: comet.ion.scale.x, y: comet.ion.scale.y },
-        dustScale: { x: comet.dust.scale.x, y: comet.dust.scale.y },
         comaScale: { x: comet.coma.scale.x, y: comet.coma.scale.y },
-        ionPhase: crand() * Math.PI * 2,
-        dustPhase: crand() * Math.PI * 2,
-        ionRate: 0.8 + crand() * 0.5,
-        dustRate: 0.8 + crand() * 0.5,
       }
     } else if (def.kind === SF_KINDS.GALAXY || def.kind === SF_KINDS.DWARF_GALAXY) {
       if (def.spiralDisc) {

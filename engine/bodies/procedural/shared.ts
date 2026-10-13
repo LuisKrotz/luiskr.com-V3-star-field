@@ -9,6 +9,7 @@
 import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { WEBGL_STRINGS } from '@core/tokens/strings/webgl.js'
 import { SF_COLORS } from '@core/tokens/starfield/params.js'
+import type * as THREE_NS from 'three'
 
 /** Three.js module dynamic import type. */
 /** Lazy-loaded three.js module — the experiment imports three only
@@ -134,4 +135,67 @@ export function vnoise(x: number, y: number, z: number): number {
     Math.sin(x * 5.7 - y * 3.1 + z * 1.9) * 0.3 +
     Math.sin(x * 9.3 + y * 7.7 - z * 4.3) * 0.15
   )
+}
+
+/**
+ * Welds a subdivided primitive's duplicated vertices into an INDEXED
+ * geometry — `IcosahedronGeometry`/`TetrahedronGeometry` emit every
+ * face's corners as independent vertices, so `computeVertexNormals`
+ * on the raw mesh produces PER-FACE normals: each triangle shades
+ * flat, which is exactly the crystalline "warty" facet look asteroids
+ * must not have. Welded vertices share one normal, so the displaced
+ * surface shades smooth (bumpy but continuous, like real rubble) —
+ * and vertex count drops ~85% (a detail-6 icosahedron's 246k verts
+ * become ~41k), cutting VRAM the same amount.
+ *
+ * Vertex identity keys on the rounded position — subdivision vertices
+ * are bit-identical across faces, so a fixed-precision string dedups
+ * them deterministically. Callers displace the WELDED positions (one
+ * vertex = one noise evaluation) and bake UVs/normals afterwards.
+ * @param THREE The three.js module.
+ * @param geo Subdivided source geometry with a `position` attribute.
+ * @returns Indexed geometry with a single welded position attribute.
+ */
+export function weldGeometry(
+  THREE: ThreeModule,
+  geo: THREE_NS.BufferGeometry
+): THREE_NS.BufferGeometry {
+  const pos = geo.attributes.position as {
+    count: number
+    getX(i: number): number
+    getY(i: number): number
+    getZ(i: number): number
+  }
+
+  /** Position → welded vertex index; 5 decimals ≈ sub-micron at unit scale. */
+  const byPos = new Map<string, number>()
+
+  const remap: number[] = []
+
+  const verts: number[] = []
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const y = pos.getY(i)
+    const z = pos.getZ(i)
+    const key = `${x.toFixed(5)}|${y.toFixed(5)}|${z.toFixed(5)}`
+
+    let idx = byPos.get(key)
+
+    if (idx === undefined) {
+      idx = verts.length / 3
+
+      byPos.set(key, idx)
+      verts.push(x, y, z)
+    }
+
+    remap.push(idx)
+  }
+
+  const out = new THREE.BufferGeometry()
+
+  out.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3))
+  out.setIndex(remap)
+
+  return out
 }
