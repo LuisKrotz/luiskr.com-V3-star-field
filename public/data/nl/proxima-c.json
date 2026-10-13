@@ -6,34 +6,34 @@
   "facts": [
     {
       "label": "Afstand",
-      "value": "4.246 light-years"
+      "value": "4,246 lichtjaar"
     },
     {
       "label": "Omloopbaan",
-      "value": "≈ 1.5 AU — ≈ 5.7 years"
+      "value": "≈ 1,5 AE — ≈ 5,7 jaar"
     },
     {
       "label": "Massa",
-      "value": "≈ 7 Earth masses (candidate)"
+      "value": "≈ 7 aardmassa's (kandidaat)"
     },
     {
       "label": "Zone",
-      "value": "Far beyond the habitable zone"
+      "value": "Ver buiten de bewoonbare zone"
     },
     {
       "label": "Status",
-      "value": "Candidate — needs confirmation"
+      "value": "Kandidaat — bevestiging vereist"
     },
     {
       "label": "Aangekondigd",
-      "value": "2020 — Damasso et al. (HARPS radial velocity)"
+      "value": "2020 — Damasso et al. (HARPS-radiale snelheid)"
     }
   ],
-  "history": "Proxima c emerged from radial-velocity data as a ~7-Earth-mass signal circling the red dwarf every five and a half years at about 1.5 AU — a mini-Neptune or super-Earth frozen far outside the habitable zone. It remains unconfirmed: follow-up HARPS and astrometric work keep the candidate alive but not settled, and some analyses dispute the signal entirely. If real, its unusually wide orbit makes it a prime candidate for direct imaging — one of the very few exoplanets next door we might one day photograph as a separate point of light.",
-  "source": "ESO; Damasso et al. 2020 (Science Advances)",
+  "history": "Proxima c dook op uit de radiale-snelheidsdata als een signaal van ~7 aardmassa's dat elke vijfeneenhalf jaar om de rode dwerg cirkelt, op ~1,5 AE — een bevroren mini-Neptunus of superaarde ver buiten de bewoonbare zone. Ze blijft onbevestigd: HARPS- en astrometrische vervolgwaarnemingen houden de kandidaat levend maar onopgelost, en sommige analyses betwisten het signaal geheel. Indien echt zou haar ongewoon wijde baan haar een zeldzaam doelwit voor directe beeldvorming maken.",
+  "source": "HARPS-radiale snelheid (2020) · astrometrische vervolging",
   "meta": {
     "acquired": "2026-10-22",
-    "translated": "2026-10-22",
+    "translated": "2026-10-13",
     "locale": "nl",
     "refs": [
       "https://www.britannica.com/science/Proxima-Centauri",

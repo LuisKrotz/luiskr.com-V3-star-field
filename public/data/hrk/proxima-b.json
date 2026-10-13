@@ -6,38 +6,38 @@
   "facts": [
     {
       "label": "Distanz",
-      "value": "4.246 light-years"
+      "value": "4,246 Lichtjohr"
     },
     {
       "label": "Orbit",
-      "value": "0.049 AU — 11.186 days"
+      "value": "0,049 AU — 11,186 Daach"
     },
     {
       "label": "Mass",
-      "value": "≥ 1.07 Earth masses"
+      "value": "≥ 1,07 Erdmasse"
     },
     {
       "label": "Zone",
-      "value": "Inside Proxima's habitable zone"
+      "value": "Innerhalb vun Proxima sii bewohnbare Zone"
     },
     {
       "label": "Rotation",
-      "value": "Likely tidally locked to Proxima"
+      "value": "Wahrschäinlich geitengebunne zu Proxima"
     },
     {
       "label": "Entdeckt",
       "value": "2016 — ESO Pale Red Dot (Anglada-Escudé et al.)"
     }
   ],
-  "history": "Proxima b orbits the closest star to the Sun, making it the nearest known exoplanet — and it sits inside the red dwarf's habitable zone, completing a year every 11.2 days. So close to its star it is almost certainly tidally locked: one hemisphere in permanent day, one in permanent night, with a twilight terminator where any temperate climate would concentrate. The catch is Proxima itself — a flare star that bathes the planet in ultraviolet and X-ray bursts strong enough to strip atmospheres. Whether b kept its air and water is one of the defining open questions for JWST and the coming generation of extremely large telescopes.",
+  "history": "Proxima b umrund de Schdern am nächste an de Sonn un iss damit de nächste bekannte Exoplanet — un er liecht innerhalb vun de bewohnbare Zone vum rote Zwerch, mid enem Johr vun 11,2 Daach. So naht am Schdern, dass er fast sicher geitengebunne iss: en Hemisphär in ewichem Daach, de annere in ewiche Naacht, mid em Dämmerungs-Trännband, wo sich jedes jemässichte Klima sammle deet. De Hake iss Proxima selwer — en Flareschdern, de de Planet in Ultraviolett- un Röntgenausbrüche badet, de Atmosphäre wegriese kenne. Ob b Lüft un Wasser behalde hot, iss eini vun de grosse uffene Fraje für s'JWST un de nächste Generation Riesenteleskope.",
   "source": "ESO Pale Red Dot; Nature (Anglada-Escudé et al., 2016)",
   "meta": {
     "acquired": "2026-10-22",
-    "translated": "2026-10-22",
+    "translated": "2026-10-13",
     "locale": "hrk",
     "refs": [
       "https://www.britannica.com/science/Proxima-Centauri",
-      "https://en.wikipedia.org/wiki/Proxima_Centauri_b",
+      "https://de.wikipedia.org/wiki/Proxima_Centauri_b",
       "https://www.planetary.org/sci-tech/alpha-centauri-planet-search"
     ]
   }

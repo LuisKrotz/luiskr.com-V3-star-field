@@ -6,37 +6,37 @@
   "facts": [
     {
       "label": "Distansa",
-      "value": "42.9 light-years"
+      "value": "42,9 ani lüze"
     },
     {
       "label": "Tipo",
-      "value": "G8III yellow giant"
+      "value": "Gigant xała G8III"
     },
     {
       "label": "Òrbita",
-      "value": "~0.74 AU from Capella Aa — 104-day period, e≈0.001"
+      "value": "~0,74 UA de Capella Aa — period de 104 dì, e≈0,001"
     },
     {
       "label": "Masa",
-      "value": "~2.5 M☉ (Aa ~2.6 M☉ — near-twins)"
+      "value": "~2,5 M☉ (Aa ~2,6 M☉ — cazi jümełe)"
     },
     {
       "label": "Raioc",
-      "value": "~9 R☉ — about nine times the Sun"
+      "value": "~9 R☉ — çirca nove vołte el Sołe"
     },
     {
       "label": "Sistema",
-      "value": "A quartet — the giants plus a far red-dwarf pair"
+      "value": "Un cuarteto — łe giganti pi un pâr lontan de nane rose"
     }
   ],
-  "history": "Capella Ab is the slightly lighter half of the sky's most famous twin giants — two near-identical G stars circling each other on an orbit so circular it is effectively a perfect ring, swept through every 104 days. So close that even Hubble barely separates them; their mutual orbit was charted by interferometry. Both stars have evolved off the main sequence into swollen yellow giants — a matched pair showing stellar evolution running in step. A remote red-dwarf double orbits far beyond, making Capella a true quartet.",
-  "source": "CHARA interferometry · Markarian/Santerne orbit catalogs",
+  "history": "Capella Ab ła ze ła metà lejiermente pi lejera dei giganti jümełi pi famosi del tséu — do stełe G cazi identege che łe gira una atorno a l'altra su 'na òrbita cusi sircholâr che ła ze de fato un anèi perfeto, traversada ogni 104 dì. Cusi visine che anca Hubble apena łe separa; ła òrbita mùtua ła ze stà mapada par interferometria. Tute do łe ze evołude fora de ła secuensa principałe come giganti xałe grossie — un pâr parexà.",
+  "source": "Interferometria CHARA · catałogi orbitali Markarian/Santerne",
   "meta": {
-    "acquired": "2026-10-12",
-    "translated": "2026-10-12",
+    "acquired": "2026-10-22",
+    "translated": "2026-10-13",
     "locale": "tln",
     "refs": [
-      "https://en.wikipedia.org/wiki/Capella",
+      "https://it.wikipedia.org/wiki/Capella_(astronomia)",
       "https://simbad.u-strasbg.fr/simbad/sim-id?Ident=Capella"
     ]
   }
