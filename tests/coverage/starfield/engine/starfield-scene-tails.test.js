@@ -1056,11 +1056,23 @@ describe('comet tail + plume fx tails', () => {
       position: { x: 0, y: 0 },
       scale: { set: jest.fn() },
       material: { opacity: 0.5 },
+      visible: true,
+    })
+
+    // Gas layer — the filament sprite carries a tileable map whose
+    // offset.x updateFx scrolls, plus wobble/flicker on the material.
+    const mkGas = () => ({
+      position: { x: 0, y: 0 },
+      scale: { set: jest.fn() },
+      material: { opacity: 0.5, rotation: 0, map: { offset: { x: 0 } } },
+      visible: true,
     })
 
     const ion = mkTail()
     const dust = mkTail()
     const coma = mkTail()
+    const ionGas = mkGas()
+    const dustGas = mkGas()
 
     const jet = { material: { opacity: 0.4 } }
     const puff = {
@@ -1086,17 +1098,23 @@ describe('comet tail + plume fx tails', () => {
               ion,
               dust,
               coma,
+              ionGas,
+              dustGas,
               rMin: 30,
               rMax: 330,
               ionScale: { x: 6, y: 0.7 },
               dustScale: { x: 4, y: 1.8 },
               comaScale: { x: 3, y: 3 },
+              ionPhase: 0,
+              dustPhase: 1,
+              ionRate: 1,
+              dustRate: 1,
             },
           },
         ],
         [
-          // Apoapsis + no center — the `?? co.rMin` fallback and the
-          // TAIL_FLOOR arm (r reads rMax here so the tail shrinks).
+          // Apoapsis — the periapsis window is shut (r > rCut): tails
+          // unmount (`visible=false`) and the coma drops to its floor.
           'comet-far',
           {
             def: { radius: 0.4 },
@@ -1109,16 +1127,23 @@ describe('comet tail + plume fx tails', () => {
               ion: mkTail(),
               dust: mkTail(),
               coma: mkTail(),
+              ionGas: mkGas(),
+              dustGas: mkGas(),
               rMin: 30,
               rMax: 330,
               ionScale: { x: 6, y: 0.7 },
               dustScale: { x: 4, y: 1.8 },
               comaScale: { x: 3, y: 3 },
+              ionPhase: 0,
+              dustPhase: 1,
+              ionRate: 1,
+              dustRate: 1,
             },
           },
         ],
         [
-          // Material-less sprites — the `material?.opacity` false arms.
+          // Material-less sprites — the `material?.opacity` false arms
+          // (gas sprites carry no material/map at all here).
           'comet-bare',
           {
             def: { radius: 0.3 },
@@ -1131,11 +1156,17 @@ describe('comet tail + plume fx tails', () => {
               ion: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               dust: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               coma: { scale: { set: () => {} } },
+              ionGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
+              dustGas: { position: { x: 0, y: 0 }, scale: { set: () => {} } },
               rMin: 30,
               rMax: 330,
               ionScale: { x: 6, y: 0.7 },
               dustScale: { x: 4, y: 1.8 },
               comaScale: { x: 3, y: 3 },
+              ionPhase: 0,
+              dustPhase: 1,
+              ionRate: 1,
+              dustRate: 1,
             },
           },
         ],
@@ -1152,11 +1183,17 @@ describe('comet tail + plume fx tails', () => {
               ion: mkTail(),
               dust: mkTail(),
               coma: mkTail(),
+              ionGas: mkGas(),
+              dustGas: mkGas(),
               rMin: 60,
               rMax: 60,
               ionScale: { x: 5, y: 0.5 },
               dustScale: { x: 3, y: 1.3 },
               comaScale: { x: 2, y: 2 },
+              ionPhase: 0,
+              dustPhase: 1,
+              ionRate: 1,
+              dustRate: 1,
             },
           },
         ],
@@ -1174,6 +1211,9 @@ describe('comet tail + plume fx tails', () => {
                 jet,
                 puff,
                 dir: { x: 0, y: -1, z: 0 },
+                // Day-side vent — sun straight down the vent axis →
+                // the `dot(dir,sunDir)` lit arm stays at full strength.
+                sunDir: { x: 0, y: -1, z: 0 },
                 phase: 0.25,
                 rate: 0.3,
                 radius: 0.5,
@@ -1211,9 +1251,13 @@ describe('comet tail + plume fx tails', () => {
 
     const farIon = s.nodes.get('comet-far').comet.ion
 
-    // Apoapsis — the TAIL_FLOOR stub: a tenth of the resting length.
+    // Apoapsis — outside the periapsis window the tails switch off
+    // entirely (a comet flying home carries no streak, only the coma
+    // floor), while at periapsis the gas layer scrolled anti-sunward.
     expect(farIon.position.x).toBeLessThan(ion.position.x)
     expect(farIon.material.opacity).toBeLessThan(ion.material.opacity)
+    expect(farIon.visible).toBe(false)
+    expect(ionGas.material.map.offset.x).toBeLessThan(0)
 
     // Plume — puff rose along -y and faded mid-rise; jet shimmered.
     expect(puff.position.set).toHaveBeenCalled()

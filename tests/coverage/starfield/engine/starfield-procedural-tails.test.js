@@ -28,7 +28,7 @@ import { makeSpiralGalaxy } from '../../../../engine/spiral.js'
 import { buildStarBodies } from '../../../../engine/bodies-scene.js'
 import { createStarState } from '../../../../engine/state.js'
 import { tickStar } from '../../../../engine/frame.js'
-import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
+import { SF_GROUPS, SF_KINDS, SF_SURFACES } from '@core/tokens/starfield/kinds.js'
 
 const ctxProto = () => window.HTMLCanvasElement.prototype
 
@@ -47,6 +47,7 @@ const fake2d = () => ({
   moveTo: jest.fn(),
   lineTo: jest.fn(),
   quadraticCurveTo: jest.fn(),
+  arc: jest.fn(),
   fill: jest.fn(),
   stroke: jest.fn(),
 })
@@ -84,7 +85,28 @@ describe('procedural generators', () => {
     // Colorless def — rgb() fallback arm.
     expect(surfaceFor(THREE, { id: 'p0', kind: SF_KINDS.PLANET })).toBeTruthy()
 
+    // Authored recipes — every SF_SURFACES pin must reach its painter:
+    // lava veins + calderas, ocean islands + polar caps, gas bands, ice
+    // streaks, plain mottled rock. Asteroid + comet kinds join the
+    // cratered-rock club.
+    for (const [surface, id] of [
+      [SF_SURFACES.LAVA, 'proxima-d-fixture'],
+      [SF_SURFACES.OCEAN, 'trappist-1e-fixture'],
+      [SF_SURFACES.GAS, 'proxima-c-fixture'],
+      [SF_SURFACES.ICE, 'trappist-1h-fixture'],
+      [SF_SURFACES.ROCK, 'trappist-1d-fixture'],
+    ]) {
+      expect(
+        surfaceFor(THREE, { id, kind: SF_KINDS.PLANET, color: 0x7a5544, surface })
+      ).toBeTruthy()
+    }
+
+    for (const kind of [SF_KINDS.ASTEROID, SF_KINDS.COMET]) {
+      expect(surfaceFor(THREE, { id: `rocky-${kind}`, kind, color: 0x776655 })).toBeTruthy()
+    }
+
     expect(ctx.fillRect).toHaveBeenCalled()
+    expect(ctx.stroke).toHaveBeenCalled()
   })
 
   test('coronaFor paints streamers + flare knots', () => {

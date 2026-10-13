@@ -60,6 +60,7 @@ const fake2d = () => ({
   moveTo: jest.fn(),
   lineTo: jest.fn(),
   quadraticCurveTo: jest.fn(),
+  arc: jest.fn(),
   fill: jest.fn(),
   stroke: jest.fn(),
 })
@@ -971,6 +972,35 @@ describe('comet + plume tails', () => {
     expect(comet.comet.rMax).toBeGreaterThan(comet.comet.rMin)
     expect(s.nodes.get('comet-circular').comet.rMax).toBe(s.nodes.get('comet-circular').comet.rMin)
     expect(s.nodes.get('plumed').plumes.length).toBe(3)
+
+    // BELT def without `belt` bounds — the `belt?.inner ?? 0` /
+    // `belt?.outer ?? 0` fallback arms on the pick ring still build a
+    // degenerate proxy and the bare hero-rock group.
+    const beltless = {
+      canvas: null,
+      scene: new THREE.Scene(),
+      nodes: new Map(),
+      anchors: new Map(),
+      pickables: [],
+    }
+
+    buildStarBodies(
+      beltless,
+      THREE,
+      NODE_DEPS,
+      [
+        {
+          id: 'belt-less-fixture',
+          name: 'Beltless',
+          kind: SF_KINDS.BELT,
+          group: SF_GROUPS.SOLAR,
+          radius: 1,
+          orbit: 100,
+        },
+      ],
+      new Map(),
+      fakePhoto()
+    )
   })
 
   test('comet tails and plume sprites never intercept pointer rays', async () => {
@@ -979,9 +1009,11 @@ describe('comet + plume tails', () => {
 
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
 
-    // Recording Sprite — the chain proxy swallows `raycast` assignment
-    // into its set trap; a real class keeps the no-op invocable.
+    // Recording Sprite/Mesh — the chain proxy swallows `raycast`
+    // assignment into its set trap; real classes keep the no-op
+    // invocable. Plume jets are tapered-cone Meshes, not sprites.
     const sprites = []
+    const meshes = []
 
     class RecSprite {
       constructor() {
@@ -991,7 +1023,16 @@ describe('comet + plume tails', () => {
       }
     }
 
-    const T = { ...THREE, Sprite: RecSprite }
+    class RecMesh {
+      constructor() {
+        this.position = { x: 0, y: 0, set: jest.fn() }
+        this.scale = { x: 1, y: 1, set: jest.fn() }
+        this.quaternion = { setFromUnitVectors: jest.fn() }
+        meshes.push(this)
+      }
+    }
+
+    const T = { ...THREE, Sprite: RecSprite, Mesh: RecMesh }
 
     makeComet(
       T,
@@ -1004,6 +1045,6 @@ describe('comet + plume tails', () => {
 
     expect(sprites.length).toBeGreaterThan(0)
 
-    for (const sp of sprites) expect(sp.raycast()).toBeUndefined()
+    for (const sp of [...sprites, ...meshes]) expect(sp.raycast?.()).toBeUndefined()
   })
 })

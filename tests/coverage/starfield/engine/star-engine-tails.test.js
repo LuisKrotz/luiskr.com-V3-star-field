@@ -1068,15 +1068,21 @@ describe('buildStarBodies', () => {
 
     // Every def lands as a node, plus each dossier-backed satellite
     // (the ISS) and dossier-backed constellation shell (the near-Earth
-    // swarm); structures + belts stay out of the raycast set by
-    // design (giant shells/pebbles would eat pointer rays).
+    // swarm). Belts contribute their invisible ring pick proxy plus
+    // every pickable hero rock; structures stay out of the raycast set
+    // by design (giant shells would eat pointer rays).
     const satIds = SF_CATALOG.flatMap((d) => [
       ...(d.satellites ?? []).filter((sat) => sat.id).map((sat) => sat.id),
       ...(d.constellation?.id ? [d.constellation.id] : []),
     ])
+    const belts = SF_CATALOG.filter((d) => d.kind === SF_KINDS.BELT)
     const pickable = SF_CATALOG.filter(
       (d) => d.kind !== SF_KINDS.STRUCTURE && d.kind !== SF_KINDS.BELT
     )
+
+    // Per belt: the invisible ring proxy + the hero-rock group (the
+    // belt node itself is skipped by the generic pickable push).
+    const beltPicks = belts.length * 2
 
     // Solar stars/systems (the Sun) additionally carry a hidden
     // far-pick proxy so the collapsed glyph stays tappable past
@@ -1086,7 +1092,7 @@ describe('buildStarBodies', () => {
     ).length
 
     expect(s.nodes.size).toBe(SF_CATALOG.length + satIds.length)
-    expect(s.pickables.length).toBe(pickable.length + satIds.length + farPicks)
+    expect(s.pickables.length).toBe(pickable.length + satIds.length + farPicks + beltPicks)
     expect(s.nodes.get('iss')?.def.kind).toBe(SF_KINDS.SATELLITE)
   })
 
