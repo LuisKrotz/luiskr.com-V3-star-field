@@ -16,6 +16,15 @@ import { shrinkSolar } from './geo.js'
  * a single readable sweep around the Sun, then shrunken by
  * SF_SCALE.SOLAR_SCALE (see `shrinkSolar` above). The literal is typed
  * before mapping so `pos` keeps its tuple shape through the transform.
+ *
+ * Spacing is eccentricity-aware: every adjacent pair keeps a clear limb
+ * gap even at worst-case conjunction (inner body's aphelion vs outer
+ * body's perihelion), so Mars can never crowd Earth's orbit the way a
+ * tighter compression allowed. Saturn clears Jupiter by its full ring
+ * extent (radius × RING_OUTER), and the asteroid belt sits between
+ * Mars's aphelion and Jupiter's perihelion like the real 2.06–3.27 AU
+ * band. Ryugu and Bennu intentionally cross Earth/Mars orbits — they are
+ * real near-Earth asteroids and read as flyby specks.
  */
 const SOLAR_RAW: SFBodyDef[] = [
   {
@@ -62,7 +71,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 1.6,
-    orbit: 31,
+    orbit: 36,
     speed: 1.27,
     // Retrograde and slow — the real Venus is the chart's only planet
     // whose sidereal day (243 d, backwards) outlasts its year (225 d).
@@ -86,7 +95,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 1.7,
-    orbit: 39,
+    orbit: 44,
     // Orbital speeds follow the real sidereal-period ranking —
     // speed ∝ (365.25 d / P)^0.5 so Mercury sprints, the giants drift,
     // and the ordering/pacing stays honest without Neptune freezing
@@ -154,7 +163,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 1.1,
-    orbit: 47,
+    orbit: 56,
     speed: 0.73,
     spin: 0.97,
     // 25.2° — Mars seasons mirror Earth's, amplified by the orbit.
@@ -170,7 +179,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.DWARF,
     group: SF_GROUPS.SOLAR,
     radius: 0.35,
-    orbit: 55,
+    orbit: 70,
     speed: 0.47,
     tilt: 0.07,
     ecc: 0.079,
@@ -186,7 +195,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 4.4,
-    orbit: 66,
+    orbit: 90,
     speed: 0.29,
     spin: 2.4,
     // 3.1° — Jupiter's axis is nearly upright, which is why its belts
@@ -212,7 +221,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 3.8,
-    orbit: 82,
+    orbit: 118,
     speed: 0.18,
     spin: 2.2,
     tilt: 0.47,
@@ -238,7 +247,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 2.6,
-    orbit: 95,
+    orbit: 148,
     speed: 0.11,
     spin: -1.4,
     tilt: 1.71,
@@ -262,7 +271,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.PLANET,
     group: SF_GROUPS.SOLAR,
     radius: 2.5,
-    orbit: 106,
+    orbit: 166,
     speed: 0.078,
     spin: 1.5,
     // 28.3° — a modest tilt, nothing like Uranus's rollover.
@@ -288,7 +297,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.DWARF,
     group: SF_GROUPS.SOLAR,
     radius: 0.5,
-    orbit: 116,
+    orbit: 234,
     speed: 0.064,
     // 119.6° — Pluto spins on its side like Uranus.
     tilt: 2.09,
@@ -334,7 +343,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.DWARF,
     group: SF_GROUPS.SOLAR,
     radius: 0.32,
-    orbit: 57,
+    orbit: 73,
     speed: 0.53,
     tilt: 0.47,
     ecc: 0.089,
@@ -518,7 +527,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.DWARF,
     group: SF_GROUPS.SOLAR,
     radius: 0.12,
-    orbit: 42,
+    orbit: 48,
     speed: 0.88,
     ecc: 0.19,
     dist: '1.19 AU',
@@ -532,7 +541,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     kind: SF_KINDS.DWARF,
     group: SF_GROUPS.SOLAR,
     radius: 0.11,
-    orbit: 43.5,
+    orbit: 46,
     speed: 0.91,
     ecc: 0.204,
     dist: '1.13 AU',
@@ -543,16 +552,17 @@ const SOLAR_RAW: SFBodyDef[] = [
   {
     // Halley's Comet — the chart's flagship eccentric body: `orbit` is the
     // semi-major axis and `ecc` drives the conic radius in frame.ts, so it
-    // plunges to a Venus-ward periapsis (~0.59 AU) then coasts out past
-    // Neptune into the Kuiper edge (~35 AU) on a 75-year sweep.
+    // plunges to a Venus-ward periapsis (~0.59 AU, between Mercury and
+    // Venus on the chart) then coasts out past Neptune into the Kuiper
+    // belt (~35 AU) on a 75-year sweep.
     id: 'halley',
     name: "Halley's Comet",
     kind: SF_KINDS.DWARF,
     group: SF_GROUPS.SOLAR,
     radius: 0.2,
-    orbit: 85,
+    orbit: 180,
     speed: 0.5,
-    ecc: 0.68,
+    ecc: 0.83,
     spin: 0.8,
     dist: '0.59–35.1 AU',
     color: SF_COLORS.HALLEY,
@@ -568,7 +578,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 0.015,
     dist: '2.06–3.27 AU',
     color: SF_COLORS.ASTEROID_BELT,
-    belt: { inner: 50, outer: 62, count: 6000 },
+    belt: { inner: 66, outer: 78, count: 6000 },
   },
   {
     id: 'kuiper-belt',
@@ -580,7 +590,7 @@ const SOLAR_RAW: SFBodyDef[] = [
     spin: 0.006,
     dist: '30–55 AU',
     color: SF_COLORS.KUIPER_BELT,
-    belt: { inner: 118, outer: 150, count: 9000, puff: 0.28, gapFreq: 0 },
+    belt: { inner: 300, outer: 380, count: 9000, puff: 0.28, gapFreq: 0 },
   },
 ]
 
