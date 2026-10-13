@@ -569,35 +569,59 @@ export function makeStation(
 /**
  * Decorative companion satellites — small unlit spheres on child pivots;
  * `sat.station` swaps the glow ball for the crafted truss-and-panels
- * model (ISS). `satPivots` returns the {pivot,speed,phase} records
- * frame.ts rotates.
+ * model (ISS). Plain companions carry the same fresnel-limb material as
+ * before but now modulated by a surface — the satellite's own photo
+ * (`sat.texture`, preloaded with the host's maps) or a seeded
+ * `surfaceFor` equirect keyed on `host:sat:index`, so companion worlds
+ * are textured bodies too, not bare glow dots. `satPivots` returns the
+ * {pivot,speed,phase} records frame.ts rotates.
  * @param THREE The three.js module.
  * @param deps TSL namespace + node-material ctors.
  * @param def Catalog entry — `satellites` lists the companions.
  * @param mesh The host body mesh — pivots attach to it to orbit.
+ * @param texMap Loaded texture map keyed by URL.
  */
 export function makeSatellites(
   THREE: ThreeModule,
   deps: SFNodeDeps,
   def: SFBodyDef,
-  mesh: { add(o: unknown): unknown }
+  mesh: { add(o: unknown): unknown },
+  texMap: Map<string, THREE_NS.Texture>
 ) {
   const satPivots: SFNode['satPivots'] = []
 
-  for (const sat of def.satellites ?? []) {
+  for (const [i, sat] of (def.satellites ?? []).entries()) {
     const pivot = new THREE.Object3D()
+
+    // The companion's surface seed — the dossier id when it carries one,
+    // else a host-qualified index key so each anonymous world still gets
+    // its own deterministic terrain.
+    const satKey = sat.id ?? `${def.id}:sat-${i}`
 
     const sm: THREE_NS.Object3D = sat.station
       ? makeStation(THREE, sat)
       : new THREE.Mesh(
           new THREE.SphereGeometry(sat.radius, 24, 12),
           // Companion dots share the fresnel-limb material (dim rim, loose
-          // falloff) so they read as small glowing bodies, not hard discs.
+          // falloff) so they read as small glowing bodies, not hard
+          // discs — but the fresnel core modulates with the body's own
+          // surface: the authored photo when the satellite declares one,
+          // else a seeded procedural equirect so no companion is a
+          // featureless marble.
           makeGlowSphereMaterial(
             THREE,
             deps,
             sat.color,
-            undefined,
+            texMap.get(sat.texture ?? '') ??
+              surfaceFor(THREE, {
+                id: satKey,
+                name: sat.name ?? satKey,
+                kind: def.kind,
+                group: def.group,
+                radius: sat.radius,
+                color: sat.color,
+                dist: def.dist,
+              }),
             sat.color ?? SF_COLORS.SUN_LIGHT,
             SF_DETAIL.SAT_RIM_FALLOFF
           )

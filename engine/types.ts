@@ -224,9 +224,14 @@ export interface SFBodyDef {
   /**
    * LEO constellation shell — `count` point glints sharing one inclined
    * orbital plane at `orbit`× radius, sweeping as a unit (the Starlink
-   * swarm; `orbit` multiplies `def.radius`).
+   * swarm; `orbit` multiplies `def.radius`). An `id`/`name` pair turns
+   * the whole shell into a dossier-backed pick target like a catalogued
+   * companion: an invisible pick bubble at the shell radius registers
+   * the swarm in `pickables`/`nodes`/`anchors` so clicking the glint
+   * annulus (but not the planet it wraps — the proxy loses to any real
+   * mesh hit along the ray) opens the near-orbit dossier.
    */
-  constellation?: { count: number; orbit: number }
+  constellation?: { count: number; orbit: number; id?: string; name?: string }
   /**
    * Meteor strikes — airless cratered bodies still take impacts; a
    * pooled flash sprite fires at a random surface point every

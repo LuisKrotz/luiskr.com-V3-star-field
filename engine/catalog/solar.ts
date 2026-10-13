@@ -118,8 +118,15 @@ const SOLAR_RAW: SFBodyDef[] = [
     // Boreal curtains — solar-wind-driven emission oval, magnetic-north
     // only in this scene (south: false drops the australis counterpart).
     aurora: { south: false },
-    // Starlink-class LEO swarm — a point shell sweeping one inclined plane.
-    constellation: { count: 56, orbit: 1.45 },
+    // Starlink-class LEO swarm — a point shell sweeping one inclined
+    // plane. The id makes the whole annulus a pickable dossier body:
+    // clicking the glint ring opens the near-Earth-satellite story.
+    constellation: {
+      count: 56,
+      orbit: 1.45,
+      id: 'near-earth-satellites',
+      name: 'Near-Earth Satellites',
+    },
     phase: 3.1,
     cycle: { period: 90 },
     // ISS — the largest crewed object in low Earth orbit: rendered as a

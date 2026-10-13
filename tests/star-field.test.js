@@ -58,6 +58,16 @@ describe('star-field module', () => {
 
         files.delete(`${sat.id}.json`)
       }
+
+      // Dossier-backed constellation shells (near-Earth satellites)
+      // likewise ride the host's entry — the id owns a lazy JSON too.
+      const swarmId = def.constellation?.id
+
+      if (swarmId) {
+        expect(files.has(`${swarmId}.json`)).toBe(true)
+
+        files.delete(`${swarmId}.json`)
+      }
     }
 
     // Every dossier on disk must be reachable through the catalog — an

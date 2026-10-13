@@ -500,7 +500,9 @@ describe('spiral + satellite arms', () => {
         orbit: 10,
         speed: 0.5,
         satellites: [
-          { radius: 0.2, orbit: 4, speed: 2 },
+          // Anonymous companion with an authored photo — the
+          // `texMap.get(sat.texture)` hit arm in makeSatellites.
+          { radius: 0.2, orbit: 4, speed: 2, texture: '/probe-sat.jpg' },
           {
             id: 'probe-station',
             name: 'Station',
@@ -521,7 +523,14 @@ describe('spiral + satellite arms', () => {
       mwGroup: null,
     }
 
-    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), undefined)
+    buildStarBodies(
+      s,
+      THREE,
+      NODE_DEPS,
+      defs,
+      new Map([['/probe-sat.jpg', { fake: true }]]),
+      undefined
+    )
 
     const sat = s.nodes.get('probe-station')
 
@@ -532,6 +541,55 @@ describe('spiral + satellite arms', () => {
     expect(s.pickables.includes(sat.mesh)).toBe(true)
     // Anonymous companion stays decorative — no node, no anchor.
     expect(s.nodes.size).toBe(2)
+  })
+
+  test('an id-carrying constellation shell registers as a pickable dossier body', () => {
+    const defs = [
+      // Swarm with an id but no name — the `name ?? id` fallback arm.
+      {
+        id: 'probe-terra',
+        name: 'Terra',
+        kind: 'planet',
+        group: 'solar',
+        radius: 2,
+        orbit: 10,
+        speed: 0.5,
+        constellation: { count: 8, orbit: 2, id: 'probe-swarm' },
+      },
+      // Swarm without an id — stays decorative: no node, no pickable.
+      {
+        id: 'probe-quiet',
+        name: 'Quiet',
+        kind: 'planet',
+        group: 'solar',
+        radius: 2,
+        orbit: 20,
+        speed: 0.3,
+        constellation: { count: 8, orbit: 2 },
+      },
+    ]
+
+    const s = {
+      scene: new THREE.Scene(),
+      nodes: new Map(),
+      anchors: new Map(),
+      pickables: [],
+      mwGroup: null,
+    }
+
+    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), undefined)
+
+    const swarm = s.nodes.get('probe-swarm')
+
+    expect(swarm).toBeTruthy()
+    expect(swarm.def.kind).toBe(SF_KINDS.SATELLITE)
+    expect(swarm.def.name).toBe('probe-swarm')
+    expect(swarm.def.parent).toBe('probe-terra')
+    expect(s.anchors.get('probe-swarm')).toBe(swarm.mesh)
+    expect(s.pickables.includes(swarm.mesh)).toBe(true)
+    // Anonymous swarm — host node only, no dossier registration.
+    expect(s.nodes.size).toBe(3)
+    expect(s.nodes.get('probe-quiet')).toBeTruthy()
   })
 })
 

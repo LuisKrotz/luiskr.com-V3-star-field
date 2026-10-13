@@ -437,7 +437,7 @@ export function buildStarBodies(
     // Companion satellites orbit the non-rotating `center` — attached
     // to the mesh they would inherit the surface spin (companions
     // lapping at the parent's day rate instead of their own periods).
-    const satPivots = makeSatellites(THREE, deps, def, center)
+    const satPivots = makeSatellites(THREE, deps, def, center, texMap)
 
     detail.push(...satPivots.map((sat) => sat.pivot))
 
@@ -497,9 +497,11 @@ export function buildStarBodies(
     // LEO constellation — the Starlink-class swarm rides a single
     // precessing pivot like a satellite (the points carry their own
     // inclined-orbit positions inside the holder frame).
-    const swarm = def.constellation ? makeConstellation(THREE, def) : null
+    const swarmCfg = def.constellation
 
-    if (swarm) {
+    const swarm = swarmCfg ? makeConstellation(THREE, def) : null
+
+    if (swarm && swarmCfg) {
       const holder = new THREE.Object3D()
 
       holder.add(swarm)
@@ -514,6 +516,49 @@ export function buildStarBodies(
       })
 
       detail.push(holder)
+
+      // Dossier-backed swarm — an `id` on `def.constellation` turns the
+      // whole shell into a pickable body. Individual glints are single
+      // pixels (unpickable), so the shell gets an invisible pick bubble
+      // at the jittered outer radius instead. Marked SF_USER_PROXY like
+      // every bubble: pickAt counts it only when the ray hits no real
+      // mesh — the host planet keeps its own clicks through the shell's
+      // silhouette while the glint annulus resolves to the swarm's id.
+      // Registered like the ISS block: anchor + minimal node (no
+      // orbit/speed — the holder pivot already sweeps it via satPivots)
+      // so selectBody's standoff and fly-to frame the shell.
+      const swarmId = swarmCfg.id
+
+      if (swarmId) {
+        const shellR = def.radius * swarmCfg.orbit * (1 + SF_CONSTELLATION.JITTER / 2)
+
+        swarm.userData[SF_USER_BODY] = swarmId
+
+        const proxy = makePickProxy(THREE, shellR)
+
+        swarm.add(proxy)
+
+        s.pickables.push(swarm)
+
+        s.anchors.set(swarmId, swarm)
+
+        s.nodes.set(swarmId, {
+          def: {
+            id: swarmId,
+            name: swarmCfg.name ?? swarmId,
+            kind: SF_KINDS.SATELLITE,
+            group: def.group,
+            radius: shellR,
+            parent: def.id,
+            dist: def.dist,
+          },
+          pivot: holder,
+          mesh: swarm,
+          spinner: swarm,
+          satPivots: [],
+          detail: [],
+        })
+      }
     }
 
     // Meteor strikes — pooled flash sprites on cratered airless bodies;
