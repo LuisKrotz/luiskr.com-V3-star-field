@@ -9,6 +9,8 @@ import { LOCALES } from '@core/tokens/locales.js'
 import { TRANSLATION_KEYS } from '@core/tokens/routes/translation-keys.js'
 import store from '@core/store.js'
 import { fetchFirebaseDb } from '@core/utils/data/db.js'
+import { setMetaDescription } from '@core/router/navigate.js'
+import { toMetaDescription } from '@core/utils/string.js'
 import type { StarField } from '../StarField.js'
 import { devError } from '@core/devlog.js'
 
@@ -53,6 +55,10 @@ export function applyStarTranslations(
   c: StarField,
   val: Record<string, unknown> | null | undefined
 ): void {
+  // The page node's `description` field is the route's SERP snippet —
+  // push the localized value now that the labels node resolved.
+  if (val?.description) setMetaDescription(toMetaDescription(String(val.description)))
+
   c.translations = val ?? null
 
   c._updateDom()
