@@ -335,6 +335,33 @@ describe('bodies-scene detail layers', () => {
         shellTexture: '/ring.png',
         shellRing: true,
       },
+      // Uranus-like — `shellRing` with NO authored strip paints the
+      // seeded dusty-band texture; ringInner/ringOuter override the
+      // Saturn span, and a missing `color` feeds the strip's
+      // `def.color ?? SUN_LIGHT` fallback.
+      {
+        id: 'ice-giant',
+        name: 'Ice Giant',
+        kind: SF_KINDS.PLANET,
+        group: 'solar',
+        radius: 2.6,
+        orbit: 60,
+        speed: 1,
+        shellRing: true,
+        ringInner: 1.55,
+        ringOuter: 2.0,
+      },
+      // Rubble body — `def.irregular && surfTex` bumpMap arm on the
+      // lit material (the class texture doubles as relief).
+      {
+        id: 'rubble',
+        name: 'Rubble',
+        kind: SF_KINDS.ASTEROID,
+        group: 'solar',
+        radius: 0.5,
+        pos: [0, 0, -9],
+        irregular: { amp: 0.3 },
+      },
       // Star — luminous material + halo sprite arm.
       {
         id: 'sol',
@@ -440,6 +467,26 @@ describe('bodies-scene detail layers', () => {
 
     expect(s.nodes.size).toBe(defs.length)
     expect(s.pickables.length).toBe(defs.length + farPicks)
+  })
+
+  test('makeShell strips the procedural ring map when 2d context fails', async () => {
+    const { makeShell } = await import('../../../../engine/bodies/primitives.js')
+
+    // No 2d ctx + no authored strip → ringStripFor bails, the ring
+    // mesh still builds (with an undefined map).
+    jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
+
+    const parent = { add: jest.fn() }
+    const ring = makeShell(
+      THREE,
+      { id: 'noctx-ring', radius: 2, shellRing: true },
+      undefined,
+      parent,
+      new Map()
+    )
+
+    expect(ring).toBeTruthy()
+    expect(parent.add).toHaveBeenCalled()
   })
 
   test('pos-tilted body, null aurora/cloud shells, flare+meteor loops, nameless satellite arms', () => {
@@ -834,11 +881,36 @@ describe('particle-body tails (belt / black-hole / structures)', () => {
 })
 
 describe('comet + plume tails', () => {
+  /**
+   * CylinderGeometry stand-in for the gas-cone vertex fade — the
+   * auto-mock's `attributes.position` proxy coerces to NaN so the
+   * vertex-color loop would never iterate; four real verts spanning
+   * root→tip (x ∈ [-0.5, 0.5]) run it.
+   */
+  const fakeCometCyl = () =>
+    class {
+      constructor() {
+        this.attributes = { position: { count: 4, getX: (i) => i / 3 - 0.5 } }
+      }
+
+      rotateZ() {
+        return this
+      }
+
+      translate() {
+        return this
+      }
+
+      setAttribute() {}
+    }
+
   test('makeComet builds nucleus + coma + twin tails, with and without 2d/photo', async () => {
     const { makeComet } = await import('../../../../engine/bodies/comet.js')
 
     // Canvas up — the tail gradient + nucleus surface both paint.
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const T = { ...THREE, CylinderGeometry: fakeCometCyl() }
 
     const def = {
       id: 'halley-fixture',
@@ -850,7 +922,7 @@ describe('comet + plume tails', () => {
       irregular: { amp: 0.22, axes: [1, 0.5, 0.55] },
     }
 
-    const withPhoto = makeComet(THREE, def, new Map([['/nucleus.jpg', fakePhoto()]]), fakePhoto())
+    const withPhoto = makeComet(T, def, new Map([['/nucleus.jpg', fakePhoto()]]), fakePhoto())
 
     expect(withPhoto.mesh).toBeTruthy()
     expect(withPhoto.ion).toBeTruthy()
@@ -859,7 +931,7 @@ describe('comet + plume tails', () => {
 
     // Photo listed on the def — texMap hit arm inside the material.
     const mapped = makeComet(
-      THREE,
+      T,
       { ...def, texture: '/nucleus.jpg' },
       new Map([['/nucleus.jpg', fakePhoto()]]),
       fakePhoto()
@@ -875,7 +947,7 @@ describe('comet + plume tails', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => null)
 
     const out = makeComet(
-      THREE,
+      { ...THREE, CylinderGeometry: fakeCometCyl() },
       { id: 'noctx-comet', kind: SF_KINDS.COMET, radius: 0.3, orbit: 40, ecc: 0.5 },
       new Map(),
       fakePhoto()
@@ -917,6 +989,8 @@ describe('comet + plume tails', () => {
 
   test('buildStarBodies mounts a comet nucleus + center-frame tails and a plumed moon', () => {
     jest.spyOn(ctxProto(), 'getContext').mockImplementation(() => fake2d())
+
+    const T = { ...THREE, CylinderGeometry: fakeCometCyl() }
 
     const s = {
       canvas: null,
@@ -964,7 +1038,7 @@ describe('comet + plume tails', () => {
       },
     ]
 
-    buildStarBodies(s, THREE, NODE_DEPS, defs, new Map(), fakePhoto())
+    buildStarBodies(s, T, NODE_DEPS, defs, new Map(), fakePhoto())
 
     const comet = s.nodes.get('comet-fixture')
 
@@ -1027,12 +1101,18 @@ describe('comet + plume tails', () => {
       constructor() {
         this.position = { x: 0, y: 0, set: jest.fn() }
         this.scale = { x: 1, y: 1, set: jest.fn() }
+        this.rotation = { x: 0, y: 0, z: 0 }
         this.quaternion = { setFromUnitVectors: jest.fn() }
         meshes.push(this)
       }
     }
 
-    const T = { ...THREE, Sprite: RecSprite, Mesh: RecMesh }
+    const T = {
+      ...THREE,
+      Sprite: RecSprite,
+      Mesh: RecMesh,
+      CylinderGeometry: fakeCometCyl(),
+    }
 
     makeComet(
       T,

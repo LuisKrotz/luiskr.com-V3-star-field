@@ -261,6 +261,12 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.046,
     dist: '19.2 AU',
     texture: SF_TEXTURES.URANUS,
+    // Uranus's ring system — 13 razor-thin dark arcs hugging 1.6–2.0 R
+    // (the ε ring sits at 1.95 R). No photo strip, so the seeded
+    // procedural band painter supplies the dusty arcs.
+    shellRing: true,
+    ringInner: 1.55,
+    ringOuter: 2.0,
     // Uranian auroras — the palest of the giants, teal curtains on a
     // dipole tilted ~59° off a spin axis already lying on its side.
     aurora: {
@@ -286,6 +292,11 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.01,
     dist: '30.1 AU',
     texture: SF_TEXTURES.NEPTUNE,
+    // Neptune's faint ring arcs — Le Verrier → Adams span ~1.7–2.4 R,
+    // even more tenuous than Uranus's.
+    shellRing: true,
+    ringInner: 1.7,
+    ringOuter: 2.4,
     // Neptunian auroras — faint violet-cyan curtains on a wildly offset
     // dipole (~47° tilt, offset half a radius), so the oval sits far off
     // the spin pole and wanders with longitude.

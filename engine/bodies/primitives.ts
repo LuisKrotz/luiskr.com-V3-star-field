@@ -10,7 +10,7 @@ import type * as THREE_NS from 'three'
 import { SF_COLORS, SF_DETAIL, SF_SCENE } from '@core/tokens/starfield/params.js'
 import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { haloFor, pointGlowFor, starSurfaceFor, surfaceFor } from './procedural.js'
-import { vnoise } from './procedural/shared.js'
+import { css, rgb, shade, texCanvas, vnoise } from './procedural/shared.js'
 import { lcg, seedFrom } from '../rand.js'
 import { matParams } from '../materials.js'
 import type { SFBodyDef, SFNode, SFNodeDeps } from '../types.js'
@@ -115,11 +115,13 @@ export function makeGlowSphereMaterial(
 }
 
 /**
- * Triaxial rubble-pile geometry for `def.irregular` bodies — a detail-4
- * icosahedron crumpled by seeded value noise so the silhouette dimples
- * like a captured asteroid instead of reading as a hydrostatic ball.
- * Every vertex sits on the sphere (r = def.radius); the displacement
- * `d = 1 + vnoise(unit·octaves)·amp` pushes it along its own normal,
+ * Triaxial rubble-pile geometry for `def.irregular` bodies — a detail-7
+ * icosahedron crumpled by two octaves of seeded value noise so the
+ * silhouette dimples like a captured asteroid instead of reading as a
+ * hydrostatic ball. Every vertex sits on the sphere (r = def.radius);
+ * the macro displacement `vnoise(unit)·amp` pushes it along its own
+ * normal, then a fine octave at `ROCK_FINE_FREQ ×` adds regolith-scale
+ * grain so the shading never reads as one smooth lump,
  * then `axes` stretches the solid into the body's true triaxial
  * proportions (Phobos ≈ 27×22×18 km → [1, 0.81, 0.67]). Per-vertex
  * spherical UVs (u = atan2 longitude, v = asin latitude) are baked
@@ -155,7 +157,16 @@ export function irregularGeometry(THREE: ThreeModule, def: SFBodyDef): THREE_NS.
     // vertices lie on the circumsphere, so |p| = def.radius exactly.
     const il = 1 / Math.max(Math.hypot(nx, ny, nz), 1e-6)
 
-    const d = 1 + vnoise(nx + ox, ny + oy, nz + oz) * amp
+    const d =
+      1 +
+      vnoise(nx + ox, ny + oy, nz + oz) * amp +
+      vnoise(
+        nx * SF_SCENE.ROCK_FINE_FREQ + ox * 2,
+        ny * SF_SCENE.ROCK_FINE_FREQ + oy * 2,
+        nz * SF_SCENE.ROCK_FINE_FREQ + oz * 2
+      ) *
+        amp *
+        SF_SCENE.ROCK_FINE_AMP
 
     pos.setXYZ(i, nx * d * axes[0], ny * d * axes[1], nz * d * axes[2])
 
@@ -232,15 +243,25 @@ export function makeSphere(
       ? deps.mats.MeshStandardNodeMaterial
       : THREE.MeshStandardMaterial
 
+  const surfTex = texMap.get(def.texture ?? '') ?? surfaceFor(THREE, def)
+
   const mat = new StdCtor(
     matParams({
       // No photo map → seeded procedural surface (mottle/bands/craters)
       // so untextured moons, dwarf planets and exoplanets read as real
       // worlds instead of flat tinted balls.
-      map: texMap.get(def.texture ?? '') ?? surfaceFor(THREE, def),
+      map: surfTex,
       color: def.color,
     })
   )
+
+  // Rubble bodies reuse their albedo map as a bump map — crater rims
+  // and regolith grain perturb the shading normal so the high-detail
+  // tessellation reads as relief, not a smooth balloon.
+  if (def.irregular && surfTex) {
+    mat.bumpMap = surfTex
+    mat.bumpScale = SF_DETAIL.BUMP_SCALE
+  }
 
   // Relief + night-lights detail layers — Earth's three extra maps land
   // on the same material: `normalMap` shades terrain relief under the
@@ -448,29 +469,81 @@ export function makeStarHalo(
 }
 
 /**
- * Translucent shell layer — Venus's haze atmosphere and Saturn's ring get
- * a secondary texture-mapped surface parented to the main mesh. Returns
- * the created Object3D so the caller can register it as LOD detail.
+ * Paints a radius-indexed ring strip for ringed bodies with no photo
+ * texture (Uranus, Neptune) — u sweeps inner→outer radius, matching the
+ * UV remap makeShell applies to RingGeometry. Seeded thin dusty bands:
+ * the real ice-giant ring systems are a handful of razor-thin dark
+ * arcs (Uranus: 13 narrow rings, albedo ~0.02; Neptune: 5 faint arcs),
+ * so the strip stays mostly transparent with sparse low-alpha bands —
+ * never Saturn's broad bright plate.
+ * @param THREE The three.js module.
+ * @param def Catalog entry — seeds the band layout + tints from color.
+ * @returns A CanvasTexture, or undefined without a 2d context.
+ */
+function ringStripFor(THREE: ThreeModule, def: SFBodyDef): THREE_NS.Texture | undefined {
+  const W = SF_DETAIL.RING_STRIP_W
+  const H = SF_DETAIL.RING_STRIP_H
+
+  const c = texCanvas(W, H)
+
+  if (!c) return undefined
+
+  const { ctx, canvas } = c
+  const rand = lcg(seedFrom(`${def.id}:ring`))
+  const base = rgb(def.color ?? SF_COLORS.SUN_LIGHT)
+
+  ctx.clearRect(0, 0, W, H)
+
+  // Narrow dusty arcs — each band is a vertical gradient stroke at a
+  // seeded radius, brighter inside its half-width, fading to nothing.
+  for (let i = 0; i < SF_DETAIL.RING_BANDS; i++) {
+    const x = (0.2 + rand() * 0.72) * W
+    const hw = (0.3 + rand() * 0.7) * SF_DETAIL.RING_BAND_W * W
+    const alpha = SF_DETAIL.RING_ALPHA_MIN + rand() * SF_DETAIL.RING_ALPHA_MAX
+    const g = ctx.createLinearGradient(x - hw, 0, x + hw, 0)
+
+    g.addColorStop(0, css(base, 0))
+    g.addColorStop(0.5, css(shade(base, 0.5 + rand() * 0.3), alpha))
+    g.addColorStop(1, css(base, 0))
+
+    ctx.fillStyle = g
+    ctx.fillRect(x - hw, 0, hw * 2, H)
+  }
+
+  const out = new THREE.CanvasTexture(canvas)
+
+  out.colorSpace = THREE.SRGBColorSpace
+
+  return out
+}
+
+/**
+ * Translucent shell layer — Venus's haze atmosphere and the giant
+ * planets' rings get a secondary texture-mapped surface parented to
+ * the main mesh. A ringed body with no authored texture (Uranus,
+ * Neptune) falls back to `ringStripFor`'s seeded dusty bands; radii
+ * default to Saturn's strip but `def.ringInner`/`ringOuter` pin the
+ * honest per-body span. Returns the created Object3D so the caller can
+ * register it as LOD detail.
  * @param THREE The three.js module.
  * @param def Catalog entry.
- * @param shellTexture Shell texture URL — narrowed non-null by the caller's
- *   `if (def.shellTexture)` guard.
+ * @param shellTexture Shell texture URL — undefined for procedural rings.
  * @param parent The primary mesh the shell rides on.
  * @param texMap Loaded texture map keyed by URL.
  */
 export function makeShell(
   THREE: ThreeModule,
   def: SFBodyDef,
-  shellTexture: string,
+  shellTexture: string | undefined,
   parent: { add(o: unknown): unknown },
   texMap: Map<string, THREE_NS.Texture>
 ): THREE_NS.Object3D {
-  const tex = texMap.get(shellTexture)
+  const tex = shellTexture ? texMap.get(shellTexture) : undefined
 
   if (def.shellRing) {
-    const inner = def.radius * SF_DETAIL.RING_INNER
+    const inner = def.radius * (def.ringInner ?? SF_DETAIL.RING_INNER)
 
-    const outer = def.radius * SF_DETAIL.RING_OUTER
+    const outer = def.radius * (def.ringOuter ?? SF_DETAIL.RING_OUTER)
 
     const geo = new THREE.RingGeometry(inner, outer, SF_SCENE.RING_SEGMENTS)
 
@@ -496,7 +569,8 @@ export function makeShell(
 
     const mat = new THREE.MeshBasicMaterial(
       matParams({
-        map: tex,
+        // No authored strip (Uranus/Neptune) → seeded thin dusty arcs.
+        map: tex ?? ringStripFor(THREE, def),
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
@@ -617,7 +691,11 @@ export function makeSatellites(
     const sm: THREE_NS.Object3D = sat.station
       ? makeStation(THREE, sat)
       : new THREE.Mesh(
-          new THREE.SphereGeometry(sat.radius, 24, 12),
+          new THREE.SphereGeometry(
+            sat.radius,
+            SF_SCENE.SPHERE_SEGMENTS / 2,
+            SF_SCENE.SPHERE_SEGMENTS / 4
+          ),
           // Companion dots share the fresnel-limb material (dim rim, loose
           // falloff) so they read as small glowing bodies, not hard
           // discs — but the fresnel core modulates with the body's own

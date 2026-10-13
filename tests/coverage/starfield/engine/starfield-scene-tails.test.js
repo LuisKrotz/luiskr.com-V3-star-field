@@ -1059,12 +1059,14 @@ describe('comet tail + plume fx tails', () => {
       visible: true,
     })
 
-    // Gas layer — the filament sprite carries a tileable map whose
-    // offset.x updateFx scrolls, plus wobble/flicker on the material.
+    // Gas layer — the filament CONE carries a doubly-tileable map whose
+    // offset.y updateFx scrolls axially, plus axial swirl on rotation.x
+    // and flicker on the material.
     const mkGas = () => ({
       position: { x: 0, y: 0 },
+      rotation: { x: 0, z: 0 },
       scale: { set: jest.fn() },
-      material: { opacity: 0.5, rotation: 0, map: { offset: { x: 0 } } },
+      material: { opacity: 0.5, map: { offset: { y: 0 } } },
       visible: true,
     })
 
@@ -1257,7 +1259,8 @@ describe('comet tail + plume fx tails', () => {
     expect(farIon.position.x).toBeLessThan(ion.position.x)
     expect(farIon.material.opacity).toBeLessThan(ion.material.opacity)
     expect(farIon.visible).toBe(false)
-    expect(ionGas.material.map.offset.x).toBeLessThan(0)
+    expect(ionGas.material.map.offset.y).toBeLessThan(0)
+    expect(ionGas.rotation.x).not.toBe(0)
 
     // Plume — puff rose along -y and faded mid-rise; jet shimmered.
     expect(puff.position.set).toHaveBeenCalled()

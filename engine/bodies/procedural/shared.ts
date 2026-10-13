@@ -19,10 +19,10 @@ export type ThreeModule = typeof import('three')
 export type Rgb = [number, number, number]
 
 /** Equirect surface canvas width — wraps a sphere 2:1 cleanly. */
-export const SURFACE_W = 256
+export const SURFACE_W = 1024
 
 /** Equirect surface canvas height — wraps a sphere 2:1 cleanly. */
-export const SURFACE_H = 128
+export const SURFACE_H = 512
 
 /** Sprite texture edge for coronas and nebula gas. */
 export const SPRITE_PX = 256
