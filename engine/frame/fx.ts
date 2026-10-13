@@ -6,7 +6,7 @@
  * armed warm/ice ramp; star corona sprites slowly rotate and shimmer.
  * Split out of frame.ts.
  */
-import { SF_METEOR, SF_SOLAR_WIND } from '@core/tokens/starfield/params.js'
+import { SF_METEOR, SF_NEBULA_DEPTH, SF_SOLAR_WIND } from '@core/tokens/starfield/params.js'
 import { armed } from './shared.js'
 import type { SFState } from '../types.js'
 
@@ -54,6 +54,31 @@ export function updateFx(s: SFState): void {
       const k = 1 + def.pulse.amp * Math.sin((2 * Math.PI * s.t) / def.pulse.period)
 
       node.mesh.scale.setScalar?.(k)
+    }
+
+    // Living nebulae — each depth layer swirls its UV rotation at its
+    // own seeded rate (the echo counter-rotates, reading as a shear
+    // between gas at different depths) and shimmers opacity on a
+    // detuned sine; the whole sprite breathes ±BREATHE_AMP so the
+    // cloud swells like gas under pressure waves. Rates come from the
+    // body id hash, so every nebula churns at its own pace.
+    if (node.nebula) {
+      const neb = node.nebula
+
+      for (const layer of neb.layers) {
+        layer.material.rotation = layer.phase + s.t * layer.rate
+
+        layer.material.opacity =
+          layer.opBase * (1 - SF_NEBULA_DEPTH.OP_WAVE) +
+          layer.opBase *
+            SF_NEBULA_DEPTH.OP_WAVE *
+            (0.5 + 0.5 * Math.sin(s.t * SF_NEBULA_DEPTH.OP_FREQ + layer.phase * 3))
+      }
+
+      const k =
+        1 + SF_NEBULA_DEPTH.BREATHE_AMP * Math.sin(s.t * SF_NEBULA_DEPTH.BREATHE_FREQ + neb.phase)
+
+      node.mesh.scale.set(neb.baseScale.x * k, neb.baseScale.y * k, 1)
     }
 
     if (def.cycle && armed.ice && armed.warm) {

@@ -154,7 +154,7 @@ describe('disposeRegistryBodies', () => {
       { geometry: { dispose: geoDispose }, material: { map: s.glowTex, dispose: matDispose } },
       {
         geometry: { dispose: geoDispose },
-        material: { map: { dispose: texDispose }, dispose: matDispose },
+        material: { map: { isTexture: true, dispose: texDispose }, dispose: matDispose },
       },
       { material: {} },
       {},

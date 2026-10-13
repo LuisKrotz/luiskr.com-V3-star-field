@@ -903,6 +903,74 @@ describe('day/night + axis-lock tails', () => {
     expect(slotB.active).toBe(false)
   })
 
+  test('updateFx swirls nebula depth layers and breathes pulse bodies', async () => {
+    const { updateFx } = await import('../../../../engine/frame/fx.js')
+
+    const setScalar = jest.fn()
+    const scaleSet = jest.fn()
+
+    // A living-nebula node: two stacked layer materials (primary +
+    // counter-rotating echo) plus the aspect-locked base scale.
+    const nebLayer = { material: { rotation: 0, opacity: 1 }, rate: 0.02, phase: 1.2, opBase: 1 }
+    const nebEcho = {
+      material: { rotation: 0, opacity: 0.22 },
+      rate: -0.03,
+      phase: 0.4,
+      opBase: 0.22,
+    }
+
+    const s = {
+      t: 2,
+      nodes: new Map([
+        [
+          'nebula',
+          {
+            def: { radius: 5 },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: { set: scaleSet } },
+            nebula: { layers: [nebLayer, nebEcho], baseScale: { x: 3, y: 2 }, phase: 0.7 },
+          },
+        ],
+        [
+          // Pulse + setScalar — the scale-oscillation arm.
+          'pulsar',
+          {
+            def: { pulse: { period: 8, amp: 0.1 } },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: { setScalar } },
+          },
+        ],
+        [
+          // Pulse without setScalar — the optional-chain false arm.
+          'dimvar',
+          {
+            def: { pulse: { period: 8, amp: 0.1 } },
+            pivot: { rotation: { y: 0 } },
+            spinner: { rotation: { y: 0 } },
+            satPivots: [],
+            mesh: { scale: {} },
+          },
+        ],
+      ]),
+    }
+
+    updateFx(s)
+
+    // Every layer swirled by rate·t and shimmered within opBase bounds.
+    expect(nebLayer.material.rotation).toBeCloseTo(1.2 + 2 * 0.02)
+    expect(nebEcho.material.rotation).toBeCloseTo(0.4 + 2 * -0.03)
+    expect(nebLayer.material.opacity).toBeGreaterThan(0)
+    expect(nebEcho.material.opacity).toBeLessThanOrEqual(0.22)
+
+    // Whole-sprite breathe wrote the aspect-locked scale back scaled.
+    expect(scaleSet).toHaveBeenCalled()
+    expect(setScalar).toHaveBeenCalled()
+  })
+
   test('fillSpiral covers the barred bulge and the bubble resample paths', async () => {
     const { fillSpiral } = await import('../../../../engine/spiral.js')
 

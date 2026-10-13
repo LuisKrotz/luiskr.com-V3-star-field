@@ -118,3 +118,20 @@ export function blob(
   ctx.fillStyle = g
   ctx.fillRect(0, 0, w, h)
 }
+
+/**
+ * Cheap value-noise 3d for vertex displacement — a three-octave hash of
+ * detuned sines (fundamental 0.55 + octave 0.3 + octave 0.15, wavenumber
+ * ratios ~2.7 and ~4.4) approximating band-limited fbm without a real
+ * gradient-noise import. Output stays in ≈[-1,1]; callers scale by their
+ * crumple amplitude so rock/moon silhouettes dimple deterministically.
+ * @param x Sample x. @param y Sample y. @param z Sample z.
+ * @returns Signed noise value ≈[-1,1].
+ */
+export function vnoise(x: number, y: number, z: number): number {
+  return (
+    Math.sin(x * 2.1 + y * 1.3 + z * 3.7) * 0.55 +
+    Math.sin(x * 5.7 - y * 3.1 + z * 1.9) * 0.3 +
+    Math.sin(x * 9.3 + y * 7.7 - z * 4.3) * 0.15
+  )
+}

@@ -19,7 +19,7 @@ import {
 } from '@core/tokens/starfield/params.js'
 import { SF_GROUPS, SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { makeSpiralGalaxy } from './spiral.js'
-import { makeGalaxyDisc, makeNebulaSprite } from './bodies/deep-sky.js'
+import { makeGalaxyDisc, makeNebulaSprite, SF_USER_NEBULA } from './bodies/deep-sky.js'
 import { makeBlackHole } from './bodies/black-hole.js'
 import { makeStructure } from './bodies/structures.js'
 import { makeBelt } from './bodies/belt.js'
@@ -82,6 +82,7 @@ export function buildStarBodies(
     let pointStar = false
     let farGlyph: THREE_NS.Object3D | undefined
     const rockPivots: SFNode['satPivots'] = []
+    let nebulaFx: SFNode['nebula']
 
     if (def.kind === SF_KINDS.NEBULA || def.kind === SF_KINDS.CLUSTER) {
       // Nebulae get an irregular wispy mask so they look like gas clouds;
@@ -89,6 +90,10 @@ export function buildStarBodies(
       const lobes = def.kind === SF_KINDS.NEBULA ? 3 : 0
 
       mesh = makeNebulaSprite(THREE, def, texMap, glowTex, lobes)
+
+      // The sprite factory parks the layer-swirl record on userData —
+      // lift it onto the node so updateFx churns the gas layers.
+      nebulaFx = mesh.userData[SF_USER_NEBULA] as SFNode['nebula']
     } else if (def.kind === SF_KINDS.STRUCTURE) {
       // Hierarchy shells — a boundary sphere + member speckles; never
       // registered in `pickables` (a multi-thousand-unit shell would
@@ -534,6 +539,7 @@ export function buildStarBodies(
       corona,
       flares,
       meteorPool,
+      nebula: nebulaFx,
       meteorNext: def.meteors ? 2 + Math.random() * 4 : undefined,
       farGlow,
       farPick,

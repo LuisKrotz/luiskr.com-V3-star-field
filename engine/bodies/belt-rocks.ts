@@ -27,7 +27,7 @@ import type * as THREE_NS from 'three'
 import { SF_BELT_ROCK, SF_COLORS } from '@core/tokens/starfield/params.js'
 import { lcg, seedFrom } from '../rand.js'
 import { matParams } from '../materials.js'
-import { blob, css, rgb, shade, texCanvas } from './procedural/shared.js'
+import { blob, css, rgb, shade, texCanvas, vnoise } from './procedural/shared.js'
 import type { SFBodyDef, SFNode } from '../types.js'
 
 type ThreeModule = typeof import('three')
@@ -101,19 +101,6 @@ const _CLASSES: readonly RockClass[] = [
     flat: false,
   },
 ]
-
-/**
- * Cheap value-noise 3d for vertex displacement — layered sin/cos hash
- * so rock silhouettes crumple without needing a full fbm import.
- * @param x Sample x. @param y Sample y. @param z Sample z.
- */
-function vnoise(x: number, y: number, z: number): number {
-  return (
-    Math.sin(x * 2.1 + y * 1.3 + z * 3.7) * 0.55 +
-    Math.sin(x * 5.7 - y * 3.1 + z * 1.9) * 0.3 +
-    Math.sin(x * 9.3 + y * 7.7 - z * 4.3) * 0.15
-  )
-}
 
 /**
  * Paints one material-class texture: base fill + per-class features —

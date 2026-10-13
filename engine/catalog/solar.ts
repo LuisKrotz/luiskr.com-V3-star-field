@@ -318,6 +318,11 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.015,
     dist: '9 376 km',
     texture: SF_TEXTURES.PHOBOS,
+    // Rubble pile on the edge of tidal disruption — real figure
+    // 26.6 × 22.4 × 18.4 km ≈ [1, 0.84, 0.69], deeply cratered
+    // (Stickney spans a third of the body): the highest crumple
+    // amplitude on any catalog moon.
+    irregular: { amp: 0.22, axes: [1, 0.84, 0.69] },
     meteors: true,
     phase: 0.6,
   },
@@ -334,6 +339,9 @@ const SOLAR_RAW: SFBodyDef[] = [
     ecc: 0.0003,
     dist: '23 460 km',
     texture: SF_TEXTURES.DEIMOS,
+    // 15 × 12.2 × 11 km ≈ [1, 0.81, 0.73] — still unmistakably lumpy,
+    // but regolith-blanketed so a gentler crumple than Phobos.
+    irregular: { amp: 0.16, axes: [1, 0.81, 0.73] },
     meteors: true,
     phase: 2.4,
   },
