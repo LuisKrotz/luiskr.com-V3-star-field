@@ -610,6 +610,16 @@ describe('day/night + axis-lock tails', () => {
     class RecGroup {
       constructor() {
         this.rotation = { x: 0, y: 0, z: 0 }
+        this.position = {
+          x: 0,
+          y: 0,
+          z: 0,
+          set(px, py, pz) {
+            this.x = px
+            this.y = py
+            this.z = pz
+          },
+        }
         this.children = []
       }
       add(c) {
@@ -670,19 +680,26 @@ describe('day/night + axis-lock tails', () => {
 
     const planet = s.nodes.get('tilted')
 
-    // Axis lock — tilt on the lock's z; the mesh rides inside the lock.
+    // Axis lock — tilt on the lock's z; the mesh rides inside the lock,
+    // and the lock sits inside `center` (the orbit-offset carrier) so
+    // the −θ counter-rotation fixes orientation, never the position.
     expect(planet.lock).toBeInstanceOf(RecGroup)
     expect(planet.lock.rotation.z).toBeCloseTo(0.41)
     expect(planet.lock.children).toContain(planet.mesh)
+    expect(planet.center.position.x).toBe(10)
+    expect(planet.center.children).toContain(planet.lock)
 
-    // The moon is tidally locked — it gets the counter-rotating lock
-    // so the same face always points at its parent; its tilt lives on
+    // The moon is tidally locked by rigid co-rotation — no counter-
+    // rotating group (that would collapse its position onto the
+    // parent's +X ray); the mesh rides `center` directly so it orbits
+    // the parent while showing the same face, and its tilt lives on
     // the mesh inside that frame.
     const moon = s.nodes.get('tilted-moon')
 
-    expect(moon.lock).toBeInstanceOf(RecGroup)
-    expect(moon.lock.rotation.z).toBe(0)
-    expect(moon.lock.children).toContain(moon.mesh)
+    expect(moon.lock).toBeUndefined()
+    expect(moon.center.position.x).toBe(3)
+    expect(moon.center.children).toContain(moon.mesh)
+    expect(s.anchors.get('tilted-moon')).toBe(moon.center)
 
     // The day/night registry picked up the emissive+atmosphere body.
     expect(s.dayNight.length).toBe(1)
