@@ -10,6 +10,7 @@ import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
 import { webglAllowed } from '@core/utils/canvas/webgl-mode.js'
 import { canUseWebGPU } from '@core/browser/detect.js'
 import { devWarn } from '@core/devlog.js'
+import { isIOSDevice } from './ios.js'
 import type { SFState } from './types.js'
 
 type WebGpuModule = typeof import('three/webgpu')
@@ -28,6 +29,10 @@ export async function initStarRenderer(
   WebGPURenderer: WebGpuModule['WebGPURenderer']
 ): Promise<boolean> {
   if (!webglAllowed()) return false
+
+  // iOS Safari hard-kills the tab during the GPU boot — take the
+  // prebuilt 2D starfield instead of allocating a GL context (ios.ts).
+  if (isIOSDevice()) return false
 
   let useWebGL = true
 
