@@ -21,7 +21,12 @@ import { BaseComponent } from '@core/Component.js'
 import store from '@core/store.js'
 import { StarFieldEngine } from './starfield-engine.js'
 import { renderStarField } from './star/render.js'
-import { dismissStarLoader, initStarFieldEngine, updateStarLoader } from './star/boot.js'
+import {
+  bindFallbackField,
+  dismissStarLoader,
+  initStarFieldEngine,
+  updateStarLoader,
+} from './star/boot.js'
 import { applyStarTranslations, loadStarTranslations } from './star/i18n.js'
 import { applyDossierLocale, fetchBodyNames, fetchDossier, loadDossier } from './star/dossier.js'
 import type { SFBodyNames } from './star/dossier.js'
@@ -164,6 +169,11 @@ export class StarField extends BaseComponent {
     if (this.shadowRoot && !this.shadowRoot.contains(canvas)) {
       this.shadowRoot?.insertBefore(canvas, this._contentNode)
     }
+
+    // Every _updateDom rebuild replaces the .sf-fallback canvas node —
+    // re-bind so the fresh canvas is painted + observed (the previous
+    // node's paint and resize observer die with the rebuild).
+    if (this._sfFailed) bindFallbackField(this)
 
     if (!this._engine && !this._isInitializing) {
       this._initEngine()

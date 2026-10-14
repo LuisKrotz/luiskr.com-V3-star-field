@@ -23,7 +23,7 @@ import { bindStarFallback } from '../engine/fallback-stars.js'
  * on the host so onDestroy can drop the resize observer.
  * @param c The StarField element.
  */
-function bindFallbackField(c: StarField): void {
+export function bindFallbackField(c: StarField): void {
   c._fallbackDispose?.()
 
   const el = c.$<HTMLCanvasElement>(`.${SF_CLASSES.SF_FALLBACK}`)
