@@ -23,7 +23,8 @@ import { StarFieldEngine } from './starfield-engine.js'
 import { renderStarField } from './star/render.js'
 import { dismissStarLoader, initStarFieldEngine, updateStarLoader } from './star/boot.js'
 import { applyStarTranslations, loadStarTranslations } from './star/i18n.js'
-import { applyDossierLocale, fetchDossier, loadDossier } from './star/dossier.js'
+import { applyDossierLocale, fetchBodyNames, fetchDossier, loadDossier } from './star/dossier.js'
+import type { SFBodyNames } from './star/dossier.js'
 import { sfCatalogByGroup } from './engine/catalog.js'
 import {
   ensureRegistryManifest,
@@ -37,6 +38,7 @@ import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
 import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
 import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
+import { slugify } from '@core/utils/string.js'
 import router from '@core/router/router.js'
 import type { RouteDescriptor } from '@core/router/types.js'
 import type { SFDossier } from './engine/types.js'
@@ -102,6 +104,8 @@ export class StarField extends BaseComponent {
   _regSearch: SFRegistryRecord[] | null = null // active registry search results
   _regSearching = false // registry search in flight
   _regQuery = '' // last registry search query (stale-response guard)
+  _names: SFBodyNames | null = null // locale body-name table (id↔slug)
+  _namesReady: Promise<unknown> = Promise.resolve() // in-flight names fetch
 
   constructor() {
     super(sfStyles)
@@ -144,6 +148,8 @@ export class StarField extends BaseComponent {
     })
 
     this._loadTranslations()
+
+    this._loadBodyNames()
 
     this._initEngine()
 
@@ -198,6 +204,8 @@ export class StarField extends BaseComponent {
     if (this._lastLocale && this._lastLocale !== currentLocale) {
       this._loadTranslations()
 
+      this._loadBodyNames()
+
       applyDossierLocale(this)
     }
   }
@@ -212,6 +220,56 @@ export class StarField extends BaseComponent {
 
   _applyTranslations(val: Record<string, unknown> | null | undefined): void {
     applyStarTranslations(this, val)
+  }
+
+  /**
+   * Loads the locale body-name table (`data/<locale>/names.json`) —
+   * cached per locale by dossier.ts. On resolve the drawer re-renders
+   * localized rows and the open selection's URL segment is re-synced so
+   * a selection made before the map landed still gets its translated
+   * route name. `_namesReady` lets `_applyDeepLink`/`onRouteParamChange`
+   * defer slug resolution until the table exists.
+   */
+
+  _loadBodyNames(): void {
+    this._namesReady = fetchBodyNames().then((names) => {
+      this._names = names
+
+      if (this._selectedId) this._syncUrl(this._selectedId)
+
+      this._updateDom()
+    })
+  }
+
+  /**
+   * Resolves a route `body` segment to a catalog id — accepts the raw
+   * id (`vesta`), a registry id (`star-NNNNNN`), or a slugified
+   * localized name from the loaded names table (`via-lactea`).
+   * @param param The `body` route param.
+   * @returns The catalog id, or null when unresolvable.
+   */
+
+  _resolveBodyParam(param: string | undefined | null): string | null {
+    if (!param) return null
+
+    if (_NAME_BY_ID.has(param) || isRegistryId(param)) return param
+
+    return this._names?.bySlug.get(param) ?? null
+  }
+
+  /**
+   * Route segment for a body — the slugified localized name once the
+   * names table has landed (`Via Láctea` → `via-lactea`), the raw id
+   * before. The raw id is itself a valid segment (slugify folds it to
+   * itself), so a pre-map selection stays resolvable.
+   * @param id Catalog body id.
+   * @returns The URL segment to write.
+   */
+
+  _slugForId(id: string): string {
+    const name = this._names?.byId.get(id)
+
+    return (name && slugify(name)) || id
   }
 
   /** Mirrors engine bootstrap progress into the loader overlay. */
@@ -396,7 +454,12 @@ export class StarField extends BaseComponent {
   _matchesSearch(def: { id: string; name: string }): boolean {
     const q = this._search.trim().toLowerCase()
 
-    return !q || def.name.toLowerCase().includes(q) || def.id.toLowerCase().includes(q)
+    return (
+      !q ||
+      def.name.toLowerCase().includes(q) ||
+      def.id.toLowerCase().includes(q) ||
+      (this._names?.byId.get(def.id)?.toLowerCase().includes(q) ?? false)
+    )
   }
 
   /**
@@ -463,9 +526,11 @@ export class StarField extends BaseComponent {
 
   /**
    * Keeps the address bar in sync with the selection — selecting pushes
-   * `…/<body>` so Back returns to the chart, closing returns to the base
-   * chart URL. Skips when the current route already carries the target
-   * so the param-change echo (`onRouteParamChange`) cannot loop.
+   * `…/<localized-slug>` (the slugified translated body name once the
+   * names table has landed, the raw id before) so Back returns to the
+   * chart, closing returns to the base chart URL. Skips when the
+   * current route already carries the target so the param-change echo
+   * (`onRouteParamChange`) cannot loop.
    * @param id Newly selected body id, or null after close.
    */
   _syncUrl(id: string | null): void {
@@ -473,11 +538,13 @@ export class StarField extends BaseComponent {
 
     if (!route || route.view !== VIEW_TAGS.VIEW_STAR_FIELD) return
 
-    if ((route.params?.body ?? null) === id) return
+    const segment = id ? this._slugForId(id) : null
+
+    if ((route.params?.body ?? null) === segment) return
 
     const base = this._baseStarPath()
 
-    void router.handleNavigation(id ? `${base}${CHAR_STRINGS.SLASH}${id}` : base)
+    void router.handleNavigation(segment ? `${base}${CHAR_STRINGS.SLASH}${segment}` : base)
   }
 
   /**
@@ -497,8 +564,21 @@ export class StarField extends BaseComponent {
 
     const body = latest && latest.view === VIEW_TAGS.VIEW_STAR_FIELD ? latest.params?.body : null
 
-    if (body && (_NAME_BY_ID.has(body) || isRegistryId(body))) {
-      if (this._selectedId !== body) this._selectBody(body)
+    if (body) {
+      const resolved = this._resolveBodyParam(body)
+
+      if (resolved) {
+        if (this._selectedId !== resolved) this._selectBody(resolved)
+      } else if (!this._names) {
+        // A localized slug can't resolve before the names table lands —
+        // re-try the param once the fetch settles rather than dropping
+        // the deep link (engine-ready can outrun a cold names.json).
+        void this._namesReady.then(() => {
+          const id = this._resolveBodyParam(body)
+
+          if (id && this._selectedId !== id) this._selectBody(id)
+        })
+      }
 
       return
     }
@@ -514,9 +594,16 @@ export class StarField extends BaseComponent {
   _applyDeepLink(): void {
     const body = router.currentRoute?.params?.body
 
-    const target = body && (_NAME_BY_ID.has(body) || isRegistryId(body)) ? body : SF_BODY_IDS.SUN
+    // Localized slugs resolve only after names.json lands — wait for the
+    // in-flight fetch so a deep-linked `…/via-lactea` selects correctly
+    // instead of degrading to the Sun while the table is still cold.
+    void this._namesReady.then(() => {
+      const resolved = body ? this._resolveBodyParam(body) : null
 
-    this._selectBody(target)
+      const target = resolved ?? SF_BODY_IDS.SUN
+
+      if (this._selectedId !== target) this._selectBody(target)
+    })
   }
 
   /** Downloads the current frame as a PNG. */
@@ -542,7 +629,7 @@ export class StarField extends BaseComponent {
    */
 
   _handleHover(id: string | null) {
-    const text = id ? (_NAME_BY_ID.get(id) ?? '') : ''
+    const text = id ? (this._names?.byId.get(id) ?? _NAME_BY_ID.get(id) ?? '') : ''
 
     this._syncTip(id, text)
 
@@ -552,7 +639,11 @@ export class StarField extends BaseComponent {
       fetchDossier(id).then((file) => {
         const name = file?.name
 
-        if (name && this._liveText === (_NAME_BY_ID.get(id) ?? '')) {
+        // Only upgrade while the hover still reports this body — the
+        // live text is the localized name once the names table landed.
+        const expected = this._names?.byId.get(id) ?? _NAME_BY_ID.get(id) ?? ''
+
+        if (name && this._liveText === expected) {
           const tip = this.$(`.${SF_CLASSES.SF_TIP}`) as HTMLElement | null
 
           const label = tip?.querySelector(`.${SF_CLASSES.SF_TIP_LABEL}`)
@@ -596,7 +687,18 @@ export class StarField extends BaseComponent {
 
     const label = tip.querySelector(`.${SF_CLASSES.SF_TIP_LABEL}`)
 
-    const tipText = _TIP_BY_ID.get(id) ?? text
+    // Prefer the localized table once loaded — `_TIP_BY_ID` holds the
+    // English catalog name; `text` is the liveText fallback for
+    // registry bodies with no catalog entry.
+    const name = this._names?.byId.get(id)
+
+    const dist = _DIST_BY_ID.get(id)
+
+    const tipText = name
+      ? dist
+        ? `${name} ${CHAR_STRINGS.DOT_SEP} ${dist}`
+        : name
+      : (_TIP_BY_ID.get(id) ?? text)
 
     if (label) label.textContent = tipText
 
@@ -664,7 +766,7 @@ export class StarField extends BaseComponent {
   /** Announces a selection through the same live region. */
 
   _announce(id: string) {
-    const name = _NAME_BY_ID.get(id) ?? ''
+    const name = this._names?.byId.get(id) ?? _NAME_BY_ID.get(id) ?? ''
 
     this._liveText = name
 

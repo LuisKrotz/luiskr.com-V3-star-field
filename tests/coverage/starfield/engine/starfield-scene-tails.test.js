@@ -1095,7 +1095,29 @@ describe('comet tail + plume fx tails', () => {
       material: { opacity: 0.4 },
     })
 
-    const near = { ion: mkPts(), ionGas: mkPts(), dust: mkPts(), dustGas: mkPts() }
+    /**
+     * Instanced-tail surface — a live billboard path needs the tail's
+     * `setMatrixAt`/`getWorldQuaternion` plus a camera quaternion and a
+     * `s.THREE` scratch allocator. `sz` seeds the per-grain size array
+     * on ion only, so ionGas still takes the `ud.sz?.[i] ?? 1` arm.
+     */
+    const mkInstanced = (withSizes) => {
+      const pts = mkPts()
+
+      pts.setMatrixAt = jest.fn()
+      pts.getWorldQuaternion = (q) => q
+
+      if (withSizes) pts.ud.sz = Float32Array.from({ length: 4 }, () => 0.8)
+
+      return pts
+    }
+
+    const near = {
+      ion: mkInstanced(true),
+      ionGas: mkInstanced(false),
+      dust: mkPts(),
+      dustGas: mkPts(),
+    }
     const far = { ion: mkPts(), ionGas: mkPts(), dust: mkPts(), dustGas: mkPts() }
 
     const jet = { material: { opacity: 0.4 } }
@@ -1105,8 +1127,37 @@ describe('comet tail + plume fx tails', () => {
       material: { opacity: 0 },
     }
 
+    /**
+     * Minimal THREE scratch — fx.ts lazily builds _mat/_vec/_scl/_qN/_qC
+     * once `s.THREE` exists; the billboard compose path only needs
+     * compose/set/setScalar and a chainable invert/multiply.
+     */
+    const FXQuat = class {
+      invert() {
+        return this
+      }
+
+      multiply() {
+        return this
+      }
+    }
+
     const s = {
       t: 1.5,
+      // A camera carrying only `quaternion` — no getWorldQuaternion —
+      // so camQ resolves through the `?? cam?.quaternion` fallback arm.
+      camera: { quaternion: new FXQuat() },
+      THREE: {
+        Matrix4: class {
+          compose() {}
+        },
+        Vector3: class {
+          set() {}
+
+          setScalar() {}
+        },
+        Quaternion: FXQuat,
+      },
       nodes: new Map([
         [
           // Periapsis — center.position.x = rMin → full-length tails.
@@ -1188,8 +1239,10 @@ describe('comet tail + plume fx tails', () => {
           // a SPARSE sim record: only pos/col/phase exist, so every
           // `?? 0` / `?? 1` / `?? [1,1,1]` fallback fires inside the
           // grain loop, aPos/aCol flags are skipped, and `ud.op ?? 1`
-          // feeds the material opacity. dustGas carries a record but NO
-          // material → the `p.material?.opacity` false arm.
+          // feeds the material opacity. `phase` carries a hole so the
+          // per-grain `ud.phase?.[i] ?? 0` fallback fires too; dustGas
+          // carries a record but NO material → the `p.material?.opacity`
+          // false arm.
           'comet-flat',
           {
             def: { radius: 0.3 },
@@ -1205,7 +1258,7 @@ describe('comet tail + plume fx tails', () => {
                   [SF_USER_GAS]: {
                     pos: new Float32Array(3),
                     col: new Float32Array(3),
-                    phase: new Float32Array([0.5]),
+                    phase: [undefined],
                   },
                 },
               },
@@ -1286,6 +1339,12 @@ describe('comet tail + plume fx tails', () => {
     expect(ionUd.pos[3]).toBeCloseTo(0.4 * 6)
     expect(near.ion.material.opacity).toBeCloseTo(0.5)
     expect(near.ion.visible).toBe(true)
+
+    // Instanced billboard — per-grain quad matrices composed for the
+    // tails that carry `setMatrixAt`/`getWorldQuaternion` under a live
+    // camera; the plain Points-shaped tails skip the compose block.
+    expect(near.ion.setMatrixAt).toHaveBeenCalled()
+    expect(near.ionGas.setMatrixAt).toHaveBeenCalled()
 
     // Apoapsis — outside the periapsis window the tails switch off
     // entirely (a comet flying home carries no streak, only the coma
