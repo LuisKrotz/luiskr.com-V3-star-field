@@ -1,6 +1,6 @@
 {
   "id": "hydra-centaurus-supercluster",
-  "name": "Hydra–Centaurus Supercluster",
+  "name": "Superaglomerado Hidra-Centauro",
   "kind": "structure",
   "tagline": "O superaglomerado adjacente a Virgem – um agrupamento de lóbulos duplos que inclui a região do Grande Atrator.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "NASA",
-      "Dressler 1988"
-    ]
+    "refs": ["NASA", "Dressler 1988"]
   }
 }

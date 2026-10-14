@@ -1,6 +1,6 @@
 {
   "id": "sextans-dwarf",
-  "name": "Sextans Dwarf Spheroidal",
+  "name": "Sextans Zwergkugelförmig",
   "kind": "dwarfGalaxy",
   "tagline": "Ein sehr schwacher Milchstraßensatellit in 290.000 Lichtjahren Entfernung – en der am wenigsten leuchtenden Zwergkugeln im Halo.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Irwin et al. 1990",
-      "UK Schmidt Telescope"
-    ]
+    "refs": ["Irwin et al. 1990", "UK Schmidt Telescope"]
   }
 }

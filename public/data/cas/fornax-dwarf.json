@@ -1,6 +1,6 @@
 {
   "id": "fornax-dwarf",
-  "name": "Fornax Dwarf",
+  "name": "Enano Fornax",
   "kind": "dwarfGalaxy",
   "tagline": "Un satélite esferoide de la Vía Láctea a 455.000 años luz de distancia, la única enana clásica que todavía forma estrellas hasta hace poco.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

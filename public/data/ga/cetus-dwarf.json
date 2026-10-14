@@ -1,6 +1,6 @@
 {
   "id": "cetus-dwarf",
-  "name": "Cetus Dwarf",
+  "name": "Dwarf Cetus",
   "kind": "dwarfGalaxy",
   "tagline": "Grúpa Áitiúil scoite sféarúil - thar an dá halla ollmhóra, d'fhorbair sé beagnach gan teagmháil.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

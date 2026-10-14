@@ -1,6 +1,6 @@
 {
   "id": "cetus-dwarf",
-  "name": "Cetus Dwarf",
+  "name": "Enano Cetus",
   "kind": "dwarfGalaxy",
   "tagline": "Un esferoidal de grupo local aislado; más allá de ambos halos gigantes, evolucionó casi intacto.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

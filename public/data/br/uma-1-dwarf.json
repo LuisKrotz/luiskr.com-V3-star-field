@@ -1,6 +1,6 @@
 {
   "id": "uma-1-dwarf",
-  "name": "Ursa Maior I Anão",
+  "name": "Anão da Ursa Maior I",
   "kind": "dwarfGalaxy",
   "tagline": "Um satélite ultra-fraco da Via Láctea encontrado pelo SDSS - uma vitrine de domínio da matéria escura no limite da formação de galáxias.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "Willman et al. 2005",
-      "SDSS"
-    ]
+    "refs": ["Willman et al. 2005", "SDSS"]
   }
 }

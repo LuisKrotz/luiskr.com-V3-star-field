@@ -1,6 +1,6 @@
 {
   "id": "tucana-dwarf",
-  "name": "Tucana Dwarf",
+  "name": "Enano Tucana",
   "kind": "dwarfGalaxy",
   "tagline": "El esferoidal más aislado del Grupo Local: a 2,9 Mly de distancia, nunca influenciado por una galaxia importante.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Lavery et al. 1990",
-      "ESO"
-    ]
+    "refs": ["Lavery et al. 1990", "ESO"]
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "leo-2-dwarf",
-  "name": "Leo II Dwarf",
+  "name": "Leo II. Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein entfernter Sphäroid der Millichschtroos in en Entfernung vun 690.000 Lichtjahren, auch als Leo B katalogisiert – gepaart mit Leo I auf der anderen Seite des Halos.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia"]
   }
 }

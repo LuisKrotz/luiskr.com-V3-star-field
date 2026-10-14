@@ -1,6 +1,6 @@
 {
   "id": "uma-2-dwarf",
-  "name": "Ursa Major II Dwarf",
+  "name": "Osa Mayor II Enana",
   "kind": "dwarfGalaxy",
   "tagline": "Una de las galaxias más débiles conocidas: un satélite ultra débil de la Vía Láctea a sólo ~105.000 años luz de distancia.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Zucker et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Zucker et al. 2006", "SDSS"]
   }
 }

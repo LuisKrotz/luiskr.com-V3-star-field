@@ -1,6 +1,6 @@
 {
   "id": "m13-hercules",
-  "name": "Great Hercules Cluster",
+  "name": "Grande Aglomerado de Hércules",
   "kind": "cluster",
   "tagline": "M13 — o melhor aglomerado globular do céu setentrional, com aproximadamente 300.000 estrelas em uma bola de 145 anos-luz de largura.",
   "facts": [
@@ -31,9 +31,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "NASA/ESA",
-      "Arecibo message 1974"
-    ]
+    "refs": ["NASA/ESA", "Arecibo message 1974"]
   }
 }

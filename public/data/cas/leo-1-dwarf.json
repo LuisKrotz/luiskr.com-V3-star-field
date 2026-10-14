@@ -1,6 +1,6 @@
 {
   "id": "leo-1-dwarf",
-  "name": "Leo I Dwarf",
+  "name": "Leo I Enano",
   "kind": "dwarfGalaxy",
   "tagline": "Un satélite de la Vía Láctea a 820.000 años luz de distancia, tan distante que fue el primer satélite enano encontrado únicamente en placas de estudio fotográfico.",
   "facts": [
@@ -27,10 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia",
-      "Bustamante-Rosell et al. 2021"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia", "Bustamante-Rosell et al. 2021"]
   }
 }

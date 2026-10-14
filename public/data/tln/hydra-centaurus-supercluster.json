@@ -1,6 +1,6 @@
 {
   "id": "hydra-centaurus-supercluster",
-  "name": "Hydra–Centaurus Supercluster",
+  "name": "Superammasso Idra-Centauro",
   "kind": "structure",
   "tagline": "Il superammasso adiacente alla Vergine: un insieme a doppio lobo che include la regione del Grande Attrattore.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA",
-      "Dressler 1988"
-    ]
+    "refs": ["NASA", "Dressler 1988"]
   }
 }

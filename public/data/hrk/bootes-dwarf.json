@@ -1,6 +1,6 @@
 {
   "id": "bootes-dwarf",
-  "name": "Boötes I Dwarf",
+  "name": "Bootes I Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Der „dunkle Champion“ – en ultraschwache Milchstraßensatellit in 197.000 Lichtjahren Entfernung, der 2006 in SDSS-Daten entdeckt wurde.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Belokurov et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Belokurov et al. 2006", "SDSS"]
   }
 }

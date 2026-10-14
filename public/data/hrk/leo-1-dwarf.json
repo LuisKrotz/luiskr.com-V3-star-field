@@ -1,6 +1,6 @@
 {
   "id": "leo-1-dwarf",
-  "name": "Leo I Dwarf",
+  "name": "Löwe I Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein 820.000 Lichtjahre entfernter Milchstraßensatellit – so weit entfernt, dass er der erste Zwerg war, der ausschließlich auf fotografischen Vermessungsplatten gefunden wurde.",
   "facts": [
@@ -27,10 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia",
-      "Bustamante-Rosell et al. 2021"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia", "Bustamante-Rosell et al. 2021"]
   }
 }

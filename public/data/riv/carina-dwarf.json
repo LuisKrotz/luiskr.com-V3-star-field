@@ -1,6 +1,6 @@
 {
   "id": "carina-dwarf",
-  "name": "Carina Dwarf",
+  "name": "Anão de Carina",
   "kind": "dwarfGalaxy",
   "tagline": "Um satélite da Via Láctea, a 330.000 anos-luz de distância, cuja história de formação estelar ocorre em explosões separadas ao longo do tempo cósmico.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Cannon, Hawarden & Tritton 1977",
-      "ESO"
-    ]
+    "refs": ["Cannon, Hawarden & Tritton 1977", "ESO"]
   }
 }

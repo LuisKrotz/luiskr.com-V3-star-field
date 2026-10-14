@@ -1,6 +1,6 @@
 {
   "id": "leo-2-dwarf",
-  "name": "Leo II Dwarf",
+  "name": "Anão de Leão II",
   "kind": "dwarfGalaxy",
   "tagline": "Um esferóide distante da Via Láctea, a 690.000 anos-luz de distância, também catalogado como Leão B - emparelhado com Leão I no lado oposto do halo.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia"]
   }
 }

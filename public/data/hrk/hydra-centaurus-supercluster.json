@@ -1,6 +1,6 @@
 {
   "id": "hydra-centaurus-supercluster",
-  "name": "Hydra–Centaurus Supercluster",
+  "name": "Hydra-Centaurus-Superhaufen",
   "kind": "structure",
   "tagline": "Der Superhaufen neben Virgo – en doppellappige Ansammlung, die die Region des Großen Attraktors umfasst.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "NASA",
-      "Dressler 1988"
-    ]
+    "refs": ["NASA", "Dressler 1988"]
   }
 }

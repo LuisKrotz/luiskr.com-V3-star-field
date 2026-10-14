@@ -1,6 +1,6 @@
 {
   "id": "uma-2-dwarf",
-  "name": "Ursa Major II Dwarf",
+  "name": "Orsa Maggiore II Nana",
   "kind": "dwarfGalaxy",
   "tagline": "Una dele gałasie pi deboli conosciute: un satellite ultra debole de la Via Lattea distante solo circa 105.000 ani luce.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Zucker et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Zucker et al. 2006", "SDSS"]
   }
 }

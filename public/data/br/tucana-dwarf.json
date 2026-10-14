@@ -1,6 +1,6 @@
 {
   "id": "tucana-dwarf",
-  "name": "Anão Tucana",
+  "name": "Anão de Tucana",
   "kind": "dwarfGalaxy",
   "tagline": "O esferoidal mais isolado do Grupo Local - 2,9 Mly out, nunca influenciado por uma grande galáxia.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "Lavery et al. 1990",
-      "ESO"
-    ]
+    "refs": ["Lavery et al. 1990", "ESO"]
   }
 }

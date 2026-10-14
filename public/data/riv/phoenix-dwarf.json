@@ -1,6 +1,6 @@
 {
   "id": "phoenix-dwarf",
-  "name": "Phoenix Dwarf",
+  "name": "Anão da Fênix",
   "kind": "dwarfGalaxy",
   "tagline": "Uma anã transicional do Grupo Local - parte esferoidal, parte irregular, ainda formando um fio de estrelas.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Schuster & West 1976",
-      "ESO"
-    ]
+    "refs": ["Schuster & West 1976", "ESO"]
   }
 }

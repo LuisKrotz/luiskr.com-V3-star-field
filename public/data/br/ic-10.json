@@ -1,6 +1,6 @@
 {
   "id": "ic-10",
-  "name": "CI 10",
+  "name": "IC 10",
   "kind": "dwarfGalaxy",
   "tagline": "A anã estelar do Grupo Local - a única ainda em erupção com formação estelar perto de Andrômeda.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "NASA Chandra",
-      "Hubble Space Telescope"
-    ]
+    "refs": ["NASA Chandra", "Hubble Space Telescope"]
   }
 }

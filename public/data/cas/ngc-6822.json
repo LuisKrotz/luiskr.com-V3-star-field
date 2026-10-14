@@ -1,6 +1,6 @@
 {
   "id": "ngc-6822",
-  "name": "Barnard's Galaxy",
+  "name": "La galaxia de Barnard",
   "kind": "dwarfGalaxy",
   "tagline": "Un grupo local irregular en Sagitario, a 1,63 Mly, un enano que parece una pequeña Nube de Magallanes.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Barnard 1884",
-      "NASA/ESA Hubble"
-    ]
+    "refs": ["Barnard 1884", "NASA/ESA Hubble"]
   }
 }

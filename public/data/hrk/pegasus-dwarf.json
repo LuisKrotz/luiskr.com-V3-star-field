@@ -1,6 +1,6 @@
 {
   "id": "pegasus-dwarf",
-  "name": "Pegasus Dwarf Irregular",
+  "name": "Pegasus-Zwerg unregelmäßig",
   "kind": "dwarfGalaxy",
   "tagline": "DDO 216 – en gasreiche lokale Gruppe, unregelmäßig, langsam brennend un chemisch primitiv.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "DDO Atlas",
-      "NASA/ESA"
-    ]
+    "refs": ["DDO Atlas", "NASA/ESA"]
   }
 }

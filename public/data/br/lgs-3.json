@@ -1,6 +1,6 @@
 {
   "id": "lgs-3",
-  "name": "LGS3",
+  "name": "LGS 3",
   "kind": "dwarfGalaxy",
   "tagline": "O anão de Peixes - um membro de transição do Grupo Local a meio caminho entre um esferoidal e um irregular.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "Thuan & Martin 1979",
-      "PAndAS survey"
-    ]
+    "refs": ["Thuan & Martin 1979", "PAndAS survey"]
   }
 }

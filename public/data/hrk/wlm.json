@@ -1,6 +1,6 @@
 {
   "id": "wlm",
-  "name": "WLM Galaxy",
+  "name": "WLM-Galaxie",
   "kind": "dwarfGalaxy",
   "tagline": "Wolf–Lundmark–Melotte – en isolierter unregelmäßiger Schdern mit eigenem Kugelsternhaufen, 3 Mly vun der Heimat entfernt.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Wolf 1909",
-      "NASA/ESA Hubble"
-    ]
+    "refs": ["Wolf 1909", "NASA/ESA Hubble"]
   }
 }

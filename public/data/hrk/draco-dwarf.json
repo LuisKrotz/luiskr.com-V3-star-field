@@ -1,6 +1,6 @@
 {
   "id": "draco-dwarf",
-  "name": "Draco Dwarf",
+  "name": "Draco Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein sehr metallarmer Milchstraßensatellit in 260.000 Lichtjahren Entfernung – en der am stärksten vun Dunkler Materie dominierten Galaxien, die wir kennen.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Palomar Sky Survey",
-      "ESO"
-    ]
+    "refs": ["Palomar Sky Survey", "ESO"]
   }
 }

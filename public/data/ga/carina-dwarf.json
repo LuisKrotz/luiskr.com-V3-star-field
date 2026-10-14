@@ -1,6 +1,6 @@
 {
   "id": "carina-dwarf",
-  "name": "Carina Dwarf",
+  "name": "Dwarf Carina",
   "kind": "dwarfGalaxy",
   "tagline": "Satailít Bhealach na Bó Finne 330,000 solasbhliain amach a bhfuil stair fhoirmiú na réalta i bpléasctha ar leith thar am na gcosmaí.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "Cannon, Hawarden & Tritton 1977",
-      "ESO"
-    ]
+    "refs": ["Cannon, Hawarden & Tritton 1977", "ESO"]
   }
 }

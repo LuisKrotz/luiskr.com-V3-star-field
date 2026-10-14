@@ -1,6 +1,6 @@
 {
   "id": "sculptor-dwarf",
-  "name": "Anão Escultor",
+  "name": "Anão do Escultor",
   "kind": "dwarfGalaxy",
   "tagline": "Um esferóide da Via Láctea pobre em metais, a 290.000 anos-luz de distância - dominado pela matéria escura, com mais de 10 bilhões de anos.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "Shapley 1938",
-      "ESO"
-    ]
+    "refs": ["Shapley 1938", "ESO"]
   }
 }

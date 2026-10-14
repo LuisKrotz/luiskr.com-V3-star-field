@@ -1,6 +1,6 @@
 {
   "id": "bootes-dwarf",
-  "name": "Boötes I Dwarf",
+  "name": "Dwarf Boötes I",
   "kind": "dwarfGalaxy",
   "tagline": "An ‘dim champion’ – satailít shárbheagán de chuid Bhealach na Bó Finne 197,000 solasbhliain amuigh, a aimsíodh i sonraí SDSS in 2006.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "Belokurov et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Belokurov et al. 2006", "SDSS"]
   }
 }

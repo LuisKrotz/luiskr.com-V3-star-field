@@ -1,6 +1,6 @@
 {
   "id": "ursa-minor-dwarf",
-  "name": "Ursa Minor Dwarf",
+  "name": "Ursa Minor Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein Sphäroid der Millichschtroos in 225.000 Lichtjahren Entfernung – uralte, schwache un fast ausschließlich dunkle Materie.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Wilson 1955",
-      "Palomar Sky Survey"
-    ]
+    "refs": ["Wilson 1955", "Palomar Sky Survey"]
   }
 }

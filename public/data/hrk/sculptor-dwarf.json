@@ -1,6 +1,6 @@
 {
   "id": "sculptor-dwarf",
-  "name": "Sculptor Dwarf",
+  "name": "Bildhauer Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein metallarmer Sphäroid der Millichschtroos in 290.000 Lichtjahren Entfernung – dominiert vun Dunkler Materie, iwwer 10 Milliarden Johre alt.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Shapley 1938",
-      "ESO"
-    ]
+    "refs": ["Shapley 1938", "ESO"]
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "sculptor-dwarf",
-  "name": "Sculptor Dwarf",
+  "name": "Escultor enano",
   "kind": "dwarfGalaxy",
   "tagline": "Un esferoide pobre en metales de la Vía Láctea a 290.000 años luz de distancia, dominado por la materia oscura, de más de 10 mil millones de años.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Shapley 1938",
-      "ESO"
-    ]
+    "refs": ["Shapley 1938", "ESO"]
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "horologium-supercluster",
-  "name": "Horologium–Reticulum Supercluster",
+  "name": "Superaglomerado Horologium-Reticulum",
   "kind": "structure",
   "tagline": "O grande superaglomerado do céu meridional - uma concentração de massa de 700 Mly de profundidade, perdendo apenas para Shapley.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Abell Catalogue",
-      "Southern Sky Surveys"
-    ]
+    "refs": ["Abell Catalogue", "Southern Sky Surveys"]
   }
 }

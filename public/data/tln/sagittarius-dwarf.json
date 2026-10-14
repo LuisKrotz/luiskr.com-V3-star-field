@@ -1,6 +1,6 @@
 {
   "id": "sagittarius-dwarf",
-  "name": "Sagittarius Dwarf Galaxy",
+  "name": "Galassia nana del Sagittario",
   "kind": "dwarfGalaxy",
   "tagline": "Il satellite conosciuto pi vicino alla Via Lattea: uno sferoide che viene già diviso in flussi stellari mentre cade attraverso il disco.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Ibata, Gilmore & Irwin 1994",
-      "SDSS"
-    ]
+    "refs": ["Ibata, Gilmore & Irwin 1994", "SDSS"]
   }
 }

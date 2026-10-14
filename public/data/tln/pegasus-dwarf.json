@@ -1,6 +1,6 @@
 {
   "id": "pegasus-dwarf",
-  "name": "Pegasus Dwarf Irregular",
+  "name": "Pegaso nano irregolare",
   "kind": "dwarfGalaxy",
   "tagline": "DDO 216 — un gruppo locale ricco di gas, irregolare, a combustione lenta e chimicamente primitivo.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "DDO Atlas",
-      "NASA/ESA"
-    ]
+    "refs": ["DDO Atlas", "NASA/ESA"]
   }
 }

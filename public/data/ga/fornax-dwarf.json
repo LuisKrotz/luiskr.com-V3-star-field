@@ -1,6 +1,6 @@
 {
   "id": "fornax-dwarf",
-  "name": "Fornax Dwarf",
+  "name": "Dwarf Fornax",
   "kind": "dwarfGalaxy",
   "tagline": "Sféaróid satailíte Bhealach na Bó Finne 455,000 solasbhliain caite - an t-aon dwarf clasaiceach atá fós ina réaltaí go dtí le déanaí.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

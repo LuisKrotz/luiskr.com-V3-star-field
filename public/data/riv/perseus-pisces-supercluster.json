@@ -1,6 +1,6 @@
 {
   "id": "perseus-pisces-supercluster",
-  "name": "Perseus–Pisces Supercluster",
+  "name": "Superaglomerado Perseu-Peixes",
   "kind": "structure",
   "tagline": "Um grande superaglomerado filamentar - uma crista de 250 Mly de grupos de galáxias no céu de outono do norte.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Abell Catalogue",
-      "NASA"
-    ]
+    "refs": ["Abell Catalogue", "NASA"]
   }
 }

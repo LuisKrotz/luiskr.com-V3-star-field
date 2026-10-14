@@ -1,6 +1,6 @@
 {
   "id": "leo-2-dwarf",
-  "name": "Leo II Dwarf",
+  "name": "Dwarf Leo II",
   "kind": "dwarfGalaxy",
   "tagline": "Bealach na Bó Finne i bhfad i gcéin sféaróideach 690,000 solasbhliain amach, arna chatalógú freisin mar Leo B — péireáilte le Leo I ar thaobh thall an Halo.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia"]
   }
 }

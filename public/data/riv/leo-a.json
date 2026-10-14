@@ -1,6 +1,6 @@
 {
   "id": "leo-a",
-  "name": "Leo A",
+  "name": "Leão A",
   "kind": "dwarfGalaxy",
   "tagline": "Uma irregular isolada na borda do Grupo Local — ainda formando estrelas depois de bilhões de anos.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "NASA/ESA Hubble",
-      "Tolstoy et al. 1998"
-    ]
+    "refs": ["NASA/ESA Hubble", "Tolstoy et al. 1998"]
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "coma-supercluster",
-  "name": "Coma Supercluster",
+  "name": "Superaglomerado Coma",
   "kind": "structure",
   "tagline": "O superaglomerado rico mais próximo - dois aglomerados gigantes em um filamento comum, a aproximadamente 321 milhões de anos-luz de distância.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Zwicky 1933",
-      "NASA"
-    ]
+    "refs": ["Zwicky 1933", "NASA"]
   }
 }

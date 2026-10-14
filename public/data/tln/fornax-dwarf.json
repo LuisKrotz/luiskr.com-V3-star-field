@@ -1,6 +1,6 @@
 {
   "id": "fornax-dwarf",
-  "name": "Fornax Dwarf",
+  "name": "Nano Fornax",
   "kind": "dwarfGalaxy",
   "tagline": "Uno sferoide satellitare de la Via Lattea a 455.000 ani luce di distansa: l'unico nano classico che continua a formare stełe fino a tempi recenti.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

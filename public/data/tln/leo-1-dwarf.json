@@ -1,6 +1,6 @@
 {
   "id": "leo-1-dwarf",
-  "name": "Leo I Dwarf",
+  "name": "Leone I Nano",
   "kind": "dwarfGalaxy",
   "tagline": "Un satellite de la Via Lattea a 820.000 ani luce di distansa, cusì distante da essere il primo nano trovato esclusivamente su lastre di rilevamento fotografico.",
   "facts": [
@@ -27,10 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia",
-      "Bustamante-Rosell et al. 2021"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia", "Bustamante-Rosell et al. 2021"]
   }
 }

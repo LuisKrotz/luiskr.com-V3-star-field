@@ -1,6 +1,6 @@
 {
   "id": "wlm",
-  "name": "WLM Galaxy",
+  "name": "Galáxia WLM",
   "kind": "dwarfGalaxy",
   "tagline": "Wolf – Lundmark – Melotte – um irregular isolado com seu próprio aglomerado globular, a 3 meses de casa.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Wolf 1909",
-      "NASA/ESA Hubble"
-    ]
+    "refs": ["Wolf 1909", "NASA/ESA Hubble"]
   }
 }

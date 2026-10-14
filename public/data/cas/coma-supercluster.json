@@ -1,6 +1,6 @@
 {
   "id": "coma-supercluster",
-  "name": "Coma Supercluster",
+  "name": "Supercúmulo de coma",
   "kind": "structure",
   "tagline": "El supercúmulo rico más cercano: dos cúmulos gigantes sobre un filamento común, a unos 321 millones de años luz de distancia.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Zwicky 1933",
-      "NASA"
-    ]
+    "refs": ["Zwicky 1933", "NASA"]
   }
 }
