@@ -1,6 +1,6 @@
 {
   "id": "leo-1-dwarf",
-  "name": "Leo I Dwarf",
+  "name": "Dwarf Leo I",
   "kind": "dwarfGalaxy",
   "tagline": "Satailít Bhealach na Bó Finne 820,000 solasbhliain amach — chomh fada sin i gcéin ba é an chéad dwarf a fuarthas ar phlátaí suirbhéireachta grianghrafadóireachta amháin.",
   "facts": [
@@ -27,10 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia",
-      "Bustamante-Rosell et al. 2021"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia", "Bustamante-Rosell et al. 2021"]
   }
 }

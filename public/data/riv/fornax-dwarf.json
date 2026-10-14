@@ -1,6 +1,6 @@
 {
   "id": "fornax-dwarf",
-  "name": "Fornax Dwarf",
+  "name": "Anão de Fornax",
   "kind": "dwarfGalaxy",
   "tagline": "Um esferóide satélite da Via Láctea a 455.000 anos-luz de distância - a única anã clássica que ainda formava estrelas até recentemente.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

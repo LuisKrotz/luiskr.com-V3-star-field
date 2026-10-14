@@ -1,6 +1,6 @@
 {
   "id": "ngc-6822",
-  "name": "Barnard's Galaxy",
+  "name": "Barnards Galaxie",
   "kind": "dwarfGalaxy",
   "tagline": "Eine unregelmäßige lokale Gruppe im Sternbild Sagittarius – 1,63 Mly entfernt, en Zwerg, der wie en kleine Magellansche Wolke aussieht.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Barnard 1884",
-      "NASA/ESA Hubble"
-    ]
+    "refs": ["Barnard 1884", "NASA/ESA Hubble"]
   }
 }

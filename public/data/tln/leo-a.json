@@ -1,6 +1,6 @@
 {
   "id": "leo-a",
-  "name": "Leo A",
+  "name": "Leone A",
   "kind": "dwarfGalaxy",
   "tagline": "Un oggetto irregolare isolato ai margini del Gruppo Locale, che ancora forma stełe dopo miliardi di ani.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA/ESA Hubble",
-      "Tolstoy et al. 1998"
-    ]
+    "refs": ["NASA/ESA Hubble", "Tolstoy et al. 1998"]
   }
 }

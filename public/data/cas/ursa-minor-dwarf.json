@@ -1,6 +1,6 @@
 {
   "id": "ursa-minor-dwarf",
-  "name": "Ursa Minor Dwarf",
+  "name": "Osa Menor Enana",
   "kind": "dwarfGalaxy",
   "tagline": "Un esferoide de la Vía Láctea a 225.000 años luz de distancia: materia antigua, débil y casi toda oscura.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Wilson 1955",
-      "Palomar Sky Survey"
-    ]
+    "refs": ["Wilson 1955", "Palomar Sky Survey"]
   }
 }

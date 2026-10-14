@@ -1,6 +1,6 @@
 {
   "id": "carina-dwarf",
-  "name": "Carina Dwarf",
+  "name": "Carina Enana",
   "kind": "dwarfGalaxy",
   "tagline": "Un satélite de la Vía Láctea a 330.000 años luz de distancia cuya historia de formación estelar se produce en ráfagas separadas a lo largo del tiempo cósmico.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Cannon, Hawarden & Tritton 1977",
-      "ESO"
-    ]
+    "refs": ["Cannon, Hawarden & Tritton 1977", "ESO"]
   }
 }

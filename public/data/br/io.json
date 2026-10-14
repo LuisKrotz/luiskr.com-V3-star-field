@@ -1,6 +1,6 @@
 {
   "id": "io",
-  "name": "Eu",
+  "name": "Io",
   "kind": "moon",
   "tagline": "Lua vulcânica de Júpiter — o corpo geologicamente mais ativo do Sistema Solar.",
   "facts": [
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "NASA/JPL · NASA Icy Moons Trek"
-    ]
+    "refs": ["NASA/JPL · NASA Icy Moons Trek"]
   }
 }

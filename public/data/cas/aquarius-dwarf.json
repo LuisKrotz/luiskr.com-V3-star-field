@@ -1,6 +1,6 @@
 {
   "id": "aquarius-dwarf",
-  "name": "Aquarius Dwarf",
+  "name": "Acuario enano",
   "kind": "dwarfGalaxy",
   "tagline": "DDO 210: uno de los miembros más pobres en metales del Grupo Local, una nube de gas casi oscura con escasas estrellas.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "DDO Atlas",
-      "ESO"
-    ]
+    "refs": ["DDO Atlas", "ESO"]
   }
 }

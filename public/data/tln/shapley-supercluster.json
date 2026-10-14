@@ -1,6 +1,6 @@
 {
   "id": "shapley-supercluster",
-  "name": "Shapley Supercluster",
+  "name": "Superammasso di Shapley",
   "kind": "structure",
   "tagline": "La concentrazione di Shapley: il superammasso pi pesante nelle vicinanze, a circa 650 Mly, contenente circa 8.000 gałasie.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Shapley 1930",
-      "ROSAT"
-    ]
+    "refs": ["Shapley 1930", "ROSAT"]
   }
 }

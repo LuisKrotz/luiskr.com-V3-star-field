@@ -1,6 +1,6 @@
 {
   "id": "fornax-dwarf",
-  "name": "Fornax Dwarf",
+  "name": "Fornax-Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein Satellitensphäroid der Millichschtroos in en Entfernung vun 455.000 Lichtjahren – der einzige klassische Zwerg, der bis vor Kurzem noch Schderne bildete.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

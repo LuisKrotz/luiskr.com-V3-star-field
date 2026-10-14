@@ -1,6 +1,6 @@
 {
   "id": "phoenix-dwarf",
-  "name": "Phoenix Dwarf",
+  "name": "Phönix-Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein Übergangszwerg der Lokalen Gruppe – teils kugelförmig, teils unregelmäßig, der immer noch en Rinnsal aus Schderne bildet.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Schuster & West 1976",
-      "ESO"
-    ]
+    "refs": ["Schuster & West 1976", "ESO"]
   }
 }

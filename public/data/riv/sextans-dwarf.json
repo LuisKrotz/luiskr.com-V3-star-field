@@ -1,6 +1,6 @@
 {
   "id": "sextans-dwarf",
-  "name": "Sextans Dwarf Spheroidal",
+  "name": "Anão Esferoide de Sextans",
   "kind": "dwarfGalaxy",
   "tagline": "Um satélite muito fraco da Via Láctea, a 290.000 anos-luz de distância – um dos esferoidais anões menos luminosos do halo.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Irwin et al. 1990",
-      "UK Schmidt Telescope"
-    ]
+    "refs": ["Irwin et al. 1990", "UK Schmidt Telescope"]
   }
 }

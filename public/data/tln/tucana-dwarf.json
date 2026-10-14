@@ -1,6 +1,6 @@
 {
   "id": "tucana-dwarf",
-  "name": "Tucana Dwarf",
+  "name": "Nano Tucana",
   "kind": "dwarfGalaxy",
   "tagline": "La gałasia sferoidale pi isolata del Gruppo Locale: distante 2,9 Mly, mai influenzata da una gałasia pi grando.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Lavery et al. 1990",
-      "ESO"
-    ]
+    "refs": ["Lavery et al. 1990", "ESO"]
   }
 }

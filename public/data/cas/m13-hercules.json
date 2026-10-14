@@ -1,6 +1,6 @@
 {
   "id": "m13-hercules",
-  "name": "Great Hercules Cluster",
+  "name": "Gran cúmulo de Hércules",
   "kind": "cluster",
   "tagline": "M13: el cúmulo globular más fino del cielo del norte, aproximadamente 300.000 estrellas en una bola de 145 años luz de ancho.",
   "facts": [
@@ -31,9 +31,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "NASA/ESA",
-      "Arecibo message 1974"
-    ]
+    "refs": ["NASA/ESA", "Arecibo message 1974"]
   }
 }

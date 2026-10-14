@@ -1,6 +1,6 @@
 {
   "id": "tucana-dwarf",
-  "name": "Tucana Dwarf",
+  "name": "Tucana-Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Die isolierteste kugelförmige Galaxie der Lokalen Gruppe – 2,9 Mio. Lichtjahre entfernt, nie vun en großen Galaxie beeinflusst.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Lavery et al. 1990",
-      "ESO"
-    ]
+    "refs": ["Lavery et al. 1990", "ESO"]
   }
 }

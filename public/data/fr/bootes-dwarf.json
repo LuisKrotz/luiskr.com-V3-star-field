@@ -1,6 +1,6 @@
 {
   "id": "bootes-dwarf",
-  "name": "Bottines I Nain",
+  "name": "Nain du Bouvier I",
   "kind": "dwarfGalaxy",
   "tagline": "Le « champion des ténèbres » – un satellite ultra-faible de la Voie lactée situé à 197 000 années-lumière, découvert dans les données SDSS en 2006.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "fr",
-    "refs": [
-      "Belokurov et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Belokurov et al. 2006", "SDSS"]
   }
 }

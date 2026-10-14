@@ -1,6 +1,6 @@
 {
   "id": "draco-dwarf",
-  "name": "Draco Dwarf",
+  "name": "Dwarf Draco",
   "kind": "dwarfGalaxy",
   "tagline": "Satailít Bhealach na Bó Finne an-lag miotail 260,000 solasbhliain amach - ceann de na réaltraí is mó a bhfuil ábhar dorcha ar eolas againn.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "Palomar Sky Survey",
-      "ESO"
-    ]
+    "refs": ["Palomar Sky Survey", "ESO"]
   }
 }

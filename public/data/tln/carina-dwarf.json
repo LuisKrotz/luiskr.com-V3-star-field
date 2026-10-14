@@ -1,6 +1,6 @@
 {
   "id": "carina-dwarf",
-  "name": "Carina Dwarf",
+  "name": "Carina Nana",
   "kind": "dwarfGalaxy",
   "tagline": "Un satellite de la Via Lattea a 330.000 ani luce di distansa, la cui storia di formazione stellare avviene in esplosioni separate attraverso il tempo cosmico.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Cannon, Hawarden & Tritton 1977",
-      "ESO"
-    ]
+    "refs": ["Cannon, Hawarden & Tritton 1977", "ESO"]
   }
 }

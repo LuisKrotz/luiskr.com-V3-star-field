@@ -1,6 +1,6 @@
 {
   "id": "coma-supercluster",
-  "name": "Coma Supercluster",
+  "name": "Sárchnuasach Coma",
   "kind": "structure",
   "tagline": "An sárchnuasach saibhir is gaire - dhá bhraisle ollmhóra ar chomhfhiliméad, ~321 milliún solasbhliain amach.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "ga",
-    "refs": [
-      "Zwicky 1933",
-      "NASA"
-    ]
+    "refs": ["Zwicky 1933", "NASA"]
   }
 }

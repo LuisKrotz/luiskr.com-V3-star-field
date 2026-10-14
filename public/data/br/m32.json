@@ -1,6 +1,6 @@
 {
   "id": "m32",
-  "name": "Mais Messier 32",
+  "name": "Messier 32",
   "kind": "dwarfGalaxy",
   "tagline": "O satélite elíptico compacto de Andrômeda — uma galáxia despojada até seu núcleo denso por repetidas passagens próximas.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "NASA/ESA",
-      "Spitzer Space Telescope"
-    ]
+    "refs": ["NASA/ESA", "Spitzer Space Telescope"]
   }
 }

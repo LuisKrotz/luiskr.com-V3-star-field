@@ -1,6 +1,6 @@
 {
   "id": "uma-1-dwarf",
-  "name": "Ursa Major I Dwarf",
+  "name": "Orsa Maggiore I Nana",
   "kind": "dwarfGalaxy",
   "tagline": "Un satellite ultra debole de la Via Lattea trovato da SDSS: una dimostrazione del dominio de la materia oscura ai margini de la formazione dele gałasie.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Willman et al. 2005",
-      "SDSS"
-    ]
+    "refs": ["Willman et al. 2005", "SDSS"]
   }
 }

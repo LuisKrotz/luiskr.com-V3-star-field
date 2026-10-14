@@ -1,6 +1,6 @@
 {
   "id": "draco-dwarf",
-  "name": "Draco Dwarf",
+  "name": "Draco Nano",
   "kind": "dwarfGalaxy",
   "tagline": "Un satellite de la Via Lattea molto povero di metalli a 260.000 ani luce di distansa, una dele gałasie pi dominate dalla materia oscura conosciute.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Palomar Sky Survey",
-      "ESO"
-    ]
+    "refs": ["Palomar Sky Survey", "ESO"]
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "coma-supercluster",
-  "name": "Coma Supercluster",
+  "name": "Superammasso di coma",
   "kind": "structure",
   "tagline": "Il superammasso ricco pi vicino: do ammassi giganti su un filamento comune, a circa 321 milioni di ani luce di distansa.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Zwicky 1933",
-      "NASA"
-    ]
+    "refs": ["Zwicky 1933", "NASA"]
   }
 }

@@ -1,6 +1,6 @@
 {
   "id": "perseus-pisces-supercluster",
-  "name": "Perseus–Pisces Supercluster",
+  "name": "Perseus-Fische-Superhaufen",
   "kind": "structure",
   "tagline": "Ein großer filamentartiger Superhaufen – en 250 Mly großer Kamm aus Galaxiengruppen iwwer dem nördlichen Herbsthimmel.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Abell Catalogue",
-      "NASA"
-    ]
+    "refs": ["Abell Catalogue", "NASA"]
   }
 }

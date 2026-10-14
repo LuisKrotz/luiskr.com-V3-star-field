@@ -1,6 +1,6 @@
 {
   "id": "leo-a",
-  "name": "leo a",
+  "name": "Leo A",
   "kind": "dwarfGalaxy",
   "tagline": "Un irregular aislado en el borde del Grupo Local, que todavía forma estrellas después de miles de millones de años.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "es",
-    "refs": [
-      "NASA/ESA Hubble",
-      "Tolstoy et al. 1998"
-    ]
+    "refs": ["NASA/ESA Hubble", "Tolstoy et al. 1998"]
   }
 }

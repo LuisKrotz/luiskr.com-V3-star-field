@@ -1,6 +1,6 @@
 {
   "id": "aquarius-dwarf",
-  "name": "Aquarius Dwarf",
+  "name": "Wassermann-Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "DDO 210 – eines der metallärmsten Mitglieder der Lokalen Gruppe, en nahezu dunkle Gaswolke mit spärlichen Schderne.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "DDO Atlas",
-      "ESO"
-    ]
+    "refs": ["DDO Atlas", "ESO"]
   }
 }

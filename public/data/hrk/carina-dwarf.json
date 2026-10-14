@@ -1,6 +1,6 @@
 {
   "id": "carina-dwarf",
-  "name": "Carina Dwarf",
+  "name": "Carina Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein 330.000 Lichtjahre entfernter Satellit der Millichschtroos, dessen Sternentstehungsgeschichte in einzelnen Ausbrüchen iwwer die kosmische Zeit hinweg verläuft.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Cannon, Hawarden & Tritton 1977",
-      "ESO"
-    ]
+    "refs": ["Cannon, Hawarden & Tritton 1977", "ESO"]
   }
 }

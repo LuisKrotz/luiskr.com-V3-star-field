@@ -1,6 +1,6 @@
 {
   "id": "hydra-centaurus-supercluster",
-  "name": "Hydra–Centaurus Supercluster",
+  "name": "Supercúmulo Hidra-Centauro",
   "kind": "structure",
   "tagline": "El supercúmulo adyacente a Virgo es una reunión de doble lóbulo que incluye la región del Gran Atractor.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "NASA",
-      "Dressler 1988"
-    ]
+    "refs": ["NASA", "Dressler 1988"]
   }
 }

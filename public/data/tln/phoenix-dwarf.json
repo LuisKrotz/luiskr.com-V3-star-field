@@ -1,6 +1,6 @@
 {
   "id": "phoenix-dwarf",
-  "name": "Phoenix Dwarf",
+  "name": "Nano Fenice",
   "kind": "dwarfGalaxy",
   "tagline": "Una nana di transizione del Gruppo Locale: in parte sferoidale, in parte irregolare, che forma ancora un rivolo di stełe.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Schuster & West 1976",
-      "ESO"
-    ]
+    "refs": ["Schuster & West 1976", "ESO"]
   }
 }

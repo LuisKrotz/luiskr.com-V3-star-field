@@ -1,6 +1,6 @@
 {
   "id": "sagittarius-dwarf",
-  "name": "Sagittarius Dwarf Galaxy",
+  "name": "Galaxia enana de Sagitario",
   "kind": "dwarfGalaxy",
   "tagline": "El satélite conocido más cercano a la Vía Láctea: un esferoide que ya se está desintegrando en corrientes de estrellas a medida que cae a través del disco.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Ibata, Gilmore & Irwin 1994",
-      "SDSS"
-    ]
+    "refs": ["Ibata, Gilmore & Irwin 1994", "SDSS"]
   }
 }

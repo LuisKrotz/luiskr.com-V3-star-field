@@ -1,6 +1,6 @@
 {
   "id": "m13-hercules",
-  "name": "Great Hercules Cluster",
+  "name": "Grande Ammasso d'Ercole",
   "kind": "cluster",
   "tagline": "M13 - l'ammasso globulare pi fine del cielo settentrionale, circa 300.000 stełe in una palla larga 145 ani luce.",
   "facts": [
@@ -31,9 +31,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA/ESA",
-      "Arecibo message 1974"
-    ]
+    "refs": ["NASA/ESA", "Arecibo message 1974"]
   }
 }

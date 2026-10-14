@@ -1,6 +1,6 @@
 {
   "id": "uma-2-dwarf",
-  "name": "Anão Ursa Maior II",
+  "name": "Anão da Ursa Maior II",
   "kind": "dwarfGalaxy",
   "tagline": "Uma das galáxias mais fracas conhecidas - um satélite ultrafraco da Via Láctea, a apenas cerca de 105.000 anos-luz de distância.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "Zucker et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Zucker et al. 2006", "SDSS"]
   }
 }

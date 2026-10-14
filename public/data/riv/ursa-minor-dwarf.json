@@ -1,6 +1,6 @@
 {
   "id": "ursa-minor-dwarf",
-  "name": "Ursa Minor Dwarf",
+  "name": "Anão da Ursa Menor",
   "kind": "dwarfGalaxy",
   "tagline": "Um esferóide da Via Láctea a 225.000 anos-luz de distância – antigo, fraco e quase todo matéria escura.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Wilson 1955",
-      "Palomar Sky Survey"
-    ]
+    "refs": ["Wilson 1955", "Palomar Sky Survey"]
   }
 }

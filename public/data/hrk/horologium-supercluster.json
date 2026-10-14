@@ -1,6 +1,6 @@
 {
   "id": "horologium-supercluster",
-  "name": "Horologium–Reticulum Supercluster",
+  "name": "Horologium-Reticulum-Supercluster",
   "kind": "structure",
   "tagline": "Der große Superhaufen am Südhimmel – en 700 Mly tiefe Massenkonzentration, die nur vun Shapley übertroffen wird.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Abell Catalogue",
-      "Southern Sky Surveys"
-    ]
+    "refs": ["Abell Catalogue", "Southern Sky Surveys"]
   }
 }

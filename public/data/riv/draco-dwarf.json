@@ -1,6 +1,6 @@
 {
   "id": "draco-dwarf",
-  "name": "Draco Dwarf",
+  "name": "Anão de Draco",
   "kind": "dwarfGalaxy",
   "tagline": "Um satélite da Via Láctea, muito pobre em metais, a 260.000 anos-luz de distância - uma das galáxias mais dominadas pela matéria escura conhecidas.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "riv",
-    "refs": [
-      "Palomar Sky Survey",
-      "ESO"
-    ]
+    "refs": ["Palomar Sky Survey", "ESO"]
   }
 }

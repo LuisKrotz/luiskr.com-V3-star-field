@@ -1,6 +1,6 @@
 {
   "id": "horologium-supercluster",
-  "name": "Horologium–Reticulum Supercluster",
+  "name": "Superammasso dell'Orologio-Reticolo",
   "kind": "structure",
   "tagline": "Il grande superammasso del cielo australe: una concentrazione di massa profonda 700 Mly, seconda solo a Shapley.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Abell Catalogue",
-      "Southern Sky Surveys"
-    ]
+    "refs": ["Abell Catalogue", "Southern Sky Surveys"]
   }
 }

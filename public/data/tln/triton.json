@@ -1,6 +1,6 @@
 {
   "id": "triton",
-  "name": "Triton",
+  "name": "Tritone",
   "kind": "moon",
   "tagline": "La łuna catturata da Nettuno: un mondo de la fascia di Kuiper co geyser di azoto, in orbita all'indietro.",
   "facts": [
@@ -35,8 +35,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "NASA/JPL · Voyager 2"
-    ]
+    "refs": ["NASA/JPL · Voyager 2"]
   }
 }

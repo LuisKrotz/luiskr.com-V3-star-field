@@ -1,6 +1,6 @@
 {
   "id": "cetus-dwarf",
-  "name": "Cetus Dwarf",
+  "name": "Cetus-Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Eine isolierte kugelförmige Lokalgruppe – jenseits vun die zwee riesigen Lichthöfe entwickelte sie sich nahezu unberührt.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "ESO",
-      "Gaia Collaboration"
-    ]
+    "refs": ["ESO", "Gaia Collaboration"]
   }
 }

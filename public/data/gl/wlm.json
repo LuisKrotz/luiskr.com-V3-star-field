@@ -1,6 +1,6 @@
 {
   "id": "wlm",
-  "name": "WLM Galaxy",
+  "name": "Galaxia WLM",
   "kind": "dwarfGalaxy",
   "tagline": "Wolf–Lundmark–Melotte: un irregular illado co seu propio cúmulo globular, a 3 Mly da casa.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "gl",
-    "refs": [
-      "Wolf 1909",
-      "NASA/ESA Hubble"
-    ]
+    "refs": ["Wolf 1909", "NASA/ESA Hubble"]
   }
 }

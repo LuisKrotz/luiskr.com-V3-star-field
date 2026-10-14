@@ -1,6 +1,6 @@
 {
   "id": "horologium-supercluster",
-  "name": "Horologium–Reticulum Supercluster",
+  "name": "Supercúmulo Horologium-Reticulum",
   "kind": "structure",
   "tagline": "El gran supercúmulo del cielo del sur: una concentración de masa de 700 Mly de profundidad, sólo superada por Shapley.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Abell Catalogue",
-      "Southern Sky Surveys"
-    ]
+    "refs": ["Abell Catalogue", "Southern Sky Surveys"]
   }
 }

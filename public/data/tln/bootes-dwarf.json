@@ -1,6 +1,6 @@
 {
   "id": "bootes-dwarf",
-  "name": "Boötes I Dwarf",
+  "name": "Bootes I Nano",
   "kind": "dwarfGalaxy",
   "tagline": "Il “campione oscuro” – un satellite ultra debole de la Via Lattea distante 197.000 ani luce, scoperto nei dati SDSS nel 2006.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Belokurov et al. 2006",
-      "SDSS"
-    ]
+    "refs": ["Belokurov et al. 2006", "SDSS"]
   }
 }

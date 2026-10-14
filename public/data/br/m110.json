@@ -1,6 +1,6 @@
 {
   "id": "m110",
-  "name": "Mais Messier 110",
+  "name": "Messier 110",
   "kind": "dwarfGalaxy",
   "tagline": "O segundo satélite brilhante de Andrômeda - um anão elíptico contendo estruturas empoeiradas e seus próprios aglomerados globulares.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "br",
-    "refs": [
-      "NASA/ESA",
-      "Messier Catalogue"
-    ]
+    "refs": ["NASA/ESA", "Messier Catalogue"]
   }
 }

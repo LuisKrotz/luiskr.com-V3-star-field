@@ -1,6 +1,6 @@
 {
   "id": "uma-1-dwarf",
-  "name": "Ursa Major I Dwarf",
+  "name": "Osa Mayor I Enana",
   "kind": "dwarfGalaxy",
   "tagline": "Un satélite ultra débil de la Vía Láctea encontrado por SDSS: un escaparate de dominación de la materia oscura en el borde de la formación de galaxias.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "cas",
-    "refs": [
-      "Willman et al. 2005",
-      "SDSS"
-    ]
+    "refs": ["Willman et al. 2005", "SDSS"]
   }
 }

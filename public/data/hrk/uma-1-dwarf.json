@@ -1,6 +1,6 @@
 {
   "id": "uma-1-dwarf",
-  "name": "Ursa Major I Dwarf",
+  "name": "Ursa Major I Zwerg",
   "kind": "dwarfGalaxy",
   "tagline": "Ein ultralichtschwacher Milchstraßensatellit, der vun SDSS gefunden wurde – en Vorzeigemodell der Vorherrschaft der Dunklen Materie am Rande der Galaxienentstehung.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Willman et al. 2005",
-      "SDSS"
-    ]
+    "refs": ["Willman et al. 2005", "SDSS"]
   }
 }

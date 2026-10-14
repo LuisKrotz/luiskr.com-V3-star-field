@@ -1,6 +1,6 @@
 {
   "id": "shapley-supercluster",
-  "name": "Shapley Supercluster",
+  "name": "Shapley-Superhaufen",
   "kind": "structure",
   "tagline": "Die Shapley-Konzentration – der schwerste Superhaufen in der Nähe, ca. 650 Mio. Lichtjahre entfernt, mit ca. 8.000 Galaxien.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Shapley 1930",
-      "ROSAT"
-    ]
+    "refs": ["Shapley 1930", "ROSAT"]
   }
 }

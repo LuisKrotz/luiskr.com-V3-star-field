@@ -1,6 +1,6 @@
 {
   "id": "coma-supercluster",
-  "name": "Coma Supercluster",
+  "name": "Coma-Superhaufen",
   "kind": "structure",
   "tagline": "Der nächste reiche Superhaufen – zwei Riesenhaufen auf em gemeinsamen Filament, etwa 321 Millionen Lichtjahre entfernt.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "hrk",
-    "refs": [
-      "Zwicky 1933",
-      "NASA"
-    ]
+    "refs": ["Zwicky 1933", "NASA"]
   }
 }

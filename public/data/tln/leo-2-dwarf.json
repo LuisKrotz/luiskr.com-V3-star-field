@@ -1,6 +1,6 @@
 {
   "id": "leo-2-dwarf",
-  "name": "Leo II Dwarf",
+  "name": "Leone II Nano",
   "kind": "dwarfGalaxy",
   "tagline": "Uno sferoide distante 690.000 ani luce dalla Via Lattea, anch'esso catalogato come Leone B, accoppiato co Leone I sul lato opposto de l'alone.",
   "facts": [
@@ -27,9 +27,6 @@
     "acquired": "2026-10-09",
     "translated": "2026-10-10",
     "locale": "tln",
-    "refs": [
-      "Harrington & Wilson 1950",
-      "Gaia"
-    ]
+    "refs": ["Harrington & Wilson 1950", "Gaia"]
   }
 }
