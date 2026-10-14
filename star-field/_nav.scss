@@ -128,14 +128,18 @@
   }
 
   // Pinned strip — sticky header + search inside the scrolling panel.
-  // `top: 0` docks it to the scrollport's padding-box top while the
-  // group list scrolls beneath; the negative margins span the strip
-  // across the panel's padding gutters so scrolled items never peek
-  // past its edge, and the opaque chrome (bg + blur) hides them.
-  // Rounded top corners mirror the card's --radius-md silhouette.
+  // The sticky inset applies to the element's MARGIN edge: with the
+  // -3xl top margin that reaches the card edge, `top: 0` would clamp
+  // the margin box flush and leave the border box 3xl below — a bare
+  // band where scrolled items show through. `top: -3xl` cancels the
+  // margin so the border box itself docks at the scrollport top while
+  // the group list scrolls beneath; the negative side margins still
+  // span the strip across the panel's padding gutters so scrolled
+  // items never peek past its edge, and the opaque chrome (bg + blur)
+  // hides them. Rounded top corners mirror the card's --radius-md.
   &-pin {
     position: sticky;
-    top: 0;
+    top: calc(-1 * #{to-rem($space-3xl)});
     z-index: 2;
     margin: calc(-1 * to-rem($space-3xl)) calc(-1 * to-rem($space-xl)) 0;
     padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xs);
