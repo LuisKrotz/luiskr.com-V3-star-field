@@ -11,7 +11,6 @@ import { webglAllowed } from '@core/utils/canvas/webgl-mode.js'
 import { canUseWebGPU } from '@core/browser/detect.js'
 import { devWarn } from '@core/devlog.js'
 import { isIOSDevice } from './ios.js'
-import { isLowPowerMobile } from './mobile.js'
 import type { SFState } from './types.js'
 
 type WebGpuModule = typeof import('three/webgpu')
@@ -34,11 +33,6 @@ export async function initStarRenderer(
   // iOS Safari hard-kills the tab during the GPU boot — take the
   // prebuilt 2D starfield instead of allocating a GL context (ios.ts).
   if (isIOSDevice()) return false
-
-  // Android/low-power devices freeze the main thread through the GPU
-  // boot (mobile Lighthouse reports "LHR failed to render") — same
-  // 2D-fallback path as iOS, detected in mobile.ts.
-  if (isLowPowerMobile()) return false
 
   let useWebGL = true
 
