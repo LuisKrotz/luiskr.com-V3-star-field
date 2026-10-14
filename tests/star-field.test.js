@@ -12,6 +12,7 @@ import path from 'node:path'
 
 import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
+import { SF_NAMES_FILE } from '@core/tokens/starfield/textures.js'
 
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dataDir = path.join(moduleRoot, 'public', 'data')
@@ -42,7 +43,11 @@ describe('star-field module', () => {
   it('catalog bodies each ship an English dossier JSON, and vice versa', async () => {
     const { SF_CATALOG } = await import('../engine/catalog.js')
 
-    const files = new Set(readdirSync(enDir).filter((f) => f.endsWith('.json')))
+    // `names.json` is the locale body-name table, not a dossier — the
+    // catalog↔file parity check skips it.
+    const files = new Set(
+      readdirSync(enDir).filter((f) => f.endsWith('.json') && f !== SF_NAMES_FILE)
+    )
 
     for (const def of SF_CATALOG) {
       expect(files.has(`${def.id}.json`)).toBe(true)
@@ -102,7 +107,9 @@ describe('star-field module', () => {
 
       const dir = path.join(dataDir, loc)
 
-      for (const file of readdirSync(dir).filter((f) => f.endsWith('.json'))) {
+      for (const file of readdirSync(dir).filter(
+        (f) => f.endsWith('.json') && f !== SF_NAMES_FILE
+      )) {
         const dossier = JSON.parse(readFileSync(path.join(dir, file), 'utf8'))
 
         for (const key of DOSSIER_KEYS) {
@@ -110,6 +117,24 @@ describe('star-field module', () => {
         }
 
         expect(dossier.meta?.locale).toBe(loc)
+      }
+    }
+  })
+
+  it('every locale ships a names table mirroring its dossier names', async () => {
+    const { SF_CATALOG } = await import('../engine/catalog.js')
+
+    for (const loc of LOCALE_DIRS) {
+      const names = JSON.parse(readFileSync(path.join(dataDir, loc, SF_NAMES_FILE), 'utf8'))
+
+      for (const def of SF_CATALOG) {
+        const dossier = JSON.parse(readFileSync(path.join(dataDir, loc, `${def.id}.json`), 'utf8'))
+
+        // The navigator rows, tooltips and route segments all read this
+        // table — it must name every dossier-backed body identically to
+        // the dossier itself.
+        expect(typeof names[def.id]).toBe('string')
+        expect(names[def.id]).toBe(dossier.name)
       }
     }
   })

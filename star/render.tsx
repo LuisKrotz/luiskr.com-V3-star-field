@@ -345,7 +345,7 @@ export function renderStarField(host: StarField) {
                         onFocus={() => host._hintBody(def.id)}
                         onBlur={() => host._clearHint()}
                       >
-                        {def.name}
+                        {host._names?.byId.get(def.id) ?? def.name}
                         <span className={SF_CLASSES.SF_NAV_ITEM_META}>
                           {[t[def.kind] || def.kind, def.dist]
                             .filter(Boolean)

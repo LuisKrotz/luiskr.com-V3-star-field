@@ -7,13 +7,28 @@
  */
 import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globals'
 
-import { fetchDossier, loadDossier, prefetchDossier } from '../../star/dossier.js'
+import { fetchBodyNames, fetchDossier, loadDossier, prefetchDossier } from '../../star/dossier.js'
 import { getDevLog, clearDevLog } from '@core/devlog.js'
 import { LOG_LEVELS } from '@core/tokens/data/log.js'
 
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
 const jsonRes = (body) => ({ ok: true, json: async () => body })
+
+const fileFetch = (files, missing = []) =>
+  jest.fn(async (url) => {
+    const u = String(url)
+
+    for (const frag of missing) {
+      if (u.endsWith(frag)) return { ok: false, status: 404 }
+    }
+
+    for (const [frag, body] of Object.entries(files)) {
+      if (u.endsWith(frag)) return jsonRes(body)
+    }
+
+    return { ok: false, status: 404 }
+  })
 
 let origFetch
 
@@ -269,22 +284,78 @@ describe('registry dossier synthesis', () => {
   })
 })
 
-describe('locale dossier fallback', () => {
-  const fileFetch = (files, missing = []) =>
-    jest.fn(async (url) => {
-      const u = String(url)
+describe('locale body names', () => {
+  test('fetchBodyNames builds the id↔slug maps and caches per locale', async () => {
+    globalThis.fetch = fileFetch({ 'zz/names.json': { mars: 'Marte', 'milky-way': 'Via Láctea' } })
 
-      for (const frag of missing) {
-        if (u.endsWith(frag)) return { ok: false, status: 404 }
-      }
+    const first = await fetchBodyNames('zz')
 
-      for (const [frag, body] of Object.entries(files)) {
-        if (u.endsWith(frag)) return jsonRes(body)
-      }
+    expect(first?.byId.get('mars')).toBe('Marte')
+    expect(first?.bySlug.get('marte')).toBe('mars')
+    expect(first?.bySlug.get('via-lactea')).toBe('milky-way')
 
-      return { ok: false, status: 404 }
+    // Second call hits the in-flight/resolved cache — no new request.
+    const fetchMock = globalThis.fetch
+
+    expect(await fetchBodyNames('zz')).toBe(first)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('a missing locale file falls back to the English name table', async () => {
+    const f = fileFetch({ 'en/names.json': { mars: 'Mars' } }, ['qq/names.json'])
+
+    globalThis.fetch = f
+
+    const names = await fetchBodyNames('qq')
+
+    expect(names?.byId.get('mars')).toBe('Mars')
+    expect(
+      f.mock.calls.some((c) => String(c[0]).endsWith('qq/names.json')) &&
+        f.mock.calls.some((c) => String(c[0]).endsWith('en/names.json'))
+    ).toBe(true)
+  })
+
+  test('the English table resolves null directly — no fallback round-trip', async () => {
+    const f = fileFetch({}, ['ww/names.json', 'en/names.json'])
+
+    globalThis.fetch = f
+
+    // 'ww' fetches its file then en's — but an *en* request returns null
+    // without ever asking for a fallback (the `code === LOCALES.EN` arm).
+    // en's file is requested exactly once per names lookup: its own + ww's.
+    await fetchBodyNames('en')
+
+    expect(await fetchBodyNames('ww')).toBeNull()
+    expect(f.mock.calls.filter((c) => String(c[0]).endsWith('en/names.json')).length).toBe(2)
+    expect(f.mock.calls.filter((c) => String(c[0]).endsWith('ww/names.json')).length).toBe(1)
+  })
+
+  test('fetch rejection resolves null through the catch arm', async () => {
+    globalThis.fetch = jest.fn(async () => {
+      throw new Error('offline')
     })
 
+    expect(await fetchBodyNames('yy')).toBeNull()
+  })
+
+  test('degenerate slugs are skipped — empty slugs and collisions', async () => {
+    globalThis.fetch = fileFetch({
+      'kk/names.json': {
+        cyr: 'Марс', // slugifies to '' — skipped entirely
+        'a-1': 'X Y',
+        'a-2': 'X-Y', // slug collides with a-1 — first id wins
+      },
+    })
+
+    const names = await fetchBodyNames('kk')
+
+    expect(names?.byId.get('cyr')).toBe('Марс')
+    expect(names?.bySlug.get('')).toBeUndefined()
+    expect(names?.bySlug.get('x-y')).toBe('a-1')
+  })
+})
+
+describe('locale dossier fallback', () => {
   test('a falsy locale code resolves through the English dossier folder', async () => {
     const body = { id: 'mercury', name: 'Mercury' }
 

@@ -239,6 +239,7 @@ describe('StarField route + interaction tails', () => {
       params: { body: 'star-000000' },
     }
     el._applyDeepLink()
+    await flush(10)
 
     expect(el._selectedId).toBe('star-000000')
 
@@ -703,6 +704,298 @@ describe('StarField route + interaction tails', () => {
     }
     el._updateDom()
     el.$ = origQuery
+
+    unmount(el)
+  })
+
+  test('localized names drive the route segment, search, tip and live text', async () => {
+    origFetch = globalThis.fetch
+    origRoute = router.currentRoute
+    origNavigate = router.handleNavigation
+
+    // 'en/names.json' may already be cached-null from the 404 boots
+    // above — read the table under `de` so the names fetch is a fresh
+    // cache key.
+    globalThis.fetch = jest.fn(async (url) =>
+      String(url).endsWith('/names.json')
+        ? { ok: true, json: async () => ({ mars: 'Marte', 'milky-way': 'Via Láctea' }) }
+        : { ok: false, status: 404 }
+    )
+    router.currentRoute = { ...SF_ROUTE }
+    router.handleNavigation = jest.fn(async () => {})
+
+    const store = (await import('@core/store.js')).default
+    const spy = jest.spyOn(store.getters, 'getLang').mockReturnValue(LOCALES.DE)
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+    await el._namesReady
+
+    expect(el._names?.bySlug.get('marte')).toBe('mars')
+
+    // Write path — the slugified localized name replaces the raw id.
+    el._syncUrl('mars')
+
+    expect(router.handleNavigation).toHaveBeenCalledWith('/star-field/marte')
+
+    // Echo guard on the localized segment — no re-navigation.
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/marte', params: { body: 'marte' } }
+    router.handleNavigation.mockClear()
+    el._syncUrl('mars')
+
+    expect(router.handleNavigation).not.toHaveBeenCalled()
+
+    // Read path — the localized slug resolves back to the catalog id.
+    el.onRouteParamChange(router.currentRoute)
+
+    expect(el._selectedId).toBe('mars')
+
+    // _resolveBodyParam arms — falsy, raw id, registry id, slug, miss.
+    expect(el._resolveBodyParam(null)).toBeNull()
+    expect(el._resolveBodyParam('venus')).toBe('venus')
+    expect(el._resolveBodyParam('star-000000')).toBe('star-000000')
+    expect(el._resolveBodyParam('via-lactea')).toBe('milky-way')
+    expect(el._resolveBodyParam('nada')).toBeNull()
+
+    // _slugForId arms — slugified name, table miss, empty slug.
+    expect(el._slugForId('mars')).toBe('marte')
+    expect(el._slugForId('jupiter')).toBe('jupiter')
+
+    el._names?.byId.set('cyr-body', 'Марс')
+
+    expect(el._slugForId('cyr-body')).toBe('cyr-body')
+
+    // The localized name participates in search matching; a body absent
+    // from the table exercises the `?? false` arm of the names check.
+    el._search = 'marte'
+
+    expect(el._matchesSearch({ id: 'mars', name: 'X' })).toBe(true)
+
+    el._search = 'zzz'
+
+    expect(el._matchesSearch({ id: 'q9', name: 'Q Nine' })).toBe(false)
+
+    // The hover label + live region speak the localized name.
+    el._selectedId = null
+    el._handleHover('mars')
+    await flush(30)
+
+    const label = el.shadowRoot.querySelector(`.${SF_CLASSES.SF_TIP_LABEL}`)
+
+    expect(label.textContent).toContain('Marte')
+
+    // A names-table entry for a body with no catalog distance — the
+    // `dist ? … : name` arm renders the bare localized name.
+    el._names?.byId.set('quasar-9', 'Quasar Nueve')
+    el._handleHover('quasar-9')
+    await flush(10)
+
+    expect(label.textContent).toBe('Quasar Nueve')
+
+    el._announce('milky-way')
+
+    expect(el._liveText).toBe('Via Láctea')
+
+    spy.mockRestore()
+    unmount(el)
+  })
+
+  test('a pre-fetch localized slug defers resolution until the names table lands', async () => {
+    origFetch = globalThis.fetch
+    origRoute = router.currentRoute
+    origNavigate = router.handleNavigation
+
+    globalThis.fetch = jest.fn(async () => ({ ok: false, status: 404 }))
+    router.currentRoute = { ...SF_ROUTE }
+    router.handleNavigation = jest.fn(async () => {})
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    // names.json 404'd during boot — _names stayed null. Re-arm a
+    // pending table to drive the deferred-resolve arm: the param can't
+    // resolve now but must select once the fetch settles.
+    let releaseNames
+
+    el._names = null
+    el._namesReady = new Promise((resolve) => {
+      releaseNames = () => {
+        el._names = {
+          byId: new Map([['mars', 'Marte']]),
+          bySlug: new Map([['marte', 'mars']]),
+        }
+        resolve()
+      }
+    })
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/marte', params: { body: 'marte' } }
+    el.onRouteParamChange(router.currentRoute)
+
+    expect(el._selectedId).not.toBe('mars')
+
+    releaseNames()
+    await flush(10)
+
+    expect(el._selectedId).toBe('mars')
+
+    // Deferred resolve that still misses — the `id &&` guard keeps the
+    // current selection instead of clearing it.
+    el._names = null
+    el._namesReady = Promise.resolve()
+    el._selectedId = 'venus'
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/xyz', params: { body: 'xyz' } }
+    el.onRouteParamChange(router.currentRoute)
+    await flush(10)
+
+    expect(el._selectedId).toBe('venus')
+
+    // Unresolvable with the table already loaded — the `!this._names`
+    // false arm falls straight through, selection kept.
+    el._names = { byId: new Map(), bySlug: new Map() }
+    el.onRouteParamChange(router.currentRoute)
+
+    expect(el._selectedId).toBe('venus')
+
+    unmount(el)
+  })
+
+  test('_loadBodyNames re-syncs an open selection and _applyDeepLink guards', async () => {
+    origFetch = globalThis.fetch
+    origRoute = router.currentRoute
+    origNavigate = router.handleNavigation
+
+    globalThis.fetch = jest.fn(async (url) =>
+      String(url).endsWith('/names.json')
+        ? { ok: true, json: async () => ({ mars: 'Marte' }) }
+        : { ok: false, status: 404 }
+    )
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/mars', params: { body: 'mars' } }
+    router.handleNavigation = jest.fn(async () => {})
+
+    const store = (await import('@core/store.js')).default
+    const spy = jest.spyOn(store.getters, 'getLang').mockReturnValue(LOCALES.RU)
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    // Selection live while a names table lands — the loader re-syncs the
+    // URL to the localized segment (the `_selectedId` truthy arm).
+    el._selectedId = 'mars'
+    el._loadBodyNames()
+    await el._namesReady
+
+    expect(router.handleNavigation).toHaveBeenCalledWith('/star-field/marte')
+
+    // _applyDeepLink: localized slug resolves via the deferred names
+    // promise; a repeat run with the same selection hits the `!==`
+    // false arm; an unknown segment degrades to the Sun.
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/marte', params: { body: 'marte' } }
+    el._selectedId = null
+    el._applyDeepLink()
+    await flush(10)
+
+    expect(el._selectedId).toBe('mars')
+
+    const selSpy = jest.spyOn(el, '_selectBody')
+
+    el._applyDeepLink()
+    await flush(10)
+
+    expect(selSpy).not.toHaveBeenCalled()
+
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/zzz', params: { body: 'zzz' } }
+    el._applyDeepLink()
+    await flush(10)
+
+    expect(el._selectedId).toBe('sun')
+
+    spy.mockRestore()
+    unmount(el)
+  })
+
+  test('_selectBody survives a missing engine and an unloaded names table', async () => {
+    origFetch = globalThis.fetch
+    origRoute = router.currentRoute
+    origNavigate = router.handleNavigation
+
+    globalThis.fetch = jest.fn(async () => ({ ok: false, status: 404 }))
+    router.currentRoute = { ...SF_ROUTE }
+    router.handleNavigation = jest.fn(async () => {})
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    const eng = el._engine
+    const names = el._names
+
+    // Engine torn down + names table still null — the `?.` nullish arms
+    // on `selectBody`/`_names.byId` and the `?? ''` live-text tail (a
+    // registry id has no catalog-name entry at all).
+    el._engine = null
+    el._names = null
+    el._selectBody('star-000000')
+
+    expect(el._liveText).toBe('')
+
+    // Route change with no body param and no open selection — the
+    // `!body && this._selectedId` else-arm (nothing to close).
+    el._selectedId = null
+    el.onRouteParamChange({ ...SF_ROUTE })
+
+    expect(el._selectedId).toBeNull()
+
+    el._engine = eng
+    el._names = names
+
+    unmount(el)
+  })
+
+  test('a non-array _regRecords carrier spreads through the iterator arm', async () => {
+    origFetch = globalThis.fetch
+    origRoute = router.currentRoute
+    origNavigate = router.handleNavigation
+
+    globalThis.fetch = jest.fn(async (url) => {
+      const u = String(url)
+
+      if (u.endsWith('manifest.json'))
+        return {
+          ok: true,
+          json: async () => ({
+            total: 1,
+            shardSize: 1000,
+            kinds: { star: { count: 1, shards: ['star-000.json'] } },
+          }),
+        }
+      if (u.endsWith('star-000.json'))
+        return {
+          ok: true,
+          json: async () => [{ i: 'star-000000', n: 'Rigil', m: 0, d: 4.3, x: 1, y: 0, z: 0 }],
+        }
+
+      return { ok: false, status: 404 }
+    })
+
+    const el = mount()
+
+    await waitFor(() => el._sfReady === true)
+
+    el._ensureRegistry()
+    await waitFor(() => el._regManifest !== null)
+
+    // A Set in place of the usual array — the `[...list]` spread takes
+    // its generic iterable path instead of the Array.isArray fast path.
+    el._regRecords.set('star', new Set([{ i: 'star-seeded', n: 'Seed', d: 1, x: 0, y: 0, z: 0 }]))
+    el._loadMoreRegistry('star')
+    await flush(30)
+
+    const list = [...el._regRecords.get('star')]
+
+    expect(list.some((r) => r.i === 'star-seeded')).toBe(true)
+    expect(list.some((r) => r.i === 'star-000000')).toBe(true)
 
     unmount(el)
   })
