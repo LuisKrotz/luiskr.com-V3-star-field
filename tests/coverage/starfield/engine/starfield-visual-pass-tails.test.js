@@ -162,9 +162,12 @@ describe('structure shell + volumetric cloud fades', () => {
     // true arm.
     s.nodes.set(
       'mw',
-      makeNode({ radius: 100, spiralDisc: { volumetric: true } }, {
-        children: [{ userData: { volumetric: true }, material: { opacity: 0 } }],
-      })
+      makeNode(
+        { radius: 100, spiralDisc: { volumetric: true } },
+        {
+          children: [{ userData: { volumetric: true }, material: { opacity: 0 } }],
+        }
+      )
     )
 
     // Volumetric cloud with no children → find returns undefined →
@@ -182,6 +185,23 @@ describe('structure shell + volumetric cloud fades', () => {
 
     expect(shell.userData.speckleMat.opacity).toBeGreaterThan(0)
     expect(s.nodes.get('mw').mesh.children[0].material.opacity).toBeGreaterThan(0)
+
+    // Second frame — the `volPoints !== undefined` arm reads the cached
+    // Points handle instead of re-walking mesh.children.
+    tickStar(s, 1)
+
+    expect(s.nodes.get('mw').volPoints).toBe(s.nodes.get('mw').mesh.children[0])
+    expect(s.nodes.get('mw-empty').volPoints).toBeNull()
+
+    // Cached view height drives the angular-size floor — a nonzero
+    // s.viewH covers the first arm of the `||` fallback chain; the
+    // empty canvas box above already exercised the `clientHeight || 0`
+    // arms.
+    s.viewH = 500
+    s.nodes.get('mw').mesh.children[0].material.size = 1
+    tickStar(s, 2)
+
+    expect(s.nodes.get('mw').mesh.children[0].material.size).toBeGreaterThan(0)
 
     raf.mockRestore()
   })

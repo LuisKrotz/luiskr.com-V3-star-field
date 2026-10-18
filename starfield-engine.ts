@@ -257,6 +257,12 @@ export class StarFieldEngine {
       s.animId = null
     }
 
+    if (s.pickRaf !== null) {
+      cancelAnimationFrame(s.pickRaf)
+
+      s.pickRaf = null
+    }
+
     const canvas = s.canvas
 
     if (canvas) {

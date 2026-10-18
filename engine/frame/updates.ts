@@ -210,8 +210,13 @@ export function updateGalaxyClouds(s: SFState): void {
     // embedded Milky Way reads as a faint band, not an opaque glowing ball.
     const fade = smoothstep(r * 0.25, r * 0.85, dist) ** 2
 
-    const points = node.mesh.children.find((c) => c.userData?.volumetric) as
-      { material?: { opacity?: number; size?: number } } | undefined
+    // Resolved once per node — a `.find` inside the tick allocates its
+    // predicate closure every frame, so the handle parks on the node.
+    if (node.volPoints === undefined) {
+      node.volPoints = node.mesh.children.find((c) => c.userData?.volumetric) ?? null
+    }
+
+    const points = node.volPoints as { material?: { opacity?: number; size?: number } } | null
 
     if (points?.material) {
       // The far gain lifts opacity past VOLUMETRIC_OPACITY once the
@@ -231,7 +236,7 @@ export function updateGalaxyClouds(s: SFState): void {
       // ~1 px: scaling the world size with camera distance reproduces
       // that limit, so the arms stay resolved at galactic range while
       // remaining fine pinpoints from inside the bubble.
-      const viewH = s.canvas?.clientHeight || 0
+      const viewH = s.viewH || s.canvas?.clientHeight || 0
 
       if (points.material.size != null && viewH) {
         const wpp = dist / (viewH * 0.5)
@@ -331,19 +336,36 @@ export function trackHover(s: SFState): void {
 export function updateDayNight(s: SFState): void {
   if (!s.dayNight?.length || !s.sunLight) return
 
-  const sun = { ...anchorWorldPos(s.sunLight as never) }
+  // Scalar copies — anchorWorldPos returns the shared scratch vector,
+  // so each position must be lifted before the next resolve or it is
+  // overwritten; scalars keep the per-frame loop allocation-free where
+  // `{ ...p }` object spreads would churn one object per body.
+  const sp = anchorWorldPos(s.sunLight as never)
+  const sunX = sp.x
+  const sunY = sp.y
+  const sunZ = sp.z
 
   for (const dn of s.dayNight) {
-    // Copy — anchorWorldPos returns the shared scratch vector, so the
-    // body position must be lifted before the light source resolves or
-    // the second call would overwrite the first.
-    const p = { ...anchorWorldPos(dn.anchor as never) }
+    const bp = anchorWorldPos(dn.anchor as never)
+    const px = bp.x
+    const py = bp.y
+    const pz = bp.z
 
     // Light source — galactic planets carry `sun` (their host star's
     // anchor) so the terminator orients to TRAPPIST-1, not our Sun.
-    const src = dn.sun ? { ...anchorWorldPos(dn.sun as never) } : sun
+    let sx = sunX
+    let sy = sunY
+    let sz = sunZ
 
-    dn.dir.set(src.x - p.x, src.y - p.y, src.z - p.z)
+    if (dn.sun) {
+      const hp = anchorWorldPos(dn.sun as never)
+
+      sx = hp.x
+      sy = hp.y
+      sz = hp.z
+    }
+
+    dn.dir.set(sx - px, sy - py, sz - pz)
 
     const len = Math.hypot(dn.dir.x, dn.dir.y, dn.dir.z)
 

@@ -82,14 +82,16 @@ function pickAt(s: SFState, clientX: number, clientY: number): string | null {
 
   if (!rect.width || !rect.height) return null
 
-  const ndc = {
-    x: ((clientX - rect.left) / rect.width) * 2 - 1,
-    y: -((clientY - rect.top) / rect.height) * 2 + 1,
-  }
+  // Pooled NDC vector + raycaster — mutating preallocated objects keeps
+  // the hover tick allocation-free (per-frame GC churn stalls 240Hz).
+  PICK_NDC.x = ((clientX - rect.left) / rect.width) * 2 - 1
+  PICK_NDC.y = -((clientY - rect.top) / rect.height) * 2 + 1
 
-  const raycaster = new RaycasterCtor()
+  if (!sharedRaycaster) sharedRaycaster = new RaycasterCtor()
 
-  raycaster.setFromCamera(ndc, s.camera)
+  sharedRaycaster.setFromCamera(PICK_NDC, s.camera)
+
+  const raycaster = sharedRaycaster
 
   const hits = raycaster.intersectObjects(s.pickables, true) as Array<{
     object: { userData: Record<string, unknown>; parent?: unknown }
@@ -121,6 +123,15 @@ function pickAt(s: SFState, clientX: number, clientY: number): string | null {
   return proxyId
 }
 
+/** Pooled NDC vector reused by every pick — one allocation, ever. */
+const PICK_NDC = { x: 0, y: 0 }
+
+/** Pooled raycaster instance — intersectObjects re-runs on it per frame. */
+let sharedRaycaster: {
+  setFromCamera(ndc: { x: number; y: number }, cam: unknown): void
+  intersectObjects(objs: unknown[], recursive: boolean): unknown
+} | null = null
+
 /** Set by bootstrap — the lazily imported Raycaster class. */
 let RaycasterCtor: new () => {
   setFromCamera(ndc: { x: number; y: number }, cam: unknown): void
@@ -134,6 +145,10 @@ let RaycasterCtor: new () => {
  */
 export function armPicking(Raycaster: typeof RaycasterCtor): void {
   RaycasterCtor = Raycaster
+
+  // Re-arming swaps the class (tests, backend retries) — drop the pooled
+  // instance so the next pick rebuilds from the new constructor.
+  sharedRaycaster = null
 }
 
 /**
@@ -176,28 +191,45 @@ export function bindPicking(s: SFState): void {
   s.onPointerMove = (e: Event) => {
     const pe = e as PointerEvent
 
-    const id = pickAt(s, pe.clientX, pe.clientY)
+    // High-rate input: 1000Hz+ mice deliver several moves per frame —
+    // keep only the freshest coalesced sample (hover needs the last
+    // position), then raycast once per frame on the rAF tick below.
+    const coalesced = pe.getCoalescedEvents?.()
+    const last = coalesced && coalesced.length ? coalesced[coalesced.length - 1] : pe
 
-    // Pickable → glove cursor; empty space → default. The canvas owns
-    // the style so OrbitControls' own cursor rules never fight it.
-    canvas.style.cursor = id ? INPUT_STRINGS.POINTER : CHAR_STRINGS.EMPTY
+    s.pickX = last.clientX
+    s.pickY = last.clientY
 
-    if (id !== s.hoverId) {
-      s.hoverId = id
+    if (s.pickRaf !== null) return
 
-      s.onHover?.(id)
-    }
+    s.pickRaf = requestAnimationFrame(() => {
+      s.pickRaf = null
+
+      if (s.disposed || !canvas.isConnected) return
+
+      const id = pickAt(s, s.pickX, s.pickY)
+
+      // Pickable → glove cursor; empty space → default. The canvas owns
+      // the style so OrbitControls' own cursor rules never fight it.
+      canvas.style.cursor = id ? INPUT_STRINGS.POINTER : CHAR_STRINGS.EMPTY
+
+      if (id !== s.hoverId) {
+        s.hoverId = id
+
+        s.onHover?.(id)
+      }
+    })
   }
 
-  canvas.addEventListener(POINTER_EVENTS.POINTERDOWN, s.onPointerDown)
+  canvas.addEventListener(POINTER_EVENTS.POINTERDOWN, s.onPointerDown, { passive: true })
 
-  canvas.addEventListener(POINTER_EVENTS.POINTERUP, s.onPointerUp)
+  canvas.addEventListener(POINTER_EVENTS.POINTERUP, s.onPointerUp, { passive: true })
 
-  canvas.addEventListener(POINTER_EVENTS.POINTERMOVE, s.onPointerMove)
+  canvas.addEventListener(POINTER_EVENTS.POINTERMOVE, s.onPointerMove, { passive: true })
 
   s.onWheel = () => {
     s.fly = null
   }
 
-  canvas.addEventListener(MOUSE_EVENTS.WHEEL, s.onWheel)
+  canvas.addEventListener(MOUSE_EVENTS.WHEEL, s.onWheel, { passive: true })
 }
