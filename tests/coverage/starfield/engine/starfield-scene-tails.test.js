@@ -213,6 +213,20 @@ describe('frame projection + LOD', () => {
 
     expect(p).toEqual({ x: 100, y: 50 })
 
+    // Cached box arm — s.viewW/s.viewH (written by handleStarResize)
+    // take precedence over a live clientWidth/clientHeight read.
+    const cached = {
+      camera: {},
+      canvas: { clientWidth: 200, clientHeight: 100 },
+      viewW: 400,
+      viewH: 200,
+    }
+
+    expect(anchorScreenPos(fakeAnchor({ x: 0, y: 0, z: 0 }), cached)).toEqual({
+      x: 200,
+      y: 100,
+    })
+
     // Behind the camera → null.
     expect(anchorScreenPos(fakeAnchor({ x: 0, y: 0, z: 2 }), s)).toBeNull()
 

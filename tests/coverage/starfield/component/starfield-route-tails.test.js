@@ -764,7 +764,9 @@ describe('StarField route + interaction tails', () => {
 
     el._names?.byId.set('cyr-body', 'Марс')
 
-    expect(el._slugForId('cyr-body')).toBe('cyr-body')
+    // Cyrillic names transliterate to a real slug (not the raw id) —
+    // 'Марс' → 'mars' so deep links stay readable.
+    expect(el._slugForId('cyr-body')).toBe('mars')
 
     // The localized name participates in search matching; a body absent
     // from the table exercises the `?? false` arm of the names check.

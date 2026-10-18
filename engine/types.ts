@@ -572,6 +572,26 @@ export interface SFState {
   onWheel: ((e: Event) => void) | null
   /** last pointer-down position for click-vs-drag discrimination. */
   downXY: { x: number; y: number } | null
+  /**
+   * Pending hover-pick position — the freshest coalesced pointer sample.
+   * High-rate mice (1000Hz+) fire several pointermoves per frame; the
+   * handler only records scalars and the rAF tick raycasts once per
+   * frame against the latest pair, never once per event.
+   */
+  pickX: number
+  pickY: number
+  /** Non-null while a per-frame pick tick is queued — dedupes rAF arms. */
+  pickRaf: number | null
+  /**
+   * Cached canvas box in CSS px — refreshed by `handleStarResize`. The
+   * per-frame projection (`anchorScreenPos`/`worldScreenPos`) and
+   * galaxy-cloud updates read these instead of `clientWidth`/
+   * `clientHeight` so hover tracking and fades never issue a layout
+   * read inside the render loop. 0 = not measured yet (cold path falls
+   * back to a one-time live read).
+   */
+  viewW: number
+  viewH: number
   /** Last tick timestamp for dt-based animation. */
   lastT: number
   /** Elapsed scene time (seconds) — drives orbits/spins. */
@@ -712,6 +732,13 @@ export interface SFNode {
    * beyond the detail distance so far bodies draw as one primitive.
    */
   detail?: THREE_NS.Object3D[]
+  /**
+   * Volumetric-galaxy Points cache — `updateGalaxyClouds` resolves the
+   * `userData.volumetric` child once and parks the handle here so the
+   * per-frame fade never re-walks `mesh.children` (a `.find` call
+   * allocates its predicate closure every frame otherwise).
+   */
+  volPoints?: THREE_NS.Object3D | null
   /**
    * Star corona sprite — the seeded streamer texture from
    * `procedural.coronaFor`; updateFx rotates `material.rotation` and

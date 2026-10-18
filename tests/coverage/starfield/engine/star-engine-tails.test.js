@@ -833,7 +833,45 @@ describe('picking', () => {
     expect(s.fly).toBeNull()
   })
 
-  test('pointermove announces hover transitions once', () => {
+  test('pointermove announces hover transitions once', async () => {
+    const hit = { object: { userData: { [SF_USER_BODY]: 'venus' } } }
+
+    armPicking(makeRaycaster([hit]))
+
+    const canvas = makeCanvas()
+
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 50, height: 50 })
+
+    const s = makeState({
+      canvas,
+      camera: fakeCamera(),
+      pickables: [{}],
+      onHover: jest.fn(),
+    })
+
+    document.body.appendChild(canvas)
+    bindPicking(s)
+
+    const frame = () => new Promise((r) => requestAnimationFrame(r))
+    const move = () =>
+      canvas.dispatchEvent(
+        new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
+      )
+
+    // Two moves inside one frame collapse into a single rAF pick — the
+    // high-rate-input contract (one raycast per frame, not per event).
+    move()
+    move()
+
+    await frame()
+
+    expect(s.onHover).toHaveBeenCalledTimes(1)
+    expect(s.onHover).toHaveBeenCalledWith('venus')
+
+    canvas.remove()
+  })
+
+  test('pickRaf tick skips disposed/detached and reads the last coalesced sample', async () => {
     const hit = { object: { userData: { [SF_USER_BODY]: 'venus' } } }
 
     armPicking(makeRaycaster([hit]))
@@ -851,51 +889,130 @@ describe('picking', () => {
 
     bindPicking(s)
 
-    const move = () =>
+    const frame = () => new Promise((r) => requestAnimationFrame(r))
+    const move = (x, y) =>
       canvas.dispatchEvent(
-        new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
+        new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: x, clientY: y })
       )
 
-    move()
-    move()
+    // Detached canvas → `!canvas.isConnected` arm — the tick fires but
+    // the raycast never runs.
+    move(1, 1)
+
+    await frame()
+
+    expect(s.onHover).not.toHaveBeenCalled()
+    expect(s.pickRaf).toBeNull()
+
+    // Disposed state → `s.disposed` arm — same early return.
+    document.body.appendChild(canvas)
+    s.disposed = true
+    move(1, 1)
+
+    await frame()
+
+    expect(s.onHover).not.toHaveBeenCalled()
+
+    s.disposed = false
+
+    // Coalesced samples — the freshest one feeds the pick. A fake
+    // 1000Hz packet carries two moves; the LAST coordinates land.
+    const packet = new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, {
+      clientX: 1,
+      clientY: 1,
+    })
+
+    packet.getCoalescedEvents = () => [
+      { clientX: 30, clientY: 40 },
+      { clientX: 20, clientY: 10 },
+    ]
+    canvas.dispatchEvent(packet)
+
+    await frame()
+
+    expect(s.pickX).toBe(20)
+    expect(s.pickY).toBe(10)
+    expect(s.onHover).toHaveBeenCalledWith('venus')
+
+    // Same hover result on the next frame → `id === s.hoverId` arm —
+    // onHover is not re-fired.
+    move(2, 2)
+
+    await frame()
 
     expect(s.onHover).toHaveBeenCalledTimes(1)
-    expect(s.onHover).toHaveBeenCalledWith('venus')
+
+    // Empty coalesced list → falls back to the event itself.
+    const solo = new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, {
+      clientX: 3,
+      clientY: 4,
+    })
+
+    solo.getCoalescedEvents = () => []
+    canvas.dispatchEvent(solo)
+
+    expect(s.pickX).toBe(3)
+    expect(s.pickY).toBe(4)
+
+    canvas.remove()
   })
 
-  test('pickAt early-returns — no canvas/camera/pickables, zero rect, empty hits', () => {
+  test('pickAt early-returns — no canvas/camera/pickables, zero rect, empty hits', async () => {
     armPicking(makeRaycaster([]))
 
     const canvas = makeCanvas()
     const s = makeState({ canvas, pickables: [{}], onHover: jest.fn() })
 
     bindPicking(s)
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
-    )
+
+    const frame = () => new Promise((r) => requestAnimationFrame(r))
+    const move = () =>
+      canvas.dispatchEvent(
+        new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
+      )
+
+    // Detached canvas — `!canvas.isConnected` arm.
+    move()
+    await frame()
 
     expect(s.onHover).not.toHaveBeenCalled()
 
-    s.camera = fakeCamera()
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
-    )
+    document.body.appendChild(canvas)
 
+    // No camera — `!s.camera` arm.
+    move()
+    await frame()
+
+    s.camera = fakeCamera()
+
+    // Empty pickables — `!s.pickables.length` arm.
     s.pickables = []
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
-    )
+    move()
+    await frame()
 
     s.pickables = [{}]
-    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 10, height: 10 })
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 1, clientY: 1 })
-    )
 
+    // Zero-sized rect — `!rect.width` / `!rect.height` arms.
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 0, height: 10 })
+    move()
+    await frame()
+
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 10, height: 0 })
+    move()
+    await frame()
+
+    // Real rect, empty raycast hits — hover stays null.
+    canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 10, height: 10 })
+    move()
+    await frame()
+
+    expect(s.onHover).not.toHaveBeenCalled()
     expect(s.hoverId).toBeNull()
+
+    canvas.remove()
   })
 
-  test('pickAt walks up to the tagged ancestor and real hits beat proxies', () => {
+  test('pickAt walks up to the tagged ancestor and real hits beat proxies', async () => {
     // Child hit (ring/cloud) — bodyId lives on the parent mesh.
     const ring = { object: { userData: {}, parent: { userData: { [SF_USER_BODY]: 'saturn' } } } }
     // Oversized proxy bubble — yields to a real-mesh hit down the ray.
@@ -918,20 +1035,27 @@ describe('picking', () => {
       onHover: jest.fn(),
     })
 
+    document.body.appendChild(canvas)
     bindPicking(s)
 
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
-    )
+    const frame = () => new Promise((r) => requestAnimationFrame(r))
+    const move = (x, y) =>
+      canvas.dispatchEvent(
+        new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: x, clientY: y })
+      )
 
     // The proxy is nearer but pluto's real mesh wins.
+    move(5, 5)
+
+    await frame()
+
     expect(s.hoverId).toBe('pluto')
 
     // Proxy + untagged hits only → the proxy id surfaces.
     armPicking(makeRaycaster([ring, orphan]))
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
-    )
+    move(5, 5)
+
+    await frame()
 
     expect(s.hoverId).toBe('saturn')
 
@@ -946,37 +1070,39 @@ describe('picking', () => {
     }
 
     armPicking(makeRaycaster([hidden, pluto]))
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 6, clientY: 6 })
-    )
+    move(6, 6)
+
+    await frame()
 
     expect(s.hoverId).toBe('pluto')
 
     armPicking(makeRaycaster([orphan, proxy]))
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 6, clientY: 6 })
-    )
+    move(6, 6)
+
+    await frame()
 
     expect(s.hoverId).toBe('milky-way')
 
     // Null hit list → `?? []` arm; sparse/object-less entries → falsy arm.
     armPicking(makeRaycaster(null))
     s.hoverId = null
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 7, clientY: 7 })
-    )
+    move(7, 7)
+
+    await frame()
 
     expect(s.hoverId).toBeNull()
 
     armPicking(makeRaycaster([null, { object: null }]))
-    canvas.dispatchEvent(
-      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 8, clientY: 8 })
-    )
+    move(8, 8)
+
+    await frame()
 
     expect(s.hoverId).toBeNull()
+
+    canvas.remove()
   })
 
-  test('pickAt proxy race — the smallest authored radius wins', () => {
+  test('pickAt proxy race — the smallest authored radius wins', async () => {
     // Two proxy bubbles on one ray — the second (larger body) loses the
     // `r < proxyR` compare, covering its else arm.
     const small = { object: { userData: { [SF_USER_BODY]: 'moon', [SF_USER_PROXY]: true } } }
@@ -999,13 +1125,18 @@ describe('picking', () => {
       ]),
     })
 
+    document.body.appendChild(canvas)
     bindPicking(s)
 
     canvas.dispatchEvent(
       new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
     )
 
+    await new Promise((r) => requestAnimationFrame(r))
+
     expect(s.hoverId).toBe('moon')
+
+    canvas.remove()
   })
 })
 

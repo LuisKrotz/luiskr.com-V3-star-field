@@ -100,6 +100,18 @@ describe('worldScreenPos edge-clamped projection', () => {
     expect(p).toEqual({ x: 200, y: 200, edge: false, angle: undefined })
   })
 
+  test('the cached viewW/viewH box wins over a live clientWidth read', () => {
+    armFrame(MockVec3)
+
+    _ndc = { x: 0, y: 0, z: 0 }
+
+    const s = { ...makeState(), viewW: 800, viewH: 200 }
+
+    const p = worldScreenPos({ x: 1, y: 2, z: 3 }, s)
+
+    expect(p).toEqual({ x: 400, y: 100, edge: false, angle: undefined })
+  })
+
   test('behind-camera points mirror through the centre and clamp to the edge', () => {
     armFrame(MockVec3)
 

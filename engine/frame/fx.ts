@@ -95,6 +95,113 @@ function solarWindAt(t: number): number {
 }
 
 /**
+ * One comet-tail layer update — the grain sim for a single `Points`
+ * field (positions/colors rewritten in place on the shared buffers,
+ * instance matrices composed into the pooled scratch). Module-level on
+ * purpose: declaring it inside updateFx would allocate a closure every
+ * frame a comet is live; explicit params keep it monomorphic and
+ * capture-free.
+ * @param pts The tail Points node carrying `userData[SF_USER_GAS]`.
+ * @param s Engine state (camera for the billboard quat, scene `t`).
+ * @param f Comet activity factor 0..1 (tail length/width/opacity scale).
+ * @param windK Solar-wind gain multiplier for the grain column.
+ */
+function updateTail(pts: unknown, s: SFState, f: number, windK: number): void {
+  const p = pts as {
+    userData?: Record<string, GasPts | undefined>
+    material?: { opacity?: number }
+    getWorldQuaternion?: (q: unknown) => unknown
+    setMatrixAt?: (i: number, m: unknown) => void
+  }
+  const ud = p.userData?.[SF_USER_GAS]
+  const n = ud?.phase?.length ?? 0
+
+  if (!ud?.pos || !ud.col || !n) return
+
+  const len = (ud.len ?? 0) * f
+  const sp0 = (ud.spread ?? 0) * (SF_COMET.WID_FLOOR + (1 - SF_COMET.WID_FLOOR) * f)
+  const grow = ud.grow ?? 0
+  const rgb = ud.rgb ?? [1, 1, 1]
+  const psize = ud.psize ?? 1
+
+  /**
+   * Billboard orientation — the quads face the camera in the
+   * node's local frame: `local = nodeWorldQuat⁻¹ · camWorldQuat`.
+   * Without a live camera/renderer (tests) the grain buffers
+   * still update — only the matrix write is skipped.
+   */
+  const cam = s.camera as
+    { quaternion?: QuatLike; getWorldQuaternion?: (q: unknown) => unknown } | null | undefined
+  const camQ = (cam?.getWorldQuaternion?.(_qC) ?? cam?.quaternion) as QuatLike | undefined
+  const node = p as { getWorldQuaternion?: (q: unknown) => QuatLike }
+  let bill: QuatLike | null = null
+
+  if (_mat && _vec && _scl && _qN && camQ && node.getWorldQuaternion && p.setMatrixAt) {
+    bill = node.getWorldQuaternion(_qN).invert().multiply(camQ)
+  }
+
+  for (let i = 0; i < n; i++) {
+    const d = ((ud.phase?.[i] ?? 0) + s.t * (ud.rate?.[i] ?? 0)) % 1
+    const sp = sp0 * (1 + grow * d)
+    const j = i * 3
+    const x = d * len
+    const y =
+      (ud.lat?.[i] ?? 0) * sp +
+      Math.sin(s.t * (ud.wobF?.[i] ?? 0) + (ud.wobP?.[i] ?? 0)) *
+        (ud.wobA?.[i] ?? 0) *
+        SF_COMET.WOB_AMP *
+        sp *
+        (0.25 + 0.75 * d)
+    const z = (ud.latZ?.[i] ?? 0) * sp * SF_COMET.ZFLAT
+
+    ud.pos[j] = x
+    ud.pos[j + 1] = y
+    ud.pos[j + 2] = z
+
+    /**
+     * Envelope — `smoothstep(0, RAMP, d)` ramps fresh grains in
+     * (no pop at the nucleus), `(1−d)^FADE` dissolves them toward
+     * the tip, `dim[i]` spreads per-grain brightness, `windK`
+     * surges the whole column on solar storms, and `GAIN` pushes
+     * overlapping additive grains into saturation so the cloud
+     * fuses into a column.
+     */
+    const rr = Math.min(1, d / SF_COMET.PTS_RAMP)
+    const k =
+      rr *
+      rr *
+      (3 - 2 * rr) *
+      Math.pow(1 - d, SF_COMET.PTS_FADE) *
+      (ud.dim?.[i] ?? 1) *
+      windK *
+      SF_COMET.GAIN
+
+    ud.col[j] = rgb[0] * k
+    ud.col[j + 1] = rgb[1] * k
+    ud.col[j + 2] = rgb[2] * k
+
+    /**
+     * Instance matrix — the grain's quad swells downstream
+     * (`SZ_BASE + SZ_GROW·d`: dispersing gas expands) and carries
+     * the seeded size jitter.
+     */
+    if (bill && _mat && _vec && _scl) {
+      const sz = psize * (ud.sz?.[i] ?? 1) * (SF_COMET.SZ_BASE + SF_COMET.SZ_GROW * d)
+
+      _vec.set(x, y, z)
+      _scl.setScalar(sz)
+      _mat.compose(_vec, bill, _scl)
+      p.setMatrixAt?.(i, _mat)
+    }
+  }
+
+  if (ud.aMat) ud.aMat.needsUpdate = true
+  if (ud.aCol) ud.aCol.needsUpdate = true
+
+  if (p.material?.opacity != null) p.material.opacity = (ud.op ?? 1) * f
+}
+
+/**
  * Ambient life — the small "alive" behaviors on top of the static chart:
  * `pulse` bodies (variable stars, pulsars, flaring cores) breathe via a
  * sine scale oscillation; `cycle` bodies (Earth's glaciation) lerp the
@@ -265,109 +372,14 @@ export function updateFx(s: SFState): void {
         _qC = new T.Quaternion()
       }
 
-      const updateTail = (pts: unknown): void => {
-        const p = pts as {
-          userData?: Record<string, GasPts | undefined>
-          material?: { opacity?: number }
-          getWorldQuaternion?: (q: unknown) => unknown
-          setMatrixAt?: (i: number, m: unknown) => void
-        }
-        const ud = p.userData?.[SF_USER_GAS]
-        const n = ud?.phase?.length ?? 0
-
-        if (!ud?.pos || !ud.col || !n) return
-
-        const len = (ud.len ?? 0) * f
-        const sp0 = (ud.spread ?? 0) * (SF_COMET.WID_FLOOR + (1 - SF_COMET.WID_FLOOR) * f)
-        const grow = ud.grow ?? 0
-        const rgb = ud.rgb ?? [1, 1, 1]
-        const psize = ud.psize ?? 1
-
-        /**
-         * Billboard orientation — the quads face the camera in the
-         * node's local frame: `local = nodeWorldQuat⁻¹ · camWorldQuat`.
-         * Without a live camera/renderer (tests) the grain buffers
-         * still update — only the matrix write is skipped.
-         */
-        const cam = s.camera as
-          { quaternion?: QuatLike; getWorldQuaternion?: (q: unknown) => unknown } | null | undefined
-        const camQ = (cam?.getWorldQuaternion?.(_qC) ?? cam?.quaternion) as QuatLike | undefined
-        const node = p as { getWorldQuaternion?: (q: unknown) => QuatLike }
-        let bill: QuatLike | null = null
-
-        if (_mat && _vec && _scl && _qN && camQ && node.getWorldQuaternion && p.setMatrixAt) {
-          bill = node.getWorldQuaternion(_qN).invert().multiply(camQ)
-        }
-
-        for (let i = 0; i < n; i++) {
-          const d = ((ud.phase?.[i] ?? 0) + s.t * (ud.rate?.[i] ?? 0)) % 1
-          const sp = sp0 * (1 + grow * d)
-          const j = i * 3
-          const x = d * len
-          const y =
-            (ud.lat?.[i] ?? 0) * sp +
-            Math.sin(s.t * (ud.wobF?.[i] ?? 0) + (ud.wobP?.[i] ?? 0)) *
-              (ud.wobA?.[i] ?? 0) *
-              SF_COMET.WOB_AMP *
-              sp *
-              (0.25 + 0.75 * d)
-          const z = (ud.latZ?.[i] ?? 0) * sp * SF_COMET.ZFLAT
-
-          ud.pos[j] = x
-          ud.pos[j + 1] = y
-          ud.pos[j + 2] = z
-
-          /**
-           * Envelope — `smoothstep(0, RAMP, d)` ramps fresh grains in
-           * (no pop at the nucleus), `(1−d)^FADE` dissolves them toward
-           * the tip, `dim[i]` spreads per-grain brightness, `windK`
-           * surges the whole column on solar storms, and `GAIN` pushes
-           * overlapping additive grains into saturation so the cloud
-           * fuses into a column.
-           */
-          const rr = Math.min(1, d / SF_COMET.PTS_RAMP)
-          const k =
-            rr *
-            rr *
-            (3 - 2 * rr) *
-            Math.pow(1 - d, SF_COMET.PTS_FADE) *
-            (ud.dim?.[i] ?? 1) *
-            windK *
-            SF_COMET.GAIN
-
-          ud.col[j] = rgb[0] * k
-          ud.col[j + 1] = rgb[1] * k
-          ud.col[j + 2] = rgb[2] * k
-
-          /**
-           * Instance matrix — the grain's quad swells downstream
-           * (`SZ_BASE + SZ_GROW·d`: dispersing gas expands) and carries
-           * the seeded size jitter.
-           */
-          if (bill && _mat && _vec && _scl) {
-            const sz = psize * (ud.sz?.[i] ?? 1) * (SF_COMET.SZ_BASE + SF_COMET.SZ_GROW * d)
-
-            _vec.set(x, y, z)
-            _scl.setScalar(sz)
-            _mat.compose(_vec, bill, _scl)
-            p.setMatrixAt?.(i, _mat)
-          }
-        }
-
-        if (ud.aMat) ud.aMat.needsUpdate = true
-        if (ud.aCol) ud.aCol.needsUpdate = true
-
-        if (p.material?.opacity != null) p.material.opacity = (ud.op ?? 1) * f
-      }
-
       // Dead tails skip the sim entirely — the clouds are invisible
       // anyway, so the ~640-grain loop is pure waste outside the
       // periapsis window.
       if (live) {
-        updateTail(co.ion)
-        updateTail(co.ionGas)
-        updateTail(co.dust)
-        updateTail(co.dustGas)
+        updateTail(co.ion, s, f, windK)
+        updateTail(co.ionGas, s, f, windK)
+        updateTail(co.dust, s, f, windK)
+        updateTail(co.dustGas, s, f, windK)
       }
 
       // The coma never fully dies — a dormant nucleus still vents a

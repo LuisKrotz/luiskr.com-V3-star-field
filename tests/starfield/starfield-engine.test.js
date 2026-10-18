@@ -10,6 +10,7 @@ import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globa
 import { DEBUG_PARAMS, WEBGL_MODES } from '@core/tokens/strings/debug.js'
 import { STATE_CLASSES } from '@core/tokens/classes/state.js'
 import { HTML_TAGS } from '@core/tokens/elements/html.js'
+import { POINTER_EVENTS } from '@core/tokens/events/dom.js'
 import { StarFieldEngine } from '../../starfield-engine.js'
 import { __setRendererInitDelay } from 'three/webgpu'
 
@@ -259,6 +260,23 @@ describe('StarFieldEngine', () => {
     engine.deselect()
 
     engine.destroy()
+  })
+
+  test('destroy() cancels an armed hover-pick frame', async () => {
+    const canvas = makeCanvas()
+    const engine = new StarFieldEngine(canvas)
+
+    await engine.init()
+
+    canvas.dispatchEvent(
+      new window.PointerEvent(POINTER_EVENTS.POINTERMOVE, { clientX: 5, clientY: 5 })
+    )
+
+    expect(window.__sfDebug.pickRaf).not.toBeNull()
+
+    engine.destroy()
+
+    expect(window.__sfDebug).toBeNull()
   })
 
   test('destroy() releases listeners even before boot', () => {

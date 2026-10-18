@@ -42,8 +42,10 @@ export function anchorScreenPos(
 
   if (ndc.z > 1) return null
 
-  const w = s.canvas.clientWidth
-  const h = s.canvas.clientHeight
+  // Cached resize-measured box; the one-time live read stays only as a
+  // pre-resize fallback so the hot path issues zero layout queries.
+  const w = s.viewW || s.canvas.clientWidth
+  const h = s.viewH || s.canvas.clientHeight
 
   if (!w || !h) return null
 
@@ -90,8 +92,8 @@ export function worldScreenPos(
 
   if (!ndc) return null
 
-  const w = s.canvas.clientWidth
-  const h = s.canvas.clientHeight
+  const w = s.viewW || s.canvas.clientWidth
+  const h = s.viewH || s.canvas.clientHeight
 
   if (!w || !h) return null
 
@@ -223,6 +225,11 @@ export function handleStarResize(s: SFState): void {
   const h = s.canvas.clientHeight || s.canvas.parentElement?.clientHeight || window.innerHeight
 
   if (!w || !h) return
+
+  // Cached box for the per-frame projection paths — they read s.viewW/
+  // s.viewH so hover tracking and fades never touch layout in the loop.
+  s.viewW = w
+  s.viewH = h
 
   s.camera.aspect = w / h
 
