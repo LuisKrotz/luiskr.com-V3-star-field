@@ -315,6 +315,7 @@ export function renderStarField(host: StarField) {
             <input
               className={SF_CLASSES.SF_NAV_SEARCH}
               type={FORM_ATTRS.SEARCH}
+              name={FORM_ATTRS.SEARCH}
               placeholder={t.search}
               aria-label={t.search}
               value={host._search}
