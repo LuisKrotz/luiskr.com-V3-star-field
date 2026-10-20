@@ -42,6 +42,8 @@ import { SF_BODY_IDS, SF_KEYS } from '@core/tokens/starfield/params.js'
 import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
 import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
 import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
+import { applyAnimationDesc } from '@core/utils/a11y/animation-desc.js'
+import { ANIMATION_IDS } from '@core/tokens/data/animation-ids.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
 import { slugify } from '@core/utils/string.js'
 import router from '@core/router/router.js'
@@ -140,6 +142,10 @@ export class StarField extends BaseComponent {
     if (this.shadowRoot && !this.shadowRoot.contains(canvas)) {
       this.shadowRoot?.insertBefore(canvas, this._contentNode)
     }
+
+    // The persistent scene canvas IS the animation — described once it
+    // sits inside the shadow root so the shared node resolves in-tree.
+    applyAnimationDesc(canvas, ANIMATION_IDS.SCENE_3D)
 
     this.shadowRoot?.addEventListener(POINTER_EVENTS.POINTERDOWN, (e: Event) => {
       const target = e.target as HTMLElement | null
