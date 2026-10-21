@@ -11,6 +11,7 @@ import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
 import { isIOSDevice } from '../../engine/ios.js'
 import { initStarRenderer } from '../../engine/renderer-setup.js'
+import { bootstrapStarField } from '../../engine/bootstrap.js'
 import { createStarState } from '../../engine/state.js'
 
 // Representative user agents — one per detection arm. Fixture-only data,
@@ -117,5 +118,16 @@ describe('engine ios — initStarRenderer bail', () => {
     expect(await initStarRenderer(s, SpyRenderer)).toBe(false)
     expect(construct).not.toHaveBeenCalled()
     expect(s.renderer).toBeFalsy()
+  })
+
+  test('bootstrap bails before the module imports — no scene, no renderer', async () => {
+    setUA(UA_IPHONE, 5)
+
+    const s = createStarState(document.createElement(HTML_TAGS.CANVAS))
+
+    await bootstrapStarField(s)
+
+    expect(s.renderer).toBeFalsy()
+    expect(s.scene).toBeFalsy()
   })
 })
