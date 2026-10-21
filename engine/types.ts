@@ -12,6 +12,7 @@ import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js
 import type MeshBasicNodeMaterial from 'three/src/materials/nodes/MeshBasicNodeMaterial.js'
 import type MeshStandardNodeMaterial from 'three/src/materials/nodes/MeshStandardNodeMaterial.js'
 import type { SFRegistryRecord } from './registry.js'
+import type { FrameTimePredictor } from '@core/utils/ml/frame-time.js'
 
 /** The TSL node-graph namespace (compiled to WGSL/GLSL by the renderer). */
 type TslNs = typeof import('three/tsl')
@@ -596,6 +597,10 @@ export interface SFState {
   lastT: number
   /** Elapsed scene time (seconds) — drives orbits/spins. */
   t: number
+  /** ML frame-time predictor — drives adaptive pixel-ratio quality. */
+  predictor: FrameTimePredictor | null
+  /** Last quality applied to the renderer — dedupes setPixelRatio calls. */
+  appliedQuality: number
   /** Camera hover state — last picked body id for the HUD. */
   hoverId: string | null
   /**
