@@ -74,6 +74,8 @@ export function createStarState(canvas: HTMLCanvasElement, events: SFEvents = {}
     viewH: 0,
     lastT: 0,
     t: 0,
+    predictor: null,
+    appliedQuality: 1,
     hoverId: null,
     hint: null,
     selectedId: null,

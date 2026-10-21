@@ -251,6 +251,8 @@ export class StarFieldEngine {
 
     s.disposed = true
 
+    s.predictor?.destroy() // latch inference — post-destroy record() can't re-arm ORT imports
+
     if (s.animId) {
       cancelAnimationFrame(s.animId)
 

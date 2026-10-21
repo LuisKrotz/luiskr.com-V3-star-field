@@ -14,6 +14,7 @@
  *   `frame/fx.ts`      — pulse/cycle/corona ambient-life effects.
  */
 import { SF_MOTION, SF_SPIRAL } from '@core/tokens/starfield/params.js'
+import { FrameTimePredictor } from '@core/utils/ml/frame-time.js'
 import { updateFly } from './fly.js'
 import { devError } from '@core/devlog.js'
 import type { SFState } from './types.js'
@@ -86,6 +87,23 @@ function tickFrame(s: SFState, now?: number): void {
 
   s.lastT = t
   s.t += dt
+
+  // Adaptive quality — the ONNX frametime model predicts the next
+  // frame's cost from the rolling window and steps the pixel-ratio
+  // scale down/up inside its budget thresholds. record() never awaits:
+  // inference lands asynchronously at most once per 30 frames.
+  s.predictor ??= new FrameTimePredictor()
+
+  s.predictor.record(dt * 1000)
+
+  const quality = s.predictor.quality
+
+  if (quality !== s.appliedQuality) {
+    s.appliedQuality = quality
+    ;(s.renderer as { setPixelRatio?(_n: number): void } | null)?.setPixelRatio?.(
+      Math.min(window.devicePixelRatio, 2) * quality
+    )
+  }
 
   for (const node of s.nodes.values()) {
     const def = node.def
