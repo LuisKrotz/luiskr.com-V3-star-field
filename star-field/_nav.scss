@@ -203,6 +203,17 @@
     @include reset-list;
   }
 
+  // Per-object heading wrapper — every catalogued body is a real heading
+  // (h4 under the h3 group title, h5 under h4 registry kinds) so AT
+  // heading-jump lists each object by name. Visual reset: the wrapped
+  // button owns all styling.
+  &-item-heading {
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    display: block;
+  }
+
   &-item {
     @extend %RESETBTN;
 

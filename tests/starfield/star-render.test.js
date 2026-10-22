@@ -95,6 +95,28 @@ describe('star render', () => {
     expect(host._toggleNav).toHaveBeenCalledTimes(2)
   })
 
+  test('every catalogued object is a heading — h4 under the h3 group titles', () => {
+    const host = makeHost({ _navOpen: true })
+    const root = mount(host)
+
+    // Catalog body rows: h4 heading wrapping the button, under the h3 group.
+    const itemHeads = [...root.querySelectorAll(`h4.${SF_CLASSES.SF_NAV_ITEM_HEADING}`)]
+
+    expect(itemHeads.length).toBeGreaterThan(0)
+    expect(
+      itemHeads.every(
+        (hEl) =>
+          hEl.querySelector(`button.${SF_CLASSES.SF_NAV_ITEM}`) && hEl.textContent.trim().length > 0
+      )
+    ).toBe(true)
+
+    // The sun row (id 'sun') is a named heading.
+    const sunHead = itemHeads.find((hEl) => hEl.querySelector('[data-body="sun"]'))
+
+    expect(sunHead).toBeTruthy()
+    expect(sunHead.textContent).toContain('Sun')
+  })
+
   test('nav body buttons route clicks to _selectBody', () => {
     const host = makeHost({ _navOpen: true })
     const root = mount(host)
@@ -206,6 +228,9 @@ describe('navigator hint events', () => {
     const row = [...root.querySelectorAll(`.${SF_CLASSES.SF_NAV_ITEM}`)].find(
       (n) => n.dataset.body === rec.i
     )
+
+    // Registry rows sit under the h4 kind title — each is an h5 heading.
+    expect(row.closest(`h5.${SF_CLASSES.SF_NAV_ITEM_HEADING}`)).toBeTruthy()
 
     expect(row).toBeTruthy()
 

@@ -212,29 +212,36 @@ function RegistryRow({
 
   return (
     <li key={rec.i}>
-      <button
-        className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === rec.i ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
-        type={FORM_ATTRS.BUTTON}
-        aria-label={rec.n}
-        aria-describedby={itemDescId(rec.i)}
-        {...{ [DATA_ATTRS.DATA_BODY]: rec.i }}
-        onClick={() => host._selectBody(rec.i)}
-        onMouseEnter={() => host._hintBody(rec.i, rec)}
-        onMouseLeave={() => host._clearHint()}
-        onFocus={() => host._hintBody(rec.i, rec)}
-        onBlur={() => host._clearHint()}
-      >
-        {rec.n}
-        <span className={SF_CLASSES.SF_NAV_ITEM_META}>
-          {[t[kind] || kind, registryDist(rec.d)].filter(Boolean).join(` ${CHAR_STRINGS.DOT_SEP} `)}
-        </span>
-        {/* Long-desc twin (longdesc-equivalent for a non-img control): the
-            technical one-liner — localized kind · distance · region — read
-            as the button's accessible description. */}
-        <span className={A11Y_CLASSES.SR_ONLY} id={itemDescId(rec.i)}>
-          {techDesc}
-        </span>
-      </button>
+      {/* Heading per registry object — the row sits under the h4 kind
+          title so entries are h5; AT heading-jump lists every catalogued
+          body and the wrapped button stays the activate target. */}
+      <h5 className={SF_CLASSES.SF_NAV_ITEM_HEADING}>
+        <button
+          className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === rec.i ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+          type={FORM_ATTRS.BUTTON}
+          aria-label={rec.n}
+          aria-describedby={itemDescId(rec.i)}
+          {...{ [DATA_ATTRS.DATA_BODY]: rec.i }}
+          onClick={() => host._selectBody(rec.i)}
+          onMouseEnter={() => host._hintBody(rec.i, rec)}
+          onMouseLeave={() => host._clearHint()}
+          onFocus={() => host._hintBody(rec.i, rec)}
+          onBlur={() => host._clearHint()}
+        >
+          {rec.n}
+          <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+            {[t[kind] || kind, registryDist(rec.d)]
+              .filter(Boolean)
+              .join(` ${CHAR_STRINGS.DOT_SEP} `)}
+          </span>
+          {/* Long-desc twin (longdesc-equivalent for a non-img control): the
+              technical one-liner — localized kind · distance · region — read
+              as the button's accessible description. */}
+          <span className={A11Y_CLASSES.SR_ONLY} id={itemDescId(rec.i)}>
+            {techDesc}
+          </span>
+        </button>
+      </h5>
     </li>
   )
 }
@@ -381,32 +388,38 @@ export function renderStarField(host: StarField) {
 
                     return (
                       <li key={def.id}>
-                        <button
-                          className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === def.id ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
-                          type={FORM_ATTRS.BUTTON}
-                          aria-label={bodyName}
-                          aria-describedby={itemDescId(def.id)}
-                          {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
-                          onClick={() => host._selectBody(def.id)}
-                          onMouseEnter={() => host._hintBody(def.id)}
-                          onMouseLeave={() => host._clearHint()}
-                          onFocus={() => host._hintBody(def.id)}
-                          onBlur={() => host._clearHint()}
-                        >
-                          {bodyName}
-                          <span className={SF_CLASSES.SF_NAV_ITEM_META}>
-                            {[t[def.kind] || def.kind, def.dist]
-                              .filter(Boolean)
-                              .join(` ${CHAR_STRINGS.DOT_SEP} `)}
-                          </span>
-                          {/* Long-desc twin — the technical line: localized
-                              kind · distance · region group. */}
-                          <span className={A11Y_CLASSES.SR_ONLY} id={itemDescId(def.id)}>
-                            {[t[def.kind] || def.kind, def.dist, t[groupKey] || groupKey]
-                              .filter(Boolean)
-                              .join(` ${CHAR_STRINGS.DOT_SEP} `)}
-                          </span>
-                        </button>
+                        {/* Heading per charted object — the group title is
+                            h3 so entries are h4; AT heading-jump lists every
+                            body by name and the wrapped button stays the
+                            activate target. */}
+                        <h4 className={SF_CLASSES.SF_NAV_ITEM_HEADING}>
+                          <button
+                            className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === def.id ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+                            type={FORM_ATTRS.BUTTON}
+                            aria-label={bodyName}
+                            aria-describedby={itemDescId(def.id)}
+                            {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
+                            onClick={() => host._selectBody(def.id)}
+                            onMouseEnter={() => host._hintBody(def.id)}
+                            onMouseLeave={() => host._clearHint()}
+                            onFocus={() => host._hintBody(def.id)}
+                            onBlur={() => host._clearHint()}
+                          >
+                            {bodyName}
+                            <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+                              {[t[def.kind] || def.kind, def.dist]
+                                .filter(Boolean)
+                                .join(` ${CHAR_STRINGS.DOT_SEP} `)}
+                            </span>
+                            {/* Long-desc twin — the technical line: localized
+                                kind · distance · region group. */}
+                            <span className={A11Y_CLASSES.SR_ONLY} id={itemDescId(def.id)}>
+                              {[t[def.kind] || def.kind, def.dist, t[groupKey] || groupKey]
+                                .filter(Boolean)
+                                .join(` ${CHAR_STRINGS.DOT_SEP} `)}
+                            </span>
+                          </button>
+                        </h4>
                       </li>
                     )
                   })}
