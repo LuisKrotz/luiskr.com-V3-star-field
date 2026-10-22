@@ -52,85 +52,13 @@
     max-height: 50dvh;
   }
 
-  .#{$_B_SF}-instructions-btn {
-    display: inline-block;
-  }
-
+  // The sheet re-anchors as a full-width bottom sheet — base styles own
+  // the chrome (card, head, keys list); only the geometry is mobile.
   .#{$_B_SF}-instructions-modal {
-    position: absolute;
     left: to-rem($space-md);
     right: to-rem($space-md);
     bottom: to-rem($space-md);
-    z-index: 50;
-    max-height: 40vh;
-    max-height: 40dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: to-rem($space-xl);
-    background: var(--sf-chrome);
-    -webkit-backdrop-filter: blur(to-rem($space-md));
-    backdrop-filter: blur(to-rem($space-md));
-    border: var(--space-hairline) solid var(--sf-line);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card-hover);
-    color: var(--sf-ink);
-    display: flex;
-    flex-direction: column;
-    gap: to-rem($space-md);
-  }
-
-  .#{$_B_SF}-instructions-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .#{$_B_SF}-instructions-title {
-    font-size: to-rem($space-md);
-    font-weight: 300;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--sf-ink-strong);
-    margin: 0;
-  }
-
-  .#{$_B_SF}-instructions-close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-mono);
-    font-size: to-rem($space-lg);
-    line-height: 1;
-    color: var(--sf-ink);
-    background: var(--sf-chrome-2);
-    border: var(--space-hairline) solid var(--sf-line);
-    border-radius: var(--radius-md);
-    padding: to-rem($space-xs) to-rem($space-sm);
-    cursor: pointer;
-    transition:
-      color 0.2s ease,
-      border-color 0.2s ease;
-
-    &:hover,
-    &:focus-visible {
-      color: var(--sf-ink-strong);
-      border-color: var(--sf-ink-2);
-    }
-  }
-
-  .#{$_B_SF}-instructions-body {
-    display: flex;
-    flex-direction: column;
-    gap: to-rem($space-sm);
-  }
-
-  .#{$_B_SF}-instructions-hint,
-  .#{$_B_SF}-instructions-disclaimer {
-    font-size: to-rem($space-md);
-    font-weight: 300;
-    margin: 0;
-    color: var(--sf-ink);
-    line-height: to-rem($space-lg);
+    width: auto;
   }
 
   // The scale disclaimer moves inside the nav drawer on small screens —

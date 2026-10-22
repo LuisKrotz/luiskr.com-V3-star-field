@@ -85,6 +85,28 @@ const _ARROW_DELTAS: Record<string, [number, number]> = {
 }
 
 /**
+ * Printable-key → action shortcut map — `/` opens the navigator with the
+ * catalog search focused, `n` toggles it, `o` flies home, `s` saves a
+ * frame and `i` toggles the instructions sheet. Keys are matched
+ * case-folded and only with no Ctrl/Meta/Alt held so browser and OS
+ * chords pass straight through.
+ */
+const _HOTKEY_ACTIONS: Readonly<Record<string, (host: StarField) => void>> = Object.freeze({
+  [KEYS.SLASH]: (host) => host._focusSearch(),
+  [KEYS.KEY_N]: (host) => host._toggleNav(),
+  [KEYS.KEY_O]: (host) => host._flyHome(),
+  [KEYS.KEY_S]: (host) => host._takeScreenshot(),
+  [KEYS.KEY_I]: (host) => host._toggleInstructions(),
+})
+
+/** Field tags whose focus means a keystroke is typing, not a shortcut. */
+const _TYPING_TAGS: ReadonlySet<string> = new Set([
+  HTML_TAGS.INPUT,
+  HTML_TAGS.TEXTAREA,
+  HTML_TAGS.SELECT,
+])
+
+/**
  * The StarField — a full-viewport explorable star chart.
  */
 export class StarField extends BaseComponent {
@@ -317,9 +339,9 @@ export class StarField extends BaseComponent {
     if (this._onKeyDown) return
 
     this._onKeyDown = (e: Event) => {
-      const key = (e as KeyboardEvent).key
+      const ke = e as KeyboardEvent
 
-      if (key === KEYS.ESCAPE) {
+      if (ke.key === KEYS.ESCAPE) {
         if (this._instructionsOpen) {
           this._closeInstructions()
         } else if (this._selectedId) {
@@ -331,18 +353,64 @@ export class StarField extends BaseComponent {
         return
       }
 
-      const delta = _ARROW_DELTAS[key]
+      const delta = _ARROW_DELTAS[ke.key]
 
-      if (delta && this._engine) {
+      if (delta && this._engine && !this._isTyping()) {
         e.preventDefault()
 
         this._closeInstructions()
 
         this._engine.rotateView(delta[0], delta[1])
+
+        return
       }
+
+      // Single-key shortcuts — skipped when a modifier is held (browser/
+      // OS chords pass through) and while a field in the shadow tree has
+      // focus, so catalog typing never fires a shortcut.
+      if (ke.ctrlKey || ke.metaKey || ke.altKey || this._isTyping()) return
+
+      const action = _HOTKEY_ACTIONS[ke.key.toLowerCase()]
+
+      if (!action) return
+
+      e.preventDefault()
+
+      action(this)
     }
 
     document.addEventListener(KEYBOARD_EVENTS.KEYDOWN, this._onKeyDown)
+  }
+
+  /**
+   * Typing guard — true while the shadow root's focused element is a text
+   * field or editable region, so `/` and the letter shortcuts never steal
+   * input from the catalog search (or any future field).
+   * @returns Whether keystrokes should be treated as typing.
+   */
+  _isTyping(): boolean {
+    const el = this.shadowRoot?.activeElement as HTMLElement | null
+
+    return !!el && (_TYPING_TAGS.has(el.tagName.toLowerCase()) || el.isContentEditable === true)
+  }
+
+  /**
+   * `/` shortcut — opens the navigator drawer (starting the lazy registry
+   * manifest too) and moves focus straight into the catalog search, the
+   * one-gesture path into a targeted body lookup.
+   */
+  _focusSearch() {
+    if (!this._navOpen) {
+      this._navOpen = true
+
+      this._ensureRegistry()
+    }
+
+    this._updateDom()
+
+    const input = this.$(`.${SF_CLASSES.SF_NAV_SEARCH}`) as HTMLInputElement | null
+
+    input?.focus()
   }
 
   /**
