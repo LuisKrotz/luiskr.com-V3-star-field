@@ -8,7 +8,13 @@
 import { describe, test, expect, jest } from '@jest/globals'
 
 import { SF_CLASSES } from '@core/tokens/classes/starfield.js'
+import { A11Y_CLASSES } from '@core/tokens/classes/a11y.js'
 import { ARIA_ATTRS } from '@core/tokens/attrs/aria.js'
+import { ROUTE_PATHS } from '@core/tokens/routes/paths.js'
+import { MOUSE_EVENTS } from '@core/tokens/events/dom.js'
+import { CMS_KEYS } from '@core/tokens/data/cms-keys.js'
+import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
+import { appText } from '@core/locale/ui-text.js'
 import { renderStarField } from '../../star/render.js'
 
 const mount = (host) => {
@@ -41,7 +47,11 @@ const makeHost = (overrides = {}) => ({
   _hintBody: jest.fn(),
   _clearHint: jest.fn(),
   _toggleNav: jest.fn(),
+  _focusSearch: jest.fn(),
   _selectBody: jest.fn(),
+  _baseStarPath: () => ROUTE_PATHS.STAR_FIELD,
+  _slugForId: (id) => id,
+  _names: null,
   _closePanel: jest.fn(),
   _takeScreenshot: jest.fn(),
   _flyHome: jest.fn(),
@@ -191,6 +201,91 @@ describe('star render', () => {
     root.querySelector(`.${SF_CLASSES.SF_PANEL_CLOSE}`).click()
 
     expect(host._closePanel).toHaveBeenCalled()
+  })
+})
+
+describe('semantic index', () => {
+  test('exposes h1, every charted object as a deep-linked heading, and the option menu', () => {
+    const host = makeHost()
+    const root = mount(host)
+
+    // The persistent outline: h1 + one nav landmark + one option section,
+    // always live while the canvas chrome is collapsed.
+    const h1 = root.querySelector('h1')
+
+    expect(h1).toBeTruthy()
+    expect(h1.textContent).toBe(appText(CMS_KEYS.STAR_FIELD))
+
+    const indexNav = root.querySelector(`div.${A11Y_CLASSES.SR_ONLY} > nav`)
+
+    expect(indexNav).toBeTruthy()
+
+    const links = [...indexNav.querySelectorAll('h4 a')]
+
+    expect(links.length).toBeGreaterThan(0)
+
+    const sun = links.find((a) => a.textContent === 'Sun')
+
+    expect(sun.getAttribute('href')).toBe(`${ROUTE_PATHS.STAR_FIELD}/sun`)
+    expect(sun.getAttribute('tabindex')).toBe('-1')
+
+    // Plain click takes the SPA path (select), modified clicks keep the href.
+    sun.dispatchEvent(
+      new window.MouseEvent(MOUSE_EVENTS.CLICK, { bubbles: true, cancelable: true })
+    )
+    expect(host._selectBody).toHaveBeenCalledWith('sun')
+
+    host._selectBody.mockClear()
+    sun.dispatchEvent(
+      new window.MouseEvent(MOUSE_EVENTS.CLICK, {
+        bubbles: true,
+        cancelable: true,
+        ctrlKey: true,
+      })
+    )
+    expect(host._selectBody).not.toHaveBeenCalled()
+
+    // Locale names table loaded — the index shows the localized name.
+    const named = mount(
+      makeHost({ _names: { byId: new Map([['sun', 'Sol']]), bySlug: new Map() } })
+    )
+
+    expect(
+      [...named.querySelectorAll(`div.${A11Y_CLASSES.SR_ONLY} > nav h4 a`)][0].textContent
+    ).toBe('Sol')
+  })
+
+  test('goes inert while the drawer owns the same rows and the options call their handlers', () => {
+    const host = makeHost()
+    const root = mount(host)
+    const indexNav = root.querySelector(`div.${A11Y_CLASSES.SR_ONLY} > nav`)
+
+    expect(indexNav.hasAttribute('inert')).toBe(false)
+
+    const open = mount(makeHost({ _navOpen: true }))
+
+    expect(open.querySelector(`div.${A11Y_CLASSES.SR_ONLY} > nav`).hasAttribute('inert')).toBe(true)
+
+    // Options section = the h2-labelled command menu after the objects nav.
+    const optionButtons = [...root.querySelectorAll(`div.${A11Y_CLASSES.SR_ONLY} > section button`)]
+
+    expect(optionButtons.length).toBe(5)
+
+    optionButtons.forEach((b) => b.click())
+
+    expect(host._toggleNav).toHaveBeenCalled()
+    expect(host._focusSearch).toHaveBeenCalled()
+    expect(host._toggleInstructions).toHaveBeenCalled()
+    expect(host._takeScreenshot).toHaveBeenCalled()
+    expect(host._flyHome).toHaveBeenCalled()
+  })
+
+  test('group labels fall back to the catalog key when the locale string is empty', () => {
+    const root = mount(makeHost({ translations: { [SF_GROUPS.SOLAR]: '' } }))
+    const indexNav = root.querySelector(`div.${A11Y_CLASSES.SR_ONLY} > nav`)
+    const heads = [...indexNav.querySelectorAll('h3')].map((n) => n.textContent)
+
+    expect(heads).toContain(SF_GROUPS.SOLAR)
   })
 })
 

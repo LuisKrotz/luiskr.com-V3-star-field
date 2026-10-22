@@ -9,6 +9,7 @@
 import { describe, test, expect, jest } from '@jest/globals'
 
 import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
+import { ROUTE_PATHS } from '@core/tokens/routes/paths.js'
 
 const mockBody = {
   id: 'mock-body',
@@ -47,11 +48,17 @@ const makeHost = (overrides = {}) =>
       _regSearching: false,
       _loadMoreRegistry: jest.fn(),
       translations: null,
+      _names: null,
+      _instructionsOpen: false,
       _toggleNav: jest.fn(),
+      _focusSearch: jest.fn(),
+      _toggleInstructions: jest.fn(),
       _selectBody: jest.fn(),
       _closePanel: jest.fn(),
       _takeScreenshot: jest.fn(),
       _flyHome: jest.fn(),
+      _baseStarPath: () => ROUTE_PATHS.STAR_FIELD,
+      _slugForId: (id) => id,
     },
     overrides
   )
