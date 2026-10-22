@@ -431,10 +431,13 @@ export function renderStarField(host: StarField) {
       <aside
         className={`${SF_CLASSES.SF_PANEL}${host._selectedId ? ` ${SF_CLASSES.SF_PANEL_OPEN}` : ATTR_VALUES.EMPTY}`}
         aria-live={ARIA_ATTRS.POLITE}
+        aria-labelledby={APP_IDS.SF_PANEL_TITLE}
         inert={!host._selectedId}
       >
         <header className={SF_CLASSES.SF_PANEL_HEAD}>
-          <h2 className={SF_CLASSES.SF_PANEL_TITLE}>{dossier?.name ?? ATTR_VALUES.EMPTY}</h2>
+          <h2 className={SF_CLASSES.SF_PANEL_TITLE} id={APP_IDS.SF_PANEL_TITLE}>
+            {dossier?.name ?? ATTR_VALUES.EMPTY}
+          </h2>
           {dossier && <span className={SF_CLASSES.SF_PANEL_TAG}>{kindLabel}</span>}
           <button
             className={SF_CLASSES.SF_PANEL_CLOSE}
