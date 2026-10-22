@@ -18,6 +18,7 @@ import { TRANSLATION_KEYS } from '@core/tokens/routes/translation-keys.js'
 import { FALLBACK_PAGES } from '@core/locale/fallback.js'
 import { DATA_ATTRS } from '@core/tokens/attrs/data.js'
 import { h, Fragment } from '@core/jsx.js'
+import { isPlainClick } from '@core/utils/dom.js'
 import { appText } from '@core/locale/ui-text.js'
 import { SF_ASSET_BASE } from '@core/tokens/starfield/textures.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
@@ -263,8 +264,83 @@ export function renderStarField(host: StarField) {
 
   const kindLabel = dossier ? t[dossier.kind] || dossier.kind : ATTR_VALUES.EMPTY
 
+  const menuLabel = String(appText(NAV_UI_KEYS.MENU))
+
   return (
     <Fragment>
+      {/* Semantic index — the persistent page outline: h1, the whole
+          star chart as grouped object headings on real deep links, and
+          the view's command menu. sr-only keeps it out of the visual
+          canvas but inside the a11y tree and the DOM, so heading maps,
+          landmark lists, screen readers, crawlers and agents can
+          enumerate every object and option in every chrome state. The
+          objects nav goes inert while the drawer owns the same rows so
+          entries are never announced twice; tabindex -1 keeps the
+          hidden copies out of sequential tab order (the drawer/panel
+          controls are the interactive set). */}
+      <div className={A11Y_CLASSES.SR_ONLY} data-nosnippet>
+        <h1>{t.title}</h1>
+        <nav aria-label={String(t.explore)} inert={host._navOpen}>
+          <h2>{t.explore}</h2>
+          {SF_GROUP_ORDER.map((groupKey) => (
+            <section key={groupKey}>
+              <h3>{t[groupKey] || groupKey}</h3>
+              <ul>
+                {(groups.get(groupKey) ?? []).map((def) => (
+                  <li key={def.id}>
+                    <h4>
+                      {/* Real deep link — `/star-field…/<body-slug>`
+                          selects the object on load, so the index is a
+                          crawlable URL set; plain clicks take the SPA
+                          path (camera fly + dossier) instead. */}
+                      <a
+                        href={`${host._baseStarPath()}${CHAR_STRINGS.SLASH}${host._slugForId(def.id)}`}
+                        tabIndex={CHAR_STRINGS.MINUS_ONE}
+                        onClick={(e: Event) => {
+                          if (!isPlainClick(e)) return
+
+                          e.preventDefault()
+
+                          host._selectBody(def.id)
+                        }}
+                      >
+                        {host._names?.byId.get(def.id) ?? def.name}
+                      </a>
+                    </h4>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </nav>
+        <section aria-label={menuLabel}>
+          <h2>{menuLabel}</h2>
+          <ul>
+            {(
+              [
+                [t.explore, () => host._toggleNav()],
+                [t.search, () => host._focusSearch()],
+                [t.instructions, () => host._toggleInstructions()],
+                [t.screenshot, () => host._takeScreenshot()],
+                [t.overview, () => host._flyHome()],
+              ] as Array<[unknown, () => void]>
+            ).map(([label, action]) => (
+              <li key={String(label)}>
+                <h3>
+                  <button
+                    type={FORM_ATTRS.BUTTON}
+                    tabIndex={CHAR_STRINGS.MINUS_ONE}
+                    onClick={action}
+                  >
+                    {label}
+                  </button>
+                </h3>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
       {/* CSS+2D starfield fallback when the engine can't boot — the canvas
           is painted by fallback-stars.ts (bound from star/boot.ts), never
           a dead framebuffer. */}
