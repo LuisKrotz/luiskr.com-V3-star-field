@@ -79,11 +79,135 @@
   }
 }
 
-// Mobile-only instructions button and modal hidden by default on desktop.
+// Instructions button — an ordinary sf-btn in the actions cluster on
+// every breakpoint (the sheet documents the keyboard map, so it must be
+// reachable by pointer AND discoverable for `i`-key users).
 .#{$_B_SF}-instructions-btn {
-  display: none;
+  display: inline-block;
 }
 
+// Instructions sheet — a floating card pinned above the action cluster
+// on desktop; <768px the mobile partial re-anchors it as a full-width
+// bottom sheet. Only mounted while _instructionsOpen, so no hide state.
 .#{$_B_SF}-instructions-modal {
-  display: none;
+  position: absolute;
+  right: calc(#{to-rem($gap-272)} + #{to-rem($space-md)});
+  bottom: calc(#{to-rem($space-4xl)} + #{to-rem($space-xl)} + #{to-rem($space-md)});
+  z-index: 50;
+  width: min(#{to-rem($space-8xl)}, 92vw);
+  max-height: 40vh;
+  max-height: 40dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: to-rem($space-xl);
+  background: var(--sf-chrome);
+  -webkit-backdrop-filter: blur(to-rem($space-md));
+  backdrop-filter: blur(to-rem($space-md));
+  border: var(--space-hairline) solid var(--sf-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card-hover);
+  color: var(--sf-ink);
+  display: flex;
+  flex-direction: column;
+  gap: to-rem($space-md);
+
+  // Track the site's content gutter at every grid step — same mirror of
+  // %MAXAREA the actions row uses.
+  @include grid-steps() using ($step, $gap, $cols) {
+    right: calc(#{to-rem($gap)} + #{to-rem($space-md)});
+  }
+}
+
+.#{$_B_SF}-instructions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.#{$_B_SF}-instructions-title {
+  font-size: to-rem($space-md);
+  font-weight: 300;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--sf-ink-strong);
+  margin: 0;
+}
+
+.#{$_B_SF}-instructions-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: to-rem($space-lg);
+  line-height: 1;
+  color: var(--sf-ink);
+  background: var(--sf-chrome-2);
+  border: var(--space-hairline) solid var(--sf-line);
+  border-radius: var(--radius-md);
+  padding: to-rem($space-xs) to-rem($space-sm);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--sf-ink-strong);
+    border-color: var(--sf-ink-2);
+  }
+}
+
+.#{$_B_SF}-instructions-body {
+  display: flex;
+  flex-direction: column;
+  gap: to-rem($space-sm);
+}
+
+.#{$_B_SF}-instructions-hint,
+.#{$_B_SF}-instructions-disclaimer {
+  font-size: to-rem($space-md);
+  font-weight: 300;
+  margin: 0;
+  color: var(--sf-ink);
+  line-height: to-rem($space-lg);
+}
+
+// Keyboard-map rows — keycap chip on the left, the action it fires in
+// body ink on the right; a definition list so the pairing is semantic.
+.#{$_B_SF}-instructions-keys {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: to-rem($space-xs);
+  margin: 0;
+}
+
+.#{$_B_SF}-instructions-key {
+  display: flex;
+  align-items: baseline;
+  gap: to-rem($space-sm);
+
+  & dt {
+    flex: 0 0 auto;
+  }
+
+  & dd {
+    margin: 0;
+    font-size: to-rem($space-md);
+    font-weight: 300;
+    color: var(--sf-ink);
+    line-height: to-rem($space-lg);
+  }
+}
+
+.#{$_B_SF}-instructions-keycap {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: to-rem($space-sm);
+  line-height: 1;
+  color: var(--sf-ink-strong);
+  background: var(--sf-chrome-2);
+  border: var(--space-hairline) solid var(--sf-line);
+  border-radius: var(--radius-sm);
+  padding: to-rem($space-xs) to-rem($space-sm);
+  white-space: nowrap;
 }

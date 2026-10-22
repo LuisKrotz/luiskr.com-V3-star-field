@@ -6,6 +6,7 @@
  * real button per body), the lazy dossier info panel, the hover/selection
  * aria-live HUD, and the screenshot/overview action buttons.
  */
+import { A11Y_CLASSES } from '@core/tokens/classes/a11y.js'
 import { ARIA_ATTRS } from '@core/tokens/attrs/aria.js'
 import { ATTR_VALUES } from '@core/tokens/attrs/values.js'
 import { FORM_ATTRS } from '@core/tokens/attrs/form.js'
@@ -20,6 +21,7 @@ import { h, Fragment } from '@core/jsx.js'
 import { appText } from '@core/locale/ui-text.js'
 import { SF_ASSET_BASE } from '@core/tokens/starfield/textures.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
+import { KEYS } from '@core/tokens/primitives.js'
 import { SF_GROUP_ORDER, sfCatalogByGroup } from '../engine/catalog.js'
 import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { registryDist } from './dossier.js'
@@ -32,6 +34,27 @@ const SF_DEFAULTS = FALLBACK_PAGES[TRANSLATION_KEYS.STAR_FIELD] as Record<string
 
 /** Stable aria-controls id for the navigator drawer. */
 const NAV_PANEL_ID = APP_IDS.SF_NAV_PANEL
+
+/** Per-body describedby id — `<prefix><body-id>`, unique per row. */
+const itemDescId = (id: string): string => `${APP_IDS.SF_ITEM_DESC_PREFIX}${id}`
+
+/**
+ * Keyboard-map rows for the instructions sheet — [keycap, localized
+ * action label] pairs mirroring `_HOTKEY_ACTIONS` + the arrow/Escape
+ * bindings in StarField._bindKeys, so the documented map can never
+ * drift from the live handler by more than the pairing in this table.
+ * @param t Locale label map.
+ * @returns Keycap/description row pairs.
+ */
+const shortcutRows = (t: Record<string, unknown>): Array<[string, unknown]> => [
+  [CHAR_STRINGS.ARROW_KEYS, t.keyOrbit],
+  [KEYS.SLASH, t.keySearch],
+  [KEYS.KEY_N.toUpperCase(), t.keyNav],
+  [KEYS.KEY_O.toUpperCase(), t.keyOverview],
+  [KEYS.KEY_S.toUpperCase(), t.keyScreenshot],
+  [KEYS.KEY_I.toUpperCase(), t.keyInstructions],
+  [CHAR_STRINGS.ESC_KEYCAP, t.keyClose],
+]
 
 /** Renders the dossier facts list — one row per {label,value} pair. A
  *  malformed dossier payload renders the rest of the panel instead of
@@ -183,11 +206,17 @@ function RegistryRow({
 }) {
   const kind = rec.i.split('-')[0]
 
+  const techDesc = [t[kind] || kind, registryDist(rec.d), t.catalog]
+    .filter(Boolean)
+    .join(` ${CHAR_STRINGS.DOT_SEP} `)
+
   return (
     <li key={rec.i}>
       <button
         className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === rec.i ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
         type={FORM_ATTRS.BUTTON}
+        aria-label={rec.n}
+        aria-describedby={itemDescId(rec.i)}
         {...{ [DATA_ATTRS.DATA_BODY]: rec.i }}
         onClick={() => host._selectBody(rec.i)}
         onMouseEnter={() => host._hintBody(rec.i, rec)}
@@ -198,6 +227,12 @@ function RegistryRow({
         {rec.n}
         <span className={SF_CLASSES.SF_NAV_ITEM_META}>
           {[t[kind] || kind, registryDist(rec.d)].filter(Boolean).join(` ${CHAR_STRINGS.DOT_SEP} `)}
+        </span>
+        {/* Long-desc twin (longdesc-equivalent for a non-img control): the
+            technical one-liner — localized kind · distance · region — read
+            as the button's accessible description. */}
+        <span className={A11Y_CLASSES.SR_ONLY} id={itemDescId(rec.i)}>
+          {techDesc}
         </span>
       </button>
     </li>
@@ -286,6 +321,7 @@ export function renderStarField(host: StarField) {
         type={FORM_ATTRS.BUTTON}
         aria-expanded={host._navOpen ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
         aria-controls={NAV_PANEL_ID}
+        aria-describedby={APP_IDS.SF_NAV_DESC}
         onClick={() => host._toggleNav()}
       >
         {t.explore}
@@ -294,8 +330,14 @@ export function renderStarField(host: StarField) {
       <nav
         className={`${SF_CLASSES.SF_NAV}${host._navOpen ? ` ${SF_CLASSES.SF_NAV_OPEN}` : ATTR_VALUES.EMPTY}`}
         aria-label={t.explore}
+        aria-describedby={APP_IDS.SF_NAV_DESC}
         role={ARIA_ATTRS.ROLE_NAVIGATION}
       >
+        {/* Drawer's long description — what the catalog is and what picking
+            a row does; announced when the landmark or its toggle is read. */}
+        <span className={A11Y_CLASSES.SR_ONLY} id={APP_IDS.SF_NAV_DESC}>
+          {t.navDesc}
+        </span>
         <div className={SF_CLASSES.SF_NAV_PANEL} id={NAV_PANEL_ID}>
           {/* Pinned strip — the scroll container (.sf-nav-panel) wraps the
               list only, so heading + search stay docked to the top while
@@ -334,27 +376,40 @@ export function renderStarField(host: StarField) {
               <section key={groupKey} className={SF_CLASSES.SF_NAV_GROUP}>
                 <h3 className={SF_CLASSES.SF_NAV_GROUP_TITLE}>{t[groupKey] || groupKey}</h3>
                 <ul className={SF_CLASSES.SF_NAV_LIST}>
-                  {defs.map((def) => (
-                    <li key={def.id}>
-                      <button
-                        className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === def.id ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
-                        type={FORM_ATTRS.BUTTON}
-                        {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
-                        onClick={() => host._selectBody(def.id)}
-                        onMouseEnter={() => host._hintBody(def.id)}
-                        onMouseLeave={() => host._clearHint()}
-                        onFocus={() => host._hintBody(def.id)}
-                        onBlur={() => host._clearHint()}
-                      >
-                        {host._names?.byId.get(def.id) ?? def.name}
-                        <span className={SF_CLASSES.SF_NAV_ITEM_META}>
-                          {[t[def.kind] || def.kind, def.dist]
-                            .filter(Boolean)
-                            .join(` ${CHAR_STRINGS.DOT_SEP} `)}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                  {defs.map((def) => {
+                    const bodyName = host._names?.byId.get(def.id) ?? def.name
+
+                    return (
+                      <li key={def.id}>
+                        <button
+                          className={`${SF_CLASSES.SF_NAV_ITEM}${host._selectedId === def.id ? ` ${SF_CLASSES.SF_NAV_ITEM_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+                          type={FORM_ATTRS.BUTTON}
+                          aria-label={bodyName}
+                          aria-describedby={itemDescId(def.id)}
+                          {...{ [DATA_ATTRS.DATA_BODY]: def.id }}
+                          onClick={() => host._selectBody(def.id)}
+                          onMouseEnter={() => host._hintBody(def.id)}
+                          onMouseLeave={() => host._clearHint()}
+                          onFocus={() => host._hintBody(def.id)}
+                          onBlur={() => host._clearHint()}
+                        >
+                          {bodyName}
+                          <span className={SF_CLASSES.SF_NAV_ITEM_META}>
+                            {[t[def.kind] || def.kind, def.dist]
+                              .filter(Boolean)
+                              .join(` ${CHAR_STRINGS.DOT_SEP} `)}
+                          </span>
+                          {/* Long-desc twin — the technical line: localized
+                              kind · distance · region group. */}
+                          <span className={A11Y_CLASSES.SR_ONLY} id={itemDescId(def.id)}>
+                            {[t[def.kind] || def.kind, def.dist, t[groupKey] || groupKey]
+                              .filter(Boolean)
+                              .join(` ${CHAR_STRINGS.DOT_SEP} `)}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
                 </ul>
               </section>
             )
@@ -432,6 +487,7 @@ export function renderStarField(host: StarField) {
         className={`${SF_CLASSES.SF_PANEL}${host._selectedId ? ` ${SF_CLASSES.SF_PANEL_OPEN}` : ATTR_VALUES.EMPTY}`}
         aria-live={ARIA_ATTRS.POLITE}
         aria-labelledby={APP_IDS.SF_PANEL_TITLE}
+        aria-describedby={APP_IDS.SF_PANEL_TAGLINE}
         inert={!host._selectedId}
       >
         <header className={SF_CLASSES.SF_PANEL_HEAD}>
@@ -452,7 +508,9 @@ export function renderStarField(host: StarField) {
           {host._dossierLoading && <p className={SF_CLASSES.SF_PANEL_LOADING}>{t.loading}</p>}
           {dossier && (
             <Fragment>
-              <p className={SF_CLASSES.SF_PANEL_TAGLINE}>{dossier.tagline}</p>
+              <p className={SF_CLASSES.SF_PANEL_TAGLINE} id={APP_IDS.SF_PANEL_TAGLINE}>
+                {dossier.tagline}
+              </p>
               {renderFacts(dossier)}
               <p className={SF_CLASSES.SF_PANEL_HISTORY}>{dossier.history}</p>
               {renderSections(dossier)}
@@ -496,13 +554,16 @@ export function renderStarField(host: StarField) {
         </button>
       </div>
 
-      {/* Instructions modal (mobile) — auto closes on interaction */}
+      {/* Instructions modal — auto closes on interaction; the same sheet
+          documents the keyboard map so shortcuts are discoverable from
+          the UI, not just the handler. */}
       {host._instructionsOpen && (
         <div
           className={`${SF_CLASSES.SF_INSTRUCTIONS_MODAL} ${SF_CLASSES.SF_INSTRUCTIONS_MODAL_OPEN}`}
           id={APP_IDS.SF_INSTRUCTIONS_PANEL}
           role={ARIA_ATTRS.ROLE_DIALOG}
           aria-label={String(t.instructions)}
+          aria-describedby={APP_IDS.SF_INSTRUCTIONS_HINT}
         >
           <div className={SF_CLASSES.SF_INSTRUCTIONS_HEAD}>
             <span className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{t.instructions}</span>
@@ -516,7 +577,20 @@ export function renderStarField(host: StarField) {
             </button>
           </div>
           <div className={SF_CLASSES.SF_INSTRUCTIONS_BODY}>
-            <p className={SF_CLASSES.SF_INSTRUCTIONS_HINT}>{t.hint}</p>
+            <p className={SF_CLASSES.SF_INSTRUCTIONS_HINT} id={APP_IDS.SF_INSTRUCTIONS_HINT}>
+              {t.hint}
+            </p>
+            <h3 className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{t.shortcuts}</h3>
+            <dl className={SF_CLASSES.SF_INSTRUCTIONS_KEYS}>
+              {shortcutRows(t).map(([keycap, action]) => (
+                <div className={SF_CLASSES.SF_INSTRUCTIONS_KEY} key={keycap}>
+                  <dt>
+                    <kbd className={SF_CLASSES.SF_INSTRUCTIONS_KEYCAP}>{keycap}</kbd>
+                  </dt>
+                  <dd>{action}</dd>
+                </div>
+              ))}
+            </dl>
             <p className={SF_CLASSES.SF_INSTRUCTIONS_DISCLAIMER}>{t.disclaimer}</p>
           </div>
         </div>
