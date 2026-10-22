@@ -126,7 +126,9 @@
 
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: rgba($color-white, 0.4);
+    // 0.7 ≈ #b3b3b3 on the near-black loader backdrop — keeps the ghosted
+    // boot-log look while clearing WCAG AA/AAA for the small caps text.
+    color: rgba($color-white, 0.7);
     margin-bottom: to-rem($space-xs);
   }
 
