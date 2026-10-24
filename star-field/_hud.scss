@@ -28,6 +28,27 @@
   letter-spacing: 0.08em;
 }
 
+// Modality-adaptive copy — pointer/keyboard instructions render only
+// where a fine pointer exists (mouse/trackpad desktops); gesture copy
+// renders only where a coarse pointer exists (touch-first phones and
+// tablets). Hybrids (touch laptops) satisfy both and show every section;
+// sheets scroll when the sections stack.
+.#{$_B_SF}-touch-only {
+  display: none;
+}
+
+@media (any-pointer: coarse) {
+  .#{$_B_SF}-touch-only {
+    display: block;
+  }
+}
+
+@media not all and (any-pointer: fine) {
+  .#{$_B_SF}-pointer-only {
+    display: none;
+  }
+}
+
 .#{$_B_SF}-live {
   @extend .ttl-xs;
 

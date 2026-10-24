@@ -26,7 +26,7 @@ import { KEYS } from '@core/tokens/primitives.js'
 import { SF_GROUP_ORDER, sfCatalogByGroup } from '../engine/catalog.js'
 import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { SF_BADGE } from '@core/tokens/starfield/badge.js'
-import { SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
+import { SF_MUSIC_GLYPHS, SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
 import { DOM_STRINGS } from '@core/tokens/strings/dom.js'
 import { MEDIA_ATTRS } from '@core/tokens/attrs/media.js'
 import { registryDist } from './dossier.js'
@@ -379,9 +379,12 @@ export function renderStarField(host: StarField) {
         </div>
       )}
 
-      {/* HUD — hint + aria-live announcements for hover/selection. */}
+      {/* HUD — modality-adaptive hint (pointer copy under
+          any-pointer:fine, gesture copy under any-pointer:coarse) +
+          aria-live announcements for hover/selection. */}
       <div className={SF_CLASSES.SF_HUD}>
-        <span className={SF_CLASSES.SF_HINT}>{t.hint}</span>
+        <span className={`${SF_CLASSES.SF_HINT} ${SF_CLASSES.SF_POINTER_ONLY}`}>{t.hint}</span>
+        <span className={`${SF_CLASSES.SF_HINT} ${SF_CLASSES.SF_TOUCH_ONLY}`}>{t.hintTouch}</span>
         <span
           className={SF_CLASSES.SF_LIVE}
           role={ARIA_ATTRS.ROLE_STATUS}
@@ -670,31 +673,85 @@ export function renderStarField(host: StarField) {
         </span>
       </a>
 
-      {/* Ambient playlist — a button per track feeding the persistent
-          native <audio> mounted by star/music.ts (play/seek/volume stay
-          the browser's accessible controls; `ended` auto-advances and
-          wraps so the soundtrack chains). Autoplay is suppressed under
-          reduced-motion — AT sessions start silent, press-to-play stays
-          available. */}
-      <div className={SF_CLASSES.SF_MUSIC}>
+      {/* Ambient playlist — collapsed transport bar by default (the
+          desktop card expands its track list on the head button; the
+          mobile bar keeps only play/prev/next/repeat). The persistent
+          native <audio> mounted by star/music.ts keeps the browser's
+          accessible play/seek/volume controls; `ended` auto-advances
+          and wraps so the soundtrack chains — the repeat toggle swaps
+          that advance for a single-track loop. Autoplay is suppressed
+          under reduced-motion — AT sessions start silent, press-to-play
+          stays available. */}
+      <div
+        className={`${SF_CLASSES.SF_MUSIC}${host._musicOpen ? ` ${SF_CLASSES.SF_MUSIC_OPEN}` : ATTR_VALUES.EMPTY}`}
+      >
         <span className={A11Y_CLASSES.SR_ONLY} id={`${SF_CLASSES.SF_MUSIC}-desc`}>
           {t.musicDesc}
         </span>
-        <ul className={SF_CLASSES.SF_MUSIC_LIST} aria-label={t.music}>
-          {SF_MUSIC_TRACKS.map((track, index) => (
-            <li key={track.src}>
-              <button
-                className={`${SF_CLASSES.SF_MUSIC_TRACK}${host._musicIndex === index ? ` ${SF_CLASSES.SF_MUSIC_TRACK_ACTIVE}` : ATTR_VALUES.EMPTY}`}
-                type={FORM_ATTRS.BUTTON}
-                aria-pressed={host._musicIndex === index ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
-                aria-describedby={`${SF_CLASSES.SF_MUSIC}-desc`}
-                onClick={() => host._playMusic(index)}
-              >
-                {track.title}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className={SF_CLASSES.SF_MUSIC_HEAD}>
+          <div className={SF_CLASSES.SF_MUSIC_CONTROLS}>
+            <button
+              className={SF_CLASSES.SF_MUSIC_BTN}
+              type={FORM_ATTRS.BUTTON}
+              aria-label={host._musicPlaying ? t.musicPause : t.musicPlay}
+              aria-describedby={`${SF_CLASSES.SF_MUSIC}-desc`}
+              onClick={() => host._toggleMusicPlay()}
+            >
+              {host._musicPlaying ? SF_MUSIC_GLYPHS.PAUSE : SF_MUSIC_GLYPHS.PLAY}
+            </button>
+            <button
+              className={SF_CLASSES.SF_MUSIC_BTN}
+              type={FORM_ATTRS.BUTTON}
+              aria-label={t.musicPrev}
+              onClick={() => host._prevMusic()}
+            >
+              {SF_MUSIC_GLYPHS.PREV}
+            </button>
+            <button
+              className={SF_CLASSES.SF_MUSIC_BTN}
+              type={FORM_ATTRS.BUTTON}
+              aria-label={t.musicNext}
+              onClick={() => host._nextMusic()}
+            >
+              {SF_MUSIC_GLYPHS.NEXT}
+            </button>
+            <button
+              className={`${SF_CLASSES.SF_MUSIC_BTN}${host._musicRepeat ? ` ${SF_CLASSES.SF_MUSIC_BTN_ON}` : ATTR_VALUES.EMPTY}`}
+              type={FORM_ATTRS.BUTTON}
+              aria-label={t.musicRepeat}
+              aria-pressed={host._musicRepeat ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
+              onClick={() => host._toggleMusicRepeat()}
+            >
+              {SF_MUSIC_GLYPHS.REPEAT}
+            </button>
+          </div>
+          <button
+            className={SF_CLASSES.SF_MUSIC_TOGGLE}
+            type={FORM_ATTRS.BUTTON}
+            aria-expanded={host._musicOpen ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
+            aria-controls={APP_IDS.SF_MUSIC_LIST}
+            onClick={() => host._toggleMusicList()}
+          >
+            {t.music}
+          </button>
+        </div>
+        {host._musicOpen && (
+          <ul className={SF_CLASSES.SF_MUSIC_LIST} id={APP_IDS.SF_MUSIC_LIST} aria-label={t.music}>
+            {SF_MUSIC_TRACKS.map((track, index) => (
+              <li key={track.src}>
+                <button
+                  className={`${SF_CLASSES.SF_MUSIC_TRACK}${host._musicIndex === index ? ` ${SF_CLASSES.SF_MUSIC_TRACK_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+                  type={FORM_ATTRS.BUTTON}
+                  aria-pressed={host._musicIndex === index ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
+                  aria-describedby={`${SF_CLASSES.SF_MUSIC}-desc`}
+                  onClick={() => host._playMusic(index)}
+                >
+                  {track.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Instructions modal — auto closes on interaction; the same sheet
@@ -720,20 +777,30 @@ export function renderStarField(host: StarField) {
             </button>
           </div>
           <div className={SF_CLASSES.SF_INSTRUCTIONS_BODY}>
-            <p className={SF_CLASSES.SF_INSTRUCTIONS_HINT} id={APP_IDS.SF_INSTRUCTIONS_HINT}>
-              {t.hint}
+            {/* Modality-adaptive sections — pointer copy under
+                any-pointer:fine (mouse/trackpad desktops + hybrids),
+                gesture copy under any-pointer:coarse (touch-first
+                phones/tablets); both render on devices that expose
+                both, and the sheet scrolls when sections stack. */}
+            <div className={SF_CLASSES.SF_POINTER_ONLY}>
+              <p className={SF_CLASSES.SF_INSTRUCTIONS_HINT} id={APP_IDS.SF_INSTRUCTIONS_HINT}>
+                {t.hint}
+              </p>
+              <h3 className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{t.shortcuts}</h3>
+              <dl className={SF_CLASSES.SF_INSTRUCTIONS_KEYS}>
+                {shortcutRows(t).map(([keycap, action]) => (
+                  <div className={SF_CLASSES.SF_INSTRUCTIONS_KEY} key={keycap}>
+                    <dt>
+                      <kbd className={SF_CLASSES.SF_INSTRUCTIONS_KEYCAP}>{keycap}</kbd>
+                    </dt>
+                    <dd>{action}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <p className={`${SF_CLASSES.SF_INSTRUCTIONS_HINT} ${SF_CLASSES.SF_TOUCH_ONLY}`}>
+              {t.hintTouch}
             </p>
-            <h3 className={SF_CLASSES.SF_INSTRUCTIONS_TITLE}>{t.shortcuts}</h3>
-            <dl className={SF_CLASSES.SF_INSTRUCTIONS_KEYS}>
-              {shortcutRows(t).map(([keycap, action]) => (
-                <div className={SF_CLASSES.SF_INSTRUCTIONS_KEY} key={keycap}>
-                  <dt>
-                    <kbd className={SF_CLASSES.SF_INSTRUCTIONS_KEYCAP}>{keycap}</kbd>
-                  </dt>
-                  <dd>{action}</dd>
-                </div>
-              ))}
-            </dl>
             <p className={SF_CLASSES.SF_INSTRUCTIONS_DISCLAIMER}>{t.disclaimer}</p>
           </div>
         </div>

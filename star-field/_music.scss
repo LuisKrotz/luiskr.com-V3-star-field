@@ -1,9 +1,10 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  star-field/_music.scss — the ambient playlist card pinned to the left
-//  gutter above the nav toggle: a button per track plus the persistent
-//  native <audio> bar. Glass chrome themed by the --sf-* vars, same
-//  control layer (z-index 30) as the toggle — the dossier/nav sheets and
-//  tooltips always paint above it.
+//  gutter above the nav toggle. Starts COLLAPSED as a transport bar
+//  (play/pause, prev/next, repeat + the playlist title toggle); the head
+//  button expands the track list and the persistent native <audio> bar.
+//  Glass chrome themed by the --sf-* vars, same control layer (z-index 30)
+//  as the toggle — the dossier/nav sheets and tooltips paint above it.
 //  Imported by star-field.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -18,7 +19,7 @@
   flex-direction: column;
   gap: to-rem($space-xs);
   box-sizing: border-box;
-  padding: to-rem($space-md);
+  padding: to-rem($space-xs);
   color: var(--sf-ink);
   background: var(--sf-chrome-2);
   -webkit-backdrop-filter: blur(to-rem($space-xs));
@@ -30,6 +31,84 @@
   // %MAXAREA plus the inner pad the nav toggle and actions cluster use.
   @include grid-steps() using ($step, $gap, $cols) {
     left: calc(#{to-rem($gap)} + #{to-rem($space-md)});
+  }
+
+  // Header row — the transport cluster on the left, the playlist title
+  // toggle on the right; the only visible surface while collapsed.
+  &-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: to-rem($space-sm);
+  }
+
+  // Transport cluster — square icon buttons on the glass chrome.
+  &-controls {
+    display: flex;
+    align-items: center;
+    gap: to-rem($space-2xs);
+  }
+
+  &-btn {
+    @extend %RESETBTN;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: to-rem($space-2xl);
+    height: to-rem($space-2xl);
+    font-family: var(--font-mono);
+    font-size: to-rem($space-lg);
+    line-height: 1;
+    color: var(--sf-ink);
+    background: transparent;
+    border: var(--space-hairline) solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      background 0.2s ease,
+      border-color 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--sf-field-hover);
+    }
+
+    // Repeat-loop engaged — the framed-field marker, same contract as
+    // the active track row.
+    &--on {
+      color: var(--sf-ink-strong);
+      background: var(--sf-field);
+      border-color: var(--sf-line);
+    }
+  }
+
+  // Playlist title — the expand/collapse toggle; reads as a quiet label
+  // with the transport's hover affordance.
+  &-toggle {
+    @extend %RESETBTN;
+
+    @extend .txt-sm;
+
+    padding: to-rem($space-xs) to-rem($space-sm);
+    font-family: var(--font-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sf-ink-2);
+    background: transparent;
+    border: var(--space-hairline) solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      background 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--sf-ink-strong);
+      background: var(--sf-field-hover);
+    }
   }
 
   &-list {
@@ -74,10 +153,11 @@
     }
   }
 
-  // The persistent native player — its height mirrors the earth
-  // playground's audio bar; opacity lifts on hover/focus like the rest
-  // of the glass chrome.
+  // The persistent native player — revealed only while the card is
+  // expanded so the collapsed surface stays a pure transport bar (the
+  // element keeps playing display:none; seek/volume are an expand-away).
   &-audio {
+    display: none;
     width: 100%;
     height: to-rem($space-2xl);
     border-radius: var(--radius-round);
@@ -88,5 +168,9 @@
     &:focus {
       opacity: 1;
     }
+  }
+
+  &--open &-audio {
+    display: block;
   }
 }
