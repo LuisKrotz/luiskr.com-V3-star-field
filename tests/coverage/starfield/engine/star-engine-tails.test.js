@@ -460,6 +460,18 @@ describe('frame helpers', () => {
     }
   })
 
+  test('handleStarResize falls back to full ratio when appliedQuality is unset', () => {
+    const renderer = { setPixelRatio: jest.fn(), setSize: jest.fn() }
+    const s = makeState({ camera: fakeCamera(), renderer })
+
+    // Detached canvas → w/h resolve through the window fallbacks; the
+    // appliedQuality ?? 1 arm only runs when the field is absent.
+    delete s.appliedQuality
+    handleStarResize(s)
+
+    expect(renderer.setPixelRatio).toHaveBeenCalled()
+  })
+
   test('tickStar advances orbits, spins, satellites and renders', () => {
     const s = makeState({
       camera: fakeCamera(),

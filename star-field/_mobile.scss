@@ -67,23 +67,6 @@
     max-height: 50dvh;
   }
 
-  // The scale disclaimer moves inside the nav drawer on small screens —
-  // pinned bottom text plus two action buttons plus the hint was the
-  // cluttered bottom edge; the drawer keeps it one gesture away.
-  .#{$_B_SF}-disclaimer {
-    display: none;
-  }
-
-  .#{$_B_SF}-nav-disclaimer {
-    display: block;
-  }
-
-  .#{$_B_SF}-hud {
-    top: auto;
-    bottom: to-rem($space-4xl);
-    width: 90%;
-  }
-
   // Controls float one pad inside the small-screen frame.
   .#{$_B_SF}-nav-toggle {
     bottom: calc(#{to-rem($space-md)} * 2);

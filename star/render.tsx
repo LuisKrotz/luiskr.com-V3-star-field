@@ -379,12 +379,11 @@ export function renderStarField(host: StarField) {
         </div>
       )}
 
-      {/* HUD — modality-adaptive hint (pointer copy under
-          any-pointer:fine, gesture copy under any-pointer:coarse) +
-          aria-live announcements for hover/selection. */}
+      {/* HUD — the gesture/hint copy lives in the instructions modal
+          (the pinned strip duplicated it over the scene); only the
+          visually-hidden aria-live region remains for hover/selection
+          announcements. */}
       <div className={SF_CLASSES.SF_HUD}>
-        <span className={`${SF_CLASSES.SF_HINT} ${SF_CLASSES.SF_POINTER_ONLY}`}>{t.hint}</span>
-        <span className={`${SF_CLASSES.SF_HINT} ${SF_CLASSES.SF_TOUCH_ONLY}`}>{t.hintTouch}</span>
         <span
           className={SF_CLASSES.SF_LIVE}
           role={ARIA_ATTRS.ROLE_STATUS}
@@ -571,9 +570,9 @@ export function renderStarField(host: StarField) {
             </section>
           )}
 
-          {/* Mobile home for the scale disclaimer — the pinned strip is
-              display:none under 768px so the bottom edge stays clear;
-              the drawer keeps the honesty note one gesture away. */}
+          {/* Scale disclaimer — the drawer's permanent home for the
+              honesty note; the pinned bottom strip overlapped the
+              control row at every width and duplicated this copy. */}
           <p className={SF_CLASSES.SF_NAV_DISCLAIMER}>{t.disclaimer}</p>
         </div>
       </nav>
@@ -619,9 +618,6 @@ export function renderStarField(host: StarField) {
           )}
         </div>
       </aside>
-
-      {/* Scale disclaimer — honesty note pinned to the bottom edge. */}
-      <p className={SF_CLASSES.SF_DISCLAIMER}>{t.disclaimer}</p>
 
       {/* Actions */}
       <div className={SF_CLASSES.SF_ACTIONS}>

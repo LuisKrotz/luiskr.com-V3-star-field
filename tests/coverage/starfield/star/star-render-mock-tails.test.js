@@ -166,7 +166,7 @@ describe('star render tails', () => {
           _sfFailed: true,
           _navOpen: true,
           _dossierLoading: true,
-          translations: { hint: 'hinted' },
+          translations: { disclaimer: 'disclaimed' },
           _dossier: {
             name: 'Mock',
             kind: 'planet',
@@ -178,6 +178,6 @@ describe('star render tails', () => {
       )
     )
 
-    expect(flat).toContain('hinted')
+    expect(flat).toContain('disclaimed')
   })
 })

@@ -1,7 +1,8 @@
 // ════════════════════════════════════════════════════════════════════════════
-//  star-field/_hud.scss — the HUD cluster: keyboard hint, aria-live
-//  announcements, and the hover tooltip (leader line + `{name} · {dist}`
-//  label) pinned to the picked body's projected screen position.
+//  star-field/_hud.scss — the HUD cluster: the visually-hidden aria-live
+//  region, modality-adaptive copy helpers, and the hover tooltip (leader
+//  line + `{name} · {dist}` label) pinned to the picked body's projected
+//  screen position.
 //  Imported by star-field.scss (manifest) — not compiled standalone.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -18,14 +19,6 @@
   gap: to-rem($space-2xs);
   pointer-events: none;
   text-align: center;
-}
-
-.#{$_B_SF}-hint {
-  @extend .txt-sm;
-
-  // Paints straight on deep space — sky ink never themes with the chrome.
-  color: var(--sf-sky-ink);
-  letter-spacing: 0.08em;
 }
 
 // Modality-adaptive copy — pointer/keyboard instructions render only
@@ -49,34 +42,13 @@
   }
 }
 
+// Live announcements — visually hidden (the `.sr-only-alpha` contract:
+// absolute + zero opacity keeps the node in the accessibility tree and
+// the polite announcements flowing while nothing paints over the scene).
 .#{$_B_SF}-live {
-  @extend .ttl-xs;
-
-  color: var(--sf-sky-ink-2);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  min-height: to-rem($space-lg);
-}
-
-// Scale disclaimer — the honesty strip pinned to the bottom edge between
-// the nav toggle and action cluster. One row, muted, non-interactive.
-.#{$_B_SF}-disclaimer {
-  @extend .txt-sm;
-
   position: absolute;
-  // Sits one pad above the framed viewport's lower edge — the same line
-  // the nav toggle and action buttons hang from.
-  bottom: calc(#{to-rem($space-xl)} + #{to-rem($space-md)});
-  left: 50%;
-  translate: -50% 0;
-  z-index: 20;
-  margin: 0;
-  max-width: 72vw;
+  opacity: 0;
   pointer-events: none;
-  text-align: center;
-  color: var(--sf-sky-ink);
-  letter-spacing: 0.04em;
-  opacity: 0.7;
 }
 
 // The root is a zero-size anchor translated by JS onto the body's projected

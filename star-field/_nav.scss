@@ -272,13 +272,13 @@
   margin-top: to-rem($space-2xs);
 }
 
-// In-drawer scale disclaimer — hidden on desktop where the pinned strip
-// carries it; _mobile.scss flips it on so the text lives in the sheet
-// instead of cluttering the bottom chrome.
+// In-drawer scale disclaimer — the honesty note's only pinned home (the
+// floating bottom strip overlapped the control row at every width, so
+// the drawer carries it permanently at all breakpoints).
 .#{$_B_SF}-nav-disclaimer {
   @extend .txt-xs;
 
-  display: none;
+  display: block;
   font-weight: 400;
   color: var(--sf-ink-3);
   line-height: 1.75;
