@@ -237,7 +237,7 @@ export function handleStarResize(s: SFState): void {
 
   const r = s.renderer as { setPixelRatio?(n: number): void; setSize?(w: number, h: number): void }
 
-  r.setPixelRatio?.(Math.min(window.devicePixelRatio, 2))
+  r.setPixelRatio?.(Math.min(window.devicePixelRatio, 2) * (s.appliedQuality ?? 1))
 
   r.setSize?.(w, h)
 }

@@ -90,20 +90,46 @@
     left: calc(#{to-rem($space-md)} * 2);
   }
 
-  // Playlist — a pure transport bar on small screens: the track list,
-  // its toggle and the native audio bar stay off the footer row (the
-  // controls cluster carries play/prev/next/repeat; playback continues
-  // while the element is hidden).
+  // Playlist — parked under the showcase badge on small screens so the
+  // card can never overlap the footer controls (nav-toggle + actions
+  // cluster). The Music toggle and track list stay available here: the
+  // card is TOP-anchored, so the open list expands downward and never
+  // reaches the bottom chrome. The native audio bar stays hidden —
+  // playback continues while the element is display:none.
   .#{$_B_SF}-music {
-    left: calc(#{to-rem($space-md)} * 2);
-    bottom: calc(#{to-rem($space-md)} * 2 + #{to-rem($space-2xl)} + #{to-rem($space-md)});
+    // Badge top (nav row + logo row) + badge height (vertical pad ×2 +
+    // logo) + one pad of air below the chip.
+    top: calc(
+      var(--space-lg) + #{to-rem($space-2xl)} + #{to-rem($space-sm)} * 2 + #{to-rem($space-xl)} +
+        #{to-rem($space-md)}
+    );
+    bottom: auto;
+    left: to-rem($gap-272);
     width: auto;
+    max-width: 66vw;
     padding: to-rem($space-2xs);
 
-    &-list,
-    &-toggle,
+    // Same gutter ladder as the badge — the iteration stops at the 768
+    // step so this media block emits no unreachable min-width queries.
+    @each $step, $gap in $grid-steps {
+      @if $step > 272 and $step <= 768 {
+        @media (min-width: #{$step - 1}px) {
+          left: to-rem($gap);
+        }
+      }
+    }
+
     &-audio {
       display: none;
+    }
+
+    // Downward-opening list — scrollable sheet capped like the other
+    // small-screen panels so a long playlist can't flood the viewport.
+    &-list {
+      max-height: 40vh;
+      max-height: 40dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
   }
 

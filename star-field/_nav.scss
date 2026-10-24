@@ -137,12 +137,15 @@
   // span the strip across the panel's padding gutters so scrolled
   // items never peek past its edge, and the opaque chrome (bg + blur)
   // hides them. Rounded top corners mirror the card's --radius-md.
+  // Only the strip's top pad stays small — the panel's own 3xl pad
+  // already sits ABOVE the strip, so repeating it inside would paint
+  // a dead band over the heading row.
   &-pin {
     position: sticky;
     top: calc(-1 * #{to-rem($space-3xl)});
     z-index: 2;
     margin: calc(-1 * to-rem($space-3xl)) calc(-1 * to-rem($space-xl)) 0;
-    padding: to-rem($space-3xl) to-rem($space-xl) to-rem($space-xs);
+    padding: to-rem($space-md) to-rem($space-xl) to-rem($space-xs);
     background: var(--sf-chrome);
     -webkit-backdrop-filter: blur(to-rem($space-md));
     backdrop-filter: blur(to-rem($space-md));
