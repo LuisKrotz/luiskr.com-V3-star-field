@@ -15,7 +15,7 @@ import { MOUSE_EVENTS } from '@core/tokens/events/dom.js'
 import { CMS_KEYS } from '@core/tokens/data/cms-keys.js'
 import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 import { SF_BADGE } from '@core/tokens/starfield/badge.js'
-import { SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
+import { SF_MUSIC_GLYPHS, SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
 import { ATTR_VALUES } from '@core/tokens/attrs/values.js'
 import { DOM_STRINGS } from '@core/tokens/strings/dom.js'
 import { appText } from '@core/locale/ui-text.js'
@@ -57,7 +57,15 @@ const makeHost = (overrides = {}) => ({
   _slugForId: (id) => id,
   _names: null,
   _musicIndex: 0,
+  _musicOpen: false,
+  _musicRepeat: false,
+  _musicPlaying: false,
   _playMusic: jest.fn(),
+  _prevMusic: jest.fn(),
+  _nextMusic: jest.fn(),
+  _toggleMusicPlay: jest.fn(),
+  _toggleMusicRepeat: jest.fn(),
+  _toggleMusicList: jest.fn(),
   _closePanel: jest.fn(),
   _takeScreenshot: jest.fn(),
   _flyHome: jest.fn(),
@@ -422,9 +430,64 @@ describe('navigator hint events', () => {
     )
   })
 
-  test('the playlist lists every track, marks the loaded one, and routes picks to _playMusic', () => {
+  test('the playlist starts collapsed — a transport bar with the list folded away', () => {
     const host = makeHost({ _musicIndex: 0 })
     const root = mount(host)
+
+    // Collapsed default — the transport row + title toggle are up, the
+    // track list stays unmounted.
+    expect(root.querySelector(`.${SF_CLASSES.SF_MUSIC_LIST}`)).toBeNull()
+    expect(root.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_BTN}`)).toHaveLength(4)
+    expect(root.querySelector(`.${SF_CLASSES.SF_MUSIC}`).className).not.toContain(
+      SF_CLASSES.SF_MUSIC_OPEN
+    )
+
+    const toggle = root.querySelector(`.${SF_CLASSES.SF_MUSIC_TOGGLE}`)
+
+    expect(toggle.getAttribute(ARIA_ATTRS.ARIA_EXPANDED)).toBe(ATTR_VALUES.FALSE)
+
+    toggle.click()
+
+    expect(host._toggleMusicList).toHaveBeenCalled()
+  })
+
+  test('the transport row routes play/prev/next/repeat to the host', () => {
+    const host = makeHost()
+    const root = mount(host)
+    const btns = root.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_BTN}`)
+
+    btns[0].click()
+    btns[1].click()
+    btns[2].click()
+    btns[3].click()
+
+    expect(host._toggleMusicPlay).toHaveBeenCalledTimes(1)
+    expect(host._prevMusic).toHaveBeenCalledTimes(1)
+    expect(host._nextMusic).toHaveBeenCalledTimes(1)
+    expect(host._toggleMusicRepeat).toHaveBeenCalledTimes(1)
+  })
+
+  test('the playing and repeat states repaint the transport glyphs and pressed state', () => {
+    const host = makeHost({ _musicPlaying: true, _musicRepeat: true })
+    const root = mount(host)
+    const btns = root.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_BTN}`)
+
+    // Playing — the play button shows the pause glyph.
+    expect(btns[0].textContent).toBe(SF_MUSIC_GLYPHS.PAUSE)
+
+    // Repeat engaged — the on-state class + aria-pressed.
+    expect(btns[3].classList.contains(SF_CLASSES.SF_MUSIC_BTN_ON)).toBe(true)
+    expect(btns[3].getAttribute(ARIA_ATTRS.ARIA_PRESSED)).toBe(ATTR_VALUES.TRUE)
+  })
+
+  test('the expanded playlist lists every track, marks the loaded one, and routes picks', () => {
+    const host = makeHost({ _musicIndex: 0, _musicOpen: true })
+    const root = mount(host)
+
+    expect(root.querySelector(`.${SF_CLASSES.SF_MUSIC}`).className).toContain(
+      SF_CLASSES.SF_MUSIC_OPEN
+    )
+
     const tracks = root.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_TRACK}`)
 
     expect(tracks).toHaveLength(SF_MUSIC_TRACKS.length)

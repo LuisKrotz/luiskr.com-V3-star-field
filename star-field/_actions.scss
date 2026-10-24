@@ -165,11 +165,11 @@
 
 .#{$_B_SF}-instructions-hint,
 .#{$_B_SF}-instructions-disclaimer {
-  font-size: to-rem($space-md);
+  font-size: to-rem($space-lg);
   font-weight: 300;
   margin: 0;
   color: var(--sf-ink);
-  line-height: to-rem($space-lg);
+  line-height: to-rem($space-xl);
 }
 
 // Keyboard-map rows — keycap chip on the left, the action it fires in
@@ -192,17 +192,17 @@
 
   & dd {
     margin: 0;
-    font-size: to-rem($space-md);
+    font-size: to-rem($space-lg);
     font-weight: 300;
     color: var(--sf-ink);
-    line-height: to-rem($space-lg);
+    line-height: to-rem($space-xl);
   }
 }
 
 .#{$_B_SF}-instructions-keycap {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: to-rem($space-sm);
+  font-size: to-rem($space-md);
   line-height: 1;
   color: var(--sf-ink-strong);
   background: var(--sf-chrome-2);

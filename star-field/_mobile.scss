@@ -52,13 +52,19 @@
     max-height: 50dvh;
   }
 
-  // The sheet re-anchors as a full-width bottom sheet — base styles own
-  // the chrome (card, head, keys list); only the geometry is mobile.
+  // The sheet re-anchors as a full-width TOP sheet on small screens —
+  // bottom-anchoring parked it over the footer chrome (actions cluster +
+  // transport bar); from the top it shares the scene with the drawer and
+  // never covers the control row. Base styles own the card chrome; only
+  // the geometry is mobile.
   .#{$_B_SF}-instructions-modal {
+    top: $_NAV_INSET;
     left: to-rem($space-md);
     right: to-rem($space-md);
-    bottom: to-rem($space-md);
+    bottom: auto;
     width: auto;
+    max-height: 50vh;
+    max-height: 50dvh;
   }
 
   // The scale disclaimer moves inside the nav drawer on small screens —
@@ -78,23 +84,27 @@
     width: 90%;
   }
 
-  // The gesture hint is desktop copy ("scroll to zoom"); the aria-live
-  // span stays mounted so screen-reader announcements still fire.
-  .#{$_B_SF}-hint {
-    display: none;
-  }
-
   // Controls float one pad inside the small-screen frame.
   .#{$_B_SF}-nav-toggle {
     bottom: calc(#{to-rem($space-md)} * 2);
     left: calc(#{to-rem($space-md)} * 2);
   }
 
-  // Playlist — same left gutter, stacked above the compact nav toggle.
+  // Playlist — a pure transport bar on small screens: the track list,
+  // its toggle and the native audio bar stay off the footer row (the
+  // controls cluster carries play/prev/next/repeat; playback continues
+  // while the element is hidden).
   .#{$_B_SF}-music {
     left: calc(#{to-rem($space-md)} * 2);
     bottom: calc(#{to-rem($space-md)} * 2 + #{to-rem($space-2xl)} + #{to-rem($space-md)});
-    width: min(#{to-rem($space-6xl)}, 72vw);
+    width: auto;
+    padding: to-rem($space-2xs);
+
+    &-list,
+    &-toggle,
+    &-audio {
+      display: none;
+    }
   }
 
   .#{$_B_SF}-tip {

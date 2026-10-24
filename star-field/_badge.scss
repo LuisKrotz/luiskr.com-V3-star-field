@@ -9,9 +9,10 @@
 
 .#{$_B_SF}-badge {
   position: absolute;
-  // Same top line as the navigator drawer — directly below the fixed
-  // logo/nav chrome row.
-  top: $_NAV_INSET;
+  // Immediately below the logo — the fixed nav hangs at --space-lg and
+  // the logo row is ~$space-2xl tall; the drawer's $_NAV_INSET line is
+  // too low for an attribution chip.
+  top: calc(var(--space-lg) + #{to-rem($space-2xl)});
   left: to-rem($gap-272);
   z-index: 20;
   display: inline-flex;

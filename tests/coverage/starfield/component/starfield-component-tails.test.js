@@ -56,6 +56,10 @@ describe('StarField coverage tails', () => {
 
     await new Promise((r) => setTimeout(r, 40))
 
+    // The playlist starts collapsed — open it, then query the tracks.
+    el._musicOpen = true
+    el._updateDom()
+
     const tracks = el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_TRACK}`)
 
     expect(tracks).toHaveLength(SF_MUSIC_TRACKS.length)
@@ -70,6 +74,39 @@ describe('StarField coverage tails', () => {
     const after = el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_TRACK}`)
 
     expect(after[2].classList.contains(SF_CLASSES.SF_MUSIC_TRACK_ACTIVE)).toBe(true)
+
+    unmount(el)
+  })
+
+  test('transport buttons drive play/prev/next/repeat and the list toggle', async () => {
+    const el = mount()
+
+    await new Promise((r) => setTimeout(r, 40))
+
+    // Control order in the transport row: play/pause, prev, next, repeat.
+    const btns = el.shadowRoot.querySelectorAll(
+      `.${SF_CLASSES.SF_MUSIC_CONTROLS} .${SF_CLASSES.SF_MUSIC_BTN}`
+    )
+
+    btns[1].click()
+
+    expect(el._musicIndex).toBe(SF_MUSIC_TRACKS.length - 1)
+
+    btns[2].click()
+
+    expect(el._musicIndex).toBe(0)
+
+    btns[0].click()
+
+    await new Promise((r) => setTimeout(r, 0))
+
+    btns[3].click()
+
+    expect(el._musicRepeat).toBe(true)
+
+    el.shadowRoot.querySelector(`.${SF_CLASSES.SF_MUSIC_TOGGLE}`).click()
+
+    expect(el._musicOpen).toBe(true)
 
     unmount(el)
   })

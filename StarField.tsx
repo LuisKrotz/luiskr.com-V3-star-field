@@ -28,7 +28,15 @@ import {
   updateStarLoader,
 } from './star/boot.js'
 import { applyStarTranslations, loadStarTranslations } from './star/i18n.js'
-import { autoplayMusic, mountMusic, playMusic } from './star/music.js'
+import {
+  autoplayMusic,
+  mountMusic,
+  nextMusic,
+  playMusic,
+  prevMusic,
+  toggleMusicPlay,
+  toggleMusicRepeat,
+} from './star/music.js'
 import { applyDossierLocale, fetchBodyNames, fetchDossier, loadDossier } from './star/dossier.js'
 import type { SFBodyNames } from './star/dossier.js'
 import { sfCatalogByGroup } from './engine/catalog.js'
@@ -39,7 +47,7 @@ import {
   searchRegistry,
 } from './engine/registry.js'
 import type { SFRegistryManifest, SFRegistryRecord } from './engine/registry.js'
-import { SF_BODY_IDS, SF_KEYS } from '@core/tokens/starfield/params.js'
+import { SF_KEYS } from '@core/tokens/starfield/params.js'
 import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
 import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
 import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
@@ -138,6 +146,9 @@ export class StarField extends BaseComponent {
   _namesReady: Promise<unknown> = Promise.resolve() // in-flight names fetch
   _musicIndex = 0 // active playlist track (index into SF_MUSIC_TRACKS)
   _musicEl: HTMLAudioElement | null = null // persistent player — survives render rebuilds
+  _musicOpen = false // track list expanded — starts collapsed to a transport bar
+  _musicRepeat = false // repeat-loop engaged — `ended` advance swaps for single-track loop
+  _musicPlaying = false // live playback state mirrored from the element's play/pause events
 
   constructor() {
     super(sfStyles)
@@ -614,6 +625,33 @@ export class StarField extends BaseComponent {
     playMusic(this, index)
   }
 
+  /** Steps the playlist back one track — wraps to the last from the first. */
+  _prevMusic(): void {
+    prevMusic(this)
+  }
+
+  /** Advances the playlist one track — wraps to the first from the last. */
+  _nextMusic(): void {
+    nextMusic(this)
+  }
+
+  /** Play/pause toggle for the transport row's play button. */
+  _toggleMusicPlay(): void {
+    toggleMusicPlay(this)
+  }
+
+  /** Repeat-loop toggle — engages the element's `loop` flag. */
+  _toggleMusicRepeat(): void {
+    toggleMusicRepeat(this)
+  }
+
+  /** Expands/collapses the track list — the card starts collapsed. */
+  _toggleMusicList(): void {
+    this._musicOpen = !this._musicOpen
+
+    this._updateDom()
+  }
+
   /**
    * Current-route base path — the star-field URL minus a trailing
    * `/<body>` segment, so deep-link navigation always composes from the
@@ -696,21 +734,24 @@ export class StarField extends BaseComponent {
 
   /**
    * Deep-link entry — after the engine reports ready, selects the body
-   * named in the URL (flies the camera + opens the dossier). Defaults
-   * to the Sun when no specific body was deep-linked.
+   * named in the URL (flies the camera + opens the dossier). No body
+   * (or an unresolvable segment) leaves the chart at the overview pose —
+   * the experiment always opens on the full field, never on a body.
    */
   _applyDeepLink(): void {
     const body = router.currentRoute?.params?.body
 
     // Localized slugs resolve only after names.json lands — wait for the
     // in-flight fetch so a deep-linked `…/via-lactea` selects correctly
-    // instead of degrading to the Sun while the table is still cold.
+    // instead of degrading to the overview while the table is still cold.
     void this._namesReady.then(() => {
       const resolved = body ? this._resolveBodyParam(body) : null
 
-      const target = resolved ?? SF_BODY_IDS.SUN
-
-      if (this._selectedId !== target) this._selectBody(target)
+      if (resolved) {
+        if (this._selectedId !== resolved) this._selectBody(resolved)
+      } else {
+        this._engine?.flyHome()
+      }
     })
   }
 

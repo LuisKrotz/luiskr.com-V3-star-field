@@ -892,7 +892,7 @@ describe('StarField route + interaction tails', () => {
 
     // _applyDeepLink: localized slug resolves via the deferred names
     // promise; a repeat run with the same selection hits the `!==`
-    // false arm; an unknown segment degrades to the Sun.
+    // false arm; an unknown segment leaves the chart at the overview.
     router.currentRoute = { ...SF_ROUTE, path: '/star-field/marte', params: { body: 'marte' } }
     el._selectedId = null
     el._applyDeepLink()
@@ -901,6 +901,7 @@ describe('StarField route + interaction tails', () => {
     expect(el._selectedId).toBe('mars')
 
     const selSpy = jest.spyOn(el, '_selectBody')
+    const flySpy = jest.spyOn(el._engine, 'flyHome')
 
     el._applyDeepLink()
     await flush(10)
@@ -911,7 +912,10 @@ describe('StarField route + interaction tails', () => {
     el._applyDeepLink()
     await flush(10)
 
-    expect(el._selectedId).toBe('sun')
+    // Unresolvable segment — no selection, the overview pose re-asserts.
+    expect(selSpy).not.toHaveBeenCalled()
+    expect(el._selectedId).toBe('mars')
+    expect(flySpy).toHaveBeenCalled()
 
     spy.mockRestore()
     unmount(el)

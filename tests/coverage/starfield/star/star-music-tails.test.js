@@ -18,11 +18,17 @@ import {
   mountMusic,
   nextMusic,
   playMusic,
+  prevMusic,
+  toggleMusicPlay,
+  toggleMusicRepeat,
 } from '../../../../star/music.js'
 
 const makeHost = (overrides = {}) => ({
   _musicIndex: 0,
   _musicEl: null,
+  _musicOpen: false,
+  _musicRepeat: false,
+  _musicPlaying: false,
   translations: null,
   $: () => null,
   _updateDom: jest.fn(),
@@ -137,6 +143,80 @@ describe('nextMusic', () => {
     el.dispatchEvent(new Event('ended'))
 
     expect(host._musicIndex).toBe(1)
+  })
+})
+
+describe('prevMusic', () => {
+  test('wraps back to the last track from the first', () => {
+    const host = makeHost()
+    const el = getMusicEl(host)
+    el.play = jest.fn().mockResolvedValue(undefined)
+
+    prevMusic(host)
+
+    expect(host._musicIndex).toBe(SF_MUSIC_TRACKS.length - 1)
+    expect(el.getAttribute('src')).toBe(SF_MUSIC_TRACKS[SF_MUSIC_TRACKS.length - 1].src)
+  })
+})
+
+describe('toggleMusicPlay', () => {
+  test('plays while paused and pauses while playing', async () => {
+    const host = makeHost()
+    const el = getMusicEl(host)
+    // Rejected so the swallowed-autoplay .catch callback is exercised.
+    const play = jest.fn().mockRejectedValue(new Error('autoplay blocked'))
+    const pause = jest.fn()
+    el.play = play
+    el.pause = pause
+
+    toggleMusicPlay(host)
+
+    await Promise.resolve()
+
+    expect(play).toHaveBeenCalledTimes(1)
+    expect(pause).not.toHaveBeenCalled()
+
+    // `paused` is a getter-only media prop — flip it via defineProperty.
+    Object.defineProperty(el, 'paused', { value: false, configurable: true })
+    toggleMusicPlay(host)
+
+    expect(pause).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('toggleMusicRepeat', () => {
+  test('flips the loop flag on the element and repaints', () => {
+    const host = makeHost()
+    const el = getMusicEl(host)
+
+    expect(el.loop).toBe(false)
+
+    toggleMusicRepeat(host)
+
+    expect(host._musicRepeat).toBe(true)
+    expect(el.loop).toBe(true)
+    expect(host._updateDom).toHaveBeenCalledTimes(1)
+
+    toggleMusicRepeat(host)
+
+    expect(el.loop).toBe(false)
+  })
+})
+
+describe('play/pause state mirror', () => {
+  test('the element events sync _musicPlaying and repaint', () => {
+    const host = makeHost()
+    const el = getMusicEl(host)
+
+    el.dispatchEvent(new Event('play'))
+
+    expect(host._musicPlaying).toBe(true)
+    expect(host._updateDom).toHaveBeenCalledTimes(1)
+
+    el.dispatchEvent(new Event('pause'))
+
+    expect(host._musicPlaying).toBe(false)
+    expect(host._updateDom).toHaveBeenCalledTimes(2)
   })
 })
 
