@@ -25,6 +25,10 @@ import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
 import { KEYS } from '@core/tokens/primitives.js'
 import { SF_GROUP_ORDER, sfCatalogByGroup } from '../engine/catalog.js'
 import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
+import { SF_BADGE } from '@core/tokens/starfield/badge.js'
+import { SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
+import { DOM_STRINGS } from '@core/tokens/strings/dom.js'
+import { MEDIA_ATTRS } from '@core/tokens/attrs/media.js'
 import { registryDist } from './dossier.js'
 import type { SFRegistryRecord } from '../engine/registry.js'
 import type { SFDossier } from '../engine/types.js'
@@ -641,6 +645,56 @@ export function renderStarField(host: StarField) {
         >
           {t.overview}
         </button>
+      </div>
+
+      {/* "Featured on Three.js Resources" showcase badge — pinned below
+          the site logo in the content gutter. A real deep link keeps the
+          credit crawlable; the chip shares the glass chrome tokens and
+          sits under the nav drawer's z-layer so it never blocks scene
+          or drawer interaction. */}
+      <a
+        className={SF_CLASSES.SF_BADGE}
+        href={SF_BADGE.SHOWCASE}
+        target={DOM_STRINGS.BLANK}
+        rel={DOM_STRINGS.NOOPENER}
+      >
+        <img
+          className={SF_CLASSES.SF_BADGE_LOGO}
+          src={SF_BADGE.LOGO}
+          alt="Three.js Resources logo"
+          decoding={MEDIA_ATTRS.DECODING_ASYNC}
+        />
+        <span className={SF_CLASSES.SF_BADGE_COPY}>
+          <span className={SF_CLASSES.SF_BADGE_EYEBROW}>Featured on</span>
+          <span className={SF_CLASSES.SF_BADGE_NAME}>Three.js Resources</span>
+        </span>
+      </a>
+
+      {/* Ambient playlist — a button per track feeding the persistent
+          native <audio> mounted by star/music.ts (play/seek/volume stay
+          the browser's accessible controls; `ended` auto-advances and
+          wraps so the soundtrack chains). Autoplay is suppressed under
+          reduced-motion — AT sessions start silent, press-to-play stays
+          available. */}
+      <div className={SF_CLASSES.SF_MUSIC}>
+        <span className={A11Y_CLASSES.SR_ONLY} id={`${SF_CLASSES.SF_MUSIC}-desc`}>
+          {t.musicDesc}
+        </span>
+        <ul className={SF_CLASSES.SF_MUSIC_LIST} aria-label={t.music}>
+          {SF_MUSIC_TRACKS.map((track, index) => (
+            <li key={track.src}>
+              <button
+                className={`${SF_CLASSES.SF_MUSIC_TRACK}${host._musicIndex === index ? ` ${SF_CLASSES.SF_MUSIC_TRACK_ACTIVE}` : ATTR_VALUES.EMPTY}`}
+                type={FORM_ATTRS.BUTTON}
+                aria-pressed={host._musicIndex === index ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
+                aria-describedby={`${SF_CLASSES.SF_MUSIC}-desc`}
+                onClick={() => host._playMusic(index)}
+              >
+                {track.title}
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Instructions modal — auto closes on interaction; the same sheet

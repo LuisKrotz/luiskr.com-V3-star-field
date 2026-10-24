@@ -49,6 +49,8 @@ const makeHost = (overrides = {}) =>
       _loadMoreRegistry: jest.fn(),
       translations: null,
       _names: null,
+      _musicIndex: 0,
+      _playMusic: jest.fn(),
       _instructionsOpen: false,
       _toggleNav: jest.fn(),
       _focusSearch: jest.fn(),

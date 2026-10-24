@@ -10,6 +10,8 @@
 //    _panel    dossier info panel + facts + prose + signature
 //    _media    dossier media gallery
 //    _actions  screenshot/overview button cluster
+//    _badge    "Featured on Three.js Resources" showcase chip
+//    _music    ambient playlist card (track list + native audio)
 //    _mobile   <768px full-width sheets + compact HUD
 //  Mobile-first: the drawer and panel become full-width sheets under 768px.
 // ════════════════════════════════════════════════════════════════════════════
@@ -33,4 +35,6 @@ $_NAV_INSET: to-rem($space-4xl);
 @import 'star-field/panel';
 @import 'star-field/media';
 @import 'star-field/actions';
+@import 'star-field/badge';
+@import 'star-field/music';
 @import 'star-field/mobile';

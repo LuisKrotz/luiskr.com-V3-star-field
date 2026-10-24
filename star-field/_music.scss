@@ -1,0 +1,92 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_music.scss — the ambient playlist card pinned to the left
+//  gutter above the nav toggle: a button per track plus the persistent
+//  native <audio> bar. Glass chrome themed by the --sf-* vars, same
+//  control layer (z-index 30) as the toggle — the dossier/nav sheets and
+//  tooltips always paint above it.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+.#{$_B_SF}-music {
+  position: absolute;
+  // Stacked above the nav-toggle row — toggle bottom pad + its height.
+  bottom: calc(#{to-rem($space-3xl)} + #{to-rem($space-md)});
+  left: calc(#{to-rem($gap-272)} + #{to-rem($space-md)});
+  z-index: 30;
+  width: min(#{to-rem($space-6xl)}, 66vw);
+  display: flex;
+  flex-direction: column;
+  gap: to-rem($space-xs);
+  box-sizing: border-box;
+  padding: to-rem($space-md);
+  color: var(--sf-ink);
+  background: var(--sf-chrome-2);
+  -webkit-backdrop-filter: blur(to-rem($space-xs));
+  backdrop-filter: blur(to-rem($space-xs));
+  border: var(--space-hairline) solid var(--sf-line);
+  border-radius: var(--radius-md);
+
+  // Track the site's content gutter at every grid step — same mirror of
+  // %MAXAREA plus the inner pad the nav toggle and actions cluster use.
+  @include grid-steps() using ($step, $gap, $cols) {
+    left: calc(#{to-rem($gap)} + #{to-rem($space-md)});
+  }
+
+  &-list {
+    display: flex;
+    flex-direction: column;
+    gap: to-rem($space-2xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  // One track row — the activate target; the loaded track keeps a
+  // framed field so the playlist reads at a glance.
+  &-track {
+    @extend %RESETBTN;
+
+    display: block;
+    width: 100%;
+    padding: to-rem($space-xs) to-rem($space-sm);
+    font-family: var(--font-primary);
+    font-size: to-rem($space-lg);
+    text-align: left;
+    color: var(--sf-ink);
+    background: transparent;
+    border: var(--space-hairline) solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      background 0.2s ease,
+      border-color 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--sf-field-hover);
+    }
+
+    &--active {
+      color: var(--sf-ink-strong);
+      background: var(--sf-field);
+      border-color: var(--sf-line);
+    }
+  }
+
+  // The persistent native player — its height mirrors the earth
+  // playground's audio bar; opacity lifts on hover/focus like the rest
+  // of the glass chrome.
+  &-audio {
+    width: 100%;
+    height: to-rem($space-2xl);
+    border-radius: var(--radius-round);
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+
+    &:hover,
+    &:focus {
+      opacity: 1;
+    }
+  }
+}
