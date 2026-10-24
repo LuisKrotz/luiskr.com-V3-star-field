@@ -12,6 +12,7 @@ import { LOCALES } from '@core/tokens/locales.js'
 import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { KEYS } from '@core/tokens/primitives.js'
 import { SF_CLASSES } from '@core/tokens/classes/starfield.js'
+import { SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
 import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
 import { POINTER_EVENTS } from '@core/tokens/events/dom.js'
 import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
@@ -50,6 +51,29 @@ const esc = (el) =>
   el.dispatchEvent(new window.KeyboardEvent('keydown', { key: KEYS.ESCAPE, bubbles: true }))
 
 describe('StarField coverage tails', () => {
+  test('clicking a playlist track loads and marks it through _playMusic', async () => {
+    const el = mount()
+
+    await new Promise((r) => setTimeout(r, 40))
+
+    const tracks = el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_TRACK}`)
+
+    expect(tracks).toHaveLength(SF_MUSIC_TRACKS.length)
+
+    tracks[2].click()
+
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(el._musicIndex).toBe(2)
+    expect(el._musicEl.getAttribute('src')).toBe(SF_MUSIC_TRACKS[2].src)
+
+    const after = el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_TRACK}`)
+
+    expect(after[2].classList.contains(SF_CLASSES.SF_MUSIC_TRACK_ACTIVE)).toBe(true)
+
+    unmount(el)
+  })
+
   test('second onMounted hits the canvas-already-mounted guard', async () => {
     const el = mount()
 

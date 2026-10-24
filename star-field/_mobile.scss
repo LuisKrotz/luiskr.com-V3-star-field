@@ -90,6 +90,13 @@
     left: calc(#{to-rem($space-md)} * 2);
   }
 
+  // Playlist — same left gutter, stacked above the compact nav toggle.
+  .#{$_B_SF}-music {
+    left: calc(#{to-rem($space-md)} * 2);
+    bottom: calc(#{to-rem($space-md)} * 2 + #{to-rem($space-2xl)} + #{to-rem($space-md)});
+    width: min(#{to-rem($space-6xl)}, 72vw);
+  }
+
   .#{$_B_SF}-tip {
     display: none;
   }

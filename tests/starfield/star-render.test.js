@@ -14,6 +14,10 @@ import { ROUTE_PATHS } from '@core/tokens/routes/paths.js'
 import { MOUSE_EVENTS } from '@core/tokens/events/dom.js'
 import { CMS_KEYS } from '@core/tokens/data/cms-keys.js'
 import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
+import { SF_BADGE } from '@core/tokens/starfield/badge.js'
+import { SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
+import { ATTR_VALUES } from '@core/tokens/attrs/values.js'
+import { DOM_STRINGS } from '@core/tokens/strings/dom.js'
 import { appText } from '@core/locale/ui-text.js'
 import { renderStarField } from '../../star/render.js'
 
@@ -52,6 +56,8 @@ const makeHost = (overrides = {}) => ({
   _baseStarPath: () => ROUTE_PATHS.STAR_FIELD,
   _slugForId: (id) => id,
   _names: null,
+  _musicIndex: 0,
+  _playMusic: jest.fn(),
   _closePanel: jest.fn(),
   _takeScreenshot: jest.fn(),
   _flyHome: jest.fn(),
@@ -398,5 +404,36 @@ describe('navigator hint events', () => {
     close.click()
 
     expect(host._closeInstructions).toHaveBeenCalled()
+  })
+
+  test('the showcase badge is a real outbound deep link with the provider mark', () => {
+    const root = mount(makeHost())
+    const badge = root.querySelector(`.${SF_CLASSES.SF_BADGE}`)
+
+    expect(badge).toBeTruthy()
+    expect(badge.getAttribute('href')).toBe(SF_BADGE.SHOWCASE)
+    expect(badge.getAttribute('target')).toBe(DOM_STRINGS.BLANK)
+    expect(badge.getAttribute('rel')).toBe(DOM_STRINGS.NOOPENER)
+    expect(badge.querySelector(`img.${SF_CLASSES.SF_BADGE_LOGO}`).getAttribute('src')).toBe(
+      SF_BADGE.LOGO
+    )
+    expect(badge.querySelector(`.${SF_CLASSES.SF_BADGE_NAME}`).textContent).toBe(
+      'Three.js Resources'
+    )
+  })
+
+  test('the playlist lists every track, marks the loaded one, and routes picks to _playMusic', () => {
+    const host = makeHost({ _musicIndex: 0 })
+    const root = mount(host)
+    const tracks = root.querySelectorAll(`.${SF_CLASSES.SF_MUSIC_TRACK}`)
+
+    expect(tracks).toHaveLength(SF_MUSIC_TRACKS.length)
+    expect(tracks[0].getAttribute(ARIA_ATTRS.ARIA_PRESSED)).toBe(ATTR_VALUES.TRUE)
+    expect(tracks[0].classList.contains(SF_CLASSES.SF_MUSIC_TRACK_ACTIVE)).toBe(true)
+    expect(tracks[2].getAttribute(ARIA_ATTRS.ARIA_PRESSED)).toBe(ATTR_VALUES.FALSE)
+
+    tracks[2].click()
+
+    expect(host._playMusic).toHaveBeenCalledWith(2)
   })
 })

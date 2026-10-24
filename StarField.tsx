@@ -28,6 +28,7 @@ import {
   updateStarLoader,
 } from './star/boot.js'
 import { applyStarTranslations, loadStarTranslations } from './star/i18n.js'
+import { autoplayMusic, mountMusic, playMusic } from './star/music.js'
 import { applyDossierLocale, fetchBodyNames, fetchDossier, loadDossier } from './star/dossier.js'
 import type { SFBodyNames } from './star/dossier.js'
 import { sfCatalogByGroup } from './engine/catalog.js'
@@ -135,6 +136,8 @@ export class StarField extends BaseComponent {
   _regQuery = '' // last registry search query (stale-response guard)
   _names: SFBodyNames | null = null // locale body-name table (id↔slug)
   _namesReady: Promise<unknown> = Promise.resolve() // in-flight names fetch
+  _musicIndex = 0 // active playlist track (index into SF_MUSIC_TRACKS)
+  _musicEl: HTMLAudioElement | null = null // persistent player — survives render rebuilds
 
   constructor() {
     super(sfStyles)
@@ -187,6 +190,10 @@ export class StarField extends BaseComponent {
     this._initEngine()
 
     this._bindKeys()
+
+    mountMusic(this)
+
+    autoplayMusic(this)
   }
 
   /** Lifecycle: re-mounts the canvas after re-render + re-inits if needed. */
@@ -197,6 +204,10 @@ export class StarField extends BaseComponent {
     if (this.shadowRoot && !this.shadowRoot.contains(canvas)) {
       this.shadowRoot?.insertBefore(canvas, this._contentNode)
     }
+
+    // The .sf-music card is rebuilt with the tree — re-seat the persistent
+    // player element and re-sync its localized label.
+    mountMusic(this)
 
     // Every _updateDom rebuild replaces the .sf-fallback canvas node —
     // re-bind so the fresh canvas is painted + observed (the previous
@@ -226,6 +237,10 @@ export class StarField extends BaseComponent {
     this._fallbackDispose?.()
 
     this._fallbackDispose = null
+
+    this._musicEl?.pause()
+
+    this._musicEl = null
 
     if (this._onKeyDown) {
       document.removeEventListener(KEYBOARD_EVENTS.KEYDOWN, this._onKeyDown)
@@ -588,6 +603,15 @@ export class StarField extends BaseComponent {
     this._syncUrl(null)
 
     this._updateDom()
+  }
+
+  /**
+   * Playlist track pick — delegates to star/music.ts: loads the src
+   * (when changed), plays, and re-renders the active row marker.
+   * @param index Track index into SF_MUSIC_TRACKS.
+   */
+  _playMusic(index: number): void {
+    playMusic(this, index)
   }
 
   /**

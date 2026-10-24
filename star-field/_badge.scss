@@ -1,0 +1,76 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_badge.scss — the "Featured on Three.js Resources" showcase
+//  badge pinned in the content gutter below the site logo: a small glass
+//  chip styled by the --sf-* chrome vars. It deliberately sits at the
+//  HUD z-layer so the nav drawer slides over it — attribution chrome,
+//  never in the interaction path.
+//  Imported by star-field.scss (manifest) — not compiled standalone.
+// ════════════════════════════════════════════════════════════════════════════
+
+.#{$_B_SF}-badge {
+  position: absolute;
+  // Same top line as the navigator drawer — directly below the fixed
+  // logo/nav chrome row.
+  top: $_NAV_INSET;
+  left: to-rem($gap-272);
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: to-rem($space-md);
+  padding: to-rem($space-sm) to-rem($space-lg);
+  font-family: var(--font-primary);
+  text-decoration: none;
+  color: var(--sf-ink);
+  background: var(--sf-chrome-2);
+  backdrop-filter: blur(to-rem($space-xs));
+  border: var(--space-hairline) solid var(--sf-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  transition:
+    opacity 0.2s ease,
+    border-color 0.2s ease;
+
+  // Track the site's content gutter at every grid step — the badge keeps
+  // the logo's column edge at every breakpoint (same mirror the nav
+  // drawer and actions cluster use).
+  @include grid-steps() using ($step, $gap, $cols) {
+    left: to-rem($gap);
+  }
+
+  &:hover,
+  &:focus-visible {
+    opacity: 0.75;
+    border-color: var(--sf-ink-2);
+  }
+
+  &-logo {
+    flex: 0 0 auto;
+    width: to-rem($space-xl);
+    height: to-rem($space-xl);
+    object-fit: contain;
+  }
+
+  &-copy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  &-eyebrow {
+    font-size: to-rem($space-md);
+    font-weight: 400;
+    color: var(--sf-ink-3);
+  }
+
+  &-name {
+    font-size: to-rem($space-lg);
+    font-weight: 600;
+    color: var(--sf-ink-strong);
+  }
+}
+
+// Dark theme — the provider mark is black artwork, invisible on the dark
+// glass without the invert (same treatment their dark badge variant uses).
+:host-context(.dark-mode) .#{$_B_SF}-badge-logo {
+  filter: brightness(0) invert(1);
+}
