@@ -29,7 +29,7 @@
   @extend %RESETBTN;
   @extend %TTL_XS;
 
-  font-weight: 400;
+  font-weight: calc(400 + var(--fw-lift));
   position: relative;
   display: inline-block;
   text-align: center;
@@ -126,7 +126,7 @@
 
 .#{$_B_SF}-instructions-title {
   font-size: to-rem($space-md);
-  font-weight: 300;
+  font-weight: calc(300 + var(--fw-lift));
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--sf-ink-strong);
@@ -166,7 +166,7 @@
 .#{$_B_SF}-instructions-hint,
 .#{$_B_SF}-instructions-disclaimer {
   font-size: to-rem($space-lg);
-  font-weight: 300;
+  font-weight: calc(300 + var(--fw-lift));
   margin: 0;
   color: var(--sf-ink);
   line-height: to-rem($space-xl);
@@ -193,7 +193,7 @@
   & dd {
     margin: 0;
     font-size: to-rem($space-lg);
-    font-weight: 300;
+    font-weight: calc(300 + var(--fw-lift));
     color: var(--sf-ink);
     line-height: to-rem($space-xl);
   }

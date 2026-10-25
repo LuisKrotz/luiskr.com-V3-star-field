@@ -90,7 +90,7 @@
   &-label {
     @extend .txt-sm;
 
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     position: absolute;
     left: to-rem($space-2xl);
     bottom: to-rem($space-2xl + $space-sm);

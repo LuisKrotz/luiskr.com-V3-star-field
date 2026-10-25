@@ -59,13 +59,13 @@
 
   &-eyebrow {
     font-size: to-rem($space-md);
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink-3);
   }
 
   &-name {
     font-size: to-rem($space-lg);
-    font-weight: 600;
+    font-weight: calc(600 + var(--fw-lift));
     color: var(--sf-ink-strong);
   }
 }

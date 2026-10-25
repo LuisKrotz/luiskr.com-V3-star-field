@@ -163,7 +163,7 @@
   &-heading {
     @extend .ttl-xs;
 
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     letter-spacing: 0.3em;
     text-transform: uppercase;
     color: var(--sf-ink-strong);
@@ -195,7 +195,7 @@
   &-group-title {
     @extend .txt-xs;
 
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--sf-ink-2);
@@ -264,7 +264,7 @@
 .#{$_B_SF}-nav-item-meta {
   @extend .txt-xs;
 
-  font-weight: 400;
+  font-weight: calc(400 + var(--fw-lift));
   display: block;
   color: var(--sf-ink-3);
   letter-spacing: 0.08em;
@@ -279,7 +279,7 @@
   @extend .txt-xs;
 
   display: block;
-  font-weight: 400;
+  font-weight: calc(400 + var(--fw-lift));
   color: var(--sf-ink-3);
   line-height: 1.75;
   letter-spacing: 0.04em;
@@ -291,7 +291,7 @@
 .#{$_B_SF}-nav-more {
   @extend .txt-xs;
 
-  font-weight: 500;
+  font-weight: calc(500 + var(--fw-lift));
   display: block;
   width: 100%;
   padding: to-rem($space-xs) to-rem($space-sm);

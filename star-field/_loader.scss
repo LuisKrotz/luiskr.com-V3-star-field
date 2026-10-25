@@ -109,7 +109,7 @@
   &-percent {
     @extend .ttl-md;
 
-    font-weight: 300;
+    font-weight: calc(300 + var(--fw-lift));
     letter-spacing: 0.1em;
     color: rgba($color-white, 0.9);
   }

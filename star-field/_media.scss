@@ -32,7 +32,7 @@
   &-cap {
     @extend .txt-xs;
 
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink-3);
     letter-spacing: 0.05em;
     margin-top: to-rem($space-2xs);

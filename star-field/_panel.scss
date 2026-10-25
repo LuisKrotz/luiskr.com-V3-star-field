@@ -64,7 +64,7 @@
     margin: 0;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     color: var(--sf-ink-strong);
     flex: 1;
   }
@@ -74,7 +74,7 @@
 
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     color: var(--sf-ink-2);
     border: var(--space-hairline) solid var(--sf-line);
     border-radius: var(--radius-round);
@@ -103,7 +103,7 @@
   &-loading {
     @extend .txt-sm;
 
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink-2);
     letter-spacing: 0.1em;
   }
@@ -111,7 +111,7 @@
   &-tagline {
     @extend .txt-sm;
 
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink);
     margin: 0 0 to-rem($space-xl);
   }
@@ -119,7 +119,7 @@
   &-history {
     @extend .txt-sm;
 
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     line-height: 1.75;
     color: var(--sf-ink);
     margin: to-rem($space-xl) 0;
@@ -128,7 +128,7 @@
   &-source {
     @extend .txt-sm;
 
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink-3);
     letter-spacing: 0.06em;
   }
@@ -152,7 +152,7 @@
   &-key {
     @extend .txt-sm;
 
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     color: var(--sf-ink-2);
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -162,7 +162,7 @@
   &-val {
     @extend .txt-sm;
 
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     color: var(--sf-ink-strong);
     text-align: right;
     margin: 0;
@@ -178,7 +178,7 @@
 
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: calc(500 + var(--fw-lift));
     color: var(--sf-ink-2);
     margin: 0 0 to-rem($space-xs);
   }
@@ -186,7 +186,7 @@
   &-body {
     @extend .txt-sm;
 
-    font-weight: 400;
+    font-weight: calc(400 + var(--fw-lift));
     line-height: 1.75;
     color: var(--sf-ink);
     margin: 0;
@@ -196,7 +196,7 @@
 .#{$_B_SF}-panel-sig {
   @extend .txt-xs;
 
-  font-weight: 400;
+  font-weight: calc(400 + var(--fw-lift));
   color: var(--sf-ink-faint);
   letter-spacing: 0.08em;
   margin-top: to-rem($space-md);
