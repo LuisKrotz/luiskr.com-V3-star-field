@@ -28,6 +28,8 @@ import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { SF_BADGE } from '@core/tokens/starfield/badge.js'
 import { SF_MUSIC_GLYPHS, SF_MUSIC_TRACKS } from '@core/tokens/starfield/music.js'
 import { DOM_STRINGS } from '@core/tokens/strings/dom.js'
+import { LANG_STRINGS } from '@core/tokens/strings/langs.js'
+import { ASSET_PATHS } from '@core/tokens/routes/paths.js'
 import { MEDIA_ATTRS } from '@core/tokens/attrs/media.js'
 import { registryDist } from './dossier.js'
 import type { SFRegistryRecord } from '../engine/registry.js'
@@ -126,7 +128,17 @@ function renderMedia(dossier: SFDossier) {
             preload={ATTR_VALUES.NONE}
             playsInline
             poster={vid.poster ? mediaUrl(vid.poster) : undefined}
-          />
+          >
+            {/* Dossier media are ambient screen captures — the empty
+                track declares there is no audio to transcribe. */}
+            <track
+              kind={MEDIA_ATTRS.CAPTIONS}
+              src={ASSET_PATHS.EMPTY_CAPTIONS}
+              srcLang={LANG_STRINGS.EN}
+              label={DOM_STRINGS.NO_AUDIO_LABEL}
+              default
+            />
+          </video>
           {(vid.caption || vid.credit) && (
             <figcaption className={SF_CLASSES.SF_MEDIA_CAP}>
               {vid.caption}
@@ -625,7 +637,9 @@ export function renderStarField(host: StarField) {
           className={`${SF_CLASSES.SF_BTN} ${SF_CLASSES.SF_INSTRUCTIONS_BTN}`}
           type={FORM_ATTRS.BUTTON}
           aria-expanded={host._instructionsOpen ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
-          aria-controls={APP_IDS.SF_INSTRUCTIONS_PANEL}
+          // The panel only exists while open — a controls pointer at a
+          // not-yet-rendered id trips aria_id_unique/controls-validity.
+          aria-controls={host._instructionsOpen ? APP_IDS.SF_INSTRUCTIONS_PANEL : undefined}
           onClick={() => host._toggleInstructions()}
         >
           {t.instructions}
@@ -725,7 +739,8 @@ export function renderStarField(host: StarField) {
             className={SF_CLASSES.SF_MUSIC_TOGGLE}
             type={FORM_ATTRS.BUTTON}
             aria-expanded={host._musicOpen ? ATTR_VALUES.TRUE : ATTR_VALUES.FALSE}
-            aria-controls={APP_IDS.SF_MUSIC_LIST}
+            // Same conditional-id rule — the track list only exists open.
+            aria-controls={host._musicOpen ? APP_IDS.SF_MUSIC_LIST : undefined}
             onClick={() => host._toggleMusicList()}
           >
             {t.music}
