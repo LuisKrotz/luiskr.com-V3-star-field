@@ -52,6 +52,7 @@ import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
 import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
 import { TYPE_STRINGS } from '@core/tokens/strings/types.js'
 import { applyAnimationDesc } from '@core/utils/a11y/animation-desc.js'
+import { setRobotsMeta } from '@core/utils/schema.js'
 import { ANIMATION_IDS } from '@core/tokens/data/animation-ids.js'
 import { CHAR_STRINGS } from '@core/tokens/strings/chars.js'
 import { slugify } from '@core/utils/string.js'
@@ -722,8 +723,17 @@ export class StarField extends BaseComponent {
         void this._namesReady.then(() => {
           const id = this._resolveBodyParam(body)
 
-          if (id && this._selectedId !== id) this._selectBody(id)
+          if (id && this._selectedId !== id) {
+            this._selectBody(id)
+          } else if (!id) {
+            setRobotsMeta(true)
+          }
         })
+      } else {
+        // Unknown/stale body segment — the URL renders the same chart as
+        // the bare star-field index, so it must noindex rather than
+        // compete as a duplicate with a self-canonical.
+        setRobotsMeta(true)
       }
 
       return
@@ -751,6 +761,10 @@ export class StarField extends BaseComponent {
         if (this._selectedId !== resolved) this._selectBody(resolved)
       } else {
         this._engine?.flyHome()
+
+        // A present-but-unresolvable body segment renders the index view
+        // — noindex so the dead deep link leaves the search surface.
+        if (body) setRobotsMeta(true)
       }
     })
   }
