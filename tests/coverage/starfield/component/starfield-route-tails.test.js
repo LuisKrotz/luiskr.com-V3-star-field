@@ -841,6 +841,27 @@ describe('StarField route + interaction tails', () => {
 
     expect(el._selectedId).toBe('mars')
 
+    // Deferred resolve echoing the current selection — `id` resolves but
+    // matches `_selectedId`, so the callback takes the no-op arm: no
+    // reselect, no noindex.
+    el._names = null
+    el._namesReady = new Promise((resolve) => {
+      releaseNames = () => {
+        el._names = {
+          byId: new Map([['mars', 'Marte']]),
+          bySlug: new Map([['marte', 'mars']]),
+        }
+        resolve()
+      }
+    })
+    router.currentRoute = { ...SF_ROUTE, path: '/star-field/marte', params: { body: 'marte' } }
+    el.onRouteParamChange(router.currentRoute)
+
+    releaseNames()
+    await flush(10)
+
+    expect(el._selectedId).toBe('mars')
+
     // Deferred resolve that still misses — the `id &&` guard keeps the
     // current selection instead of clearing it.
     el._names = null
