@@ -12,6 +12,7 @@
  */
 import { SF_BODY_IDS, SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { SF_DATA_BASE } from '@core/tokens/starfield/textures.js'
+import { SF_REGISTRY_INDEX_DIR, SF_REGISTRY_MANIFEST } from '@core/tokens/starfield/registry.js'
 import { anchorWorldPos } from './frame/camera.js'
 import { sfGalacticVec } from './scale.js'
 import type { SFState } from './types.js'
@@ -19,9 +20,6 @@ import { devError } from '@core/devlog.js'
 
 /** Registry id grammar — `<kind>-<zero-padded global rank>`. */
 const REGISTRY_ID_RE = /^(star|exoplanet|dso)-(\d{6})$/
-
-/** Shard path template pieces — `index/<kind>-<NNN>.json`. */
-const INDEX_DIR = 'index'
 
 /**
  * Manifest shape for `index/manifest.json` — per-kind record counts
@@ -100,8 +98,14 @@ export function parseRegistryId(id: string): { kind: string; rank: number } | nu
  */
 export function ensureRegistryManifest(): Promise<SFRegistryManifest | null> {
   if (!_manifest) {
-    _manifest = fetch(`${SF_DATA_BASE}/${INDEX_DIR}/manifest.json`)
+    _manifest = fetch(`${SF_DATA_BASE}/${SF_REGISTRY_INDEX_DIR}/${SF_REGISTRY_MANIFEST}`)
       .then((res) => (res.ok ? (res.json() as Promise<SFRegistryManifest>) : null))
+      // Shape-guard: a payload without `kinds` isn't a manifest (a
+      // misdirected names/dossier JSON must never poison the session
+      // cache — the same null path lets the next caller retry).
+      .then((m) =>
+        m && typeof m === 'object' && m.kinds && typeof m.kinds === 'object' ? m : null
+      )
       .catch((e) => {
         devError('[StarField] registry manifest error:', e)
 
@@ -136,7 +140,7 @@ export function loadRegistryShard(
   let pending = _shards.get(key)
 
   if (!pending) {
-    pending = fetch(`${SF_DATA_BASE}/${INDEX_DIR}/${key}.json`)
+    pending = fetch(`${SF_DATA_BASE}/${SF_REGISTRY_INDEX_DIR}/${key}.json`)
       .then((res) => (res.ok ? (res.json() as Promise<SFRegistryRecord[]>) : null))
       .catch((e) => {
         devError('[StarField] registry shard error:', key, e)
@@ -204,7 +208,7 @@ export async function* streamRegistryShards(
 ): AsyncGenerator<SFRegistryRecord[], void, void> {
   const manifest = await ensureRegistryManifest()
 
-  const files = manifest?.kinds[kind]?.shards ?? []
+  const files = manifest?.kinds?.[kind]?.shards ?? []
 
   for (let i = 0; i < files.length; i++) {
     const shard = await loadRegistryShard(kind, i)

@@ -38,6 +38,7 @@ import {
   toggleMusicRepeat,
 } from './star/music.js'
 import { applyDossierLocale, fetchBodyNames, fetchDossier, loadDossier } from './star/dossier.js'
+import { emitStarIndexJsonLd } from './star/schema.js'
 import type { SFBodyNames } from './star/dossier.js'
 import { sfCatalogByGroup } from './engine/catalog.js'
 import {
@@ -303,6 +304,8 @@ export class StarField extends BaseComponent {
       if (this._selectedId) this._syncUrl(this._selectedId)
 
       this._updateDom()
+
+      emitStarIndexJsonLd(this)
     })
   }
 
@@ -509,7 +512,7 @@ export class StarField extends BaseComponent {
   _loadMoreRegistry(kind: string) {
     const loaded = this._regLoaded.get(kind) ?? 0
 
-    const shards = this._regManifest?.kinds[kind]?.shards.length ?? 0
+    const shards = this._regManifest?.kinds?.[kind]?.shards.length ?? 0
 
     if (loaded >= shards) return
 
@@ -740,6 +743,11 @@ export class StarField extends BaseComponent {
     }
 
     if (!body && this._selectedId) this._closePanel()
+
+    // No body segment (any truthy body returned above) — post-navigation
+    // the route is the chart index, so the graph reverts to the index
+    // ItemList + DataCatalog entities.
+    emitStarIndexJsonLd(this)
   }
 
   /**

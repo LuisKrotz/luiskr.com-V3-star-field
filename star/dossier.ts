@@ -18,6 +18,7 @@ import { FALLBACK_PAGES } from '@core/locale/fallback.js'
 import { SF_STAR_CLOUD } from '@core/tokens/starfield/params.js'
 import { slugify } from '@core/utils/string.js'
 import { isRegistryId, loadRegistryRecord } from '../engine/registry.js'
+import { emitStarBodyJsonLd } from './schema.js'
 import type { SFRegistryRecord } from '../engine/registry.js'
 import type { SFDossier } from '../engine/types.js'
 import type { StarField } from '../StarField.js'
@@ -331,6 +332,8 @@ export function loadDossier(c: StarField, id: string): void {
     c._dossier = file
 
     c._updateDom()
+
+    emitStarBodyJsonLd(c, id, file)
   })
 }
 
