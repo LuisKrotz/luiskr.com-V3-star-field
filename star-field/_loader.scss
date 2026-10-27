@@ -126,9 +126,10 @@
 
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    // 0.7 ≈ #b3b3b3 on the near-black loader backdrop — keeps the ghosted
-    // boot-log look while clearing WCAG AA/AAA for the small caps text.
-    color: rgba($color-white, 0.7);
+    // 0.9 ≈ #e6e6e6 on the glow-blended loader backdrop — keeps the ghosted
+    // boot-log look while clearing WCAG AA for the small caps text even
+    // when the checker samples against the mid-tone glow center.
+    color: rgba($color-white, 0.9);
     margin-bottom: to-rem($space-xs);
   }
 
