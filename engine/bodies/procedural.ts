@@ -1,6 +1,7 @@
 /**
- * @file engine/bodies/procedural.ts
- * @description Barrel for the seeded canvas texture generators — each
+ * Procedural body texture barrel.
+ *
+ * Seeded canvas texture generators — each
  * recipe now lives in its own module under `procedural/`:
  *
  *   `surface.ts`      — 2:1 equirect surface map: seeded mottling,

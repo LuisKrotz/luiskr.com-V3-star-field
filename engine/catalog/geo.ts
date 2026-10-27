@@ -64,7 +64,7 @@ export const M31_POS = gpos(M31_L, M31_B, M31_LY)
  * so internal proportions stay authored. Exported so coverage tails can
  * pin every arm — no current solar def carries satellites, but the arm
  * keeps a future moon-bearing def honest.
- * @param def Solar-tier body at authored diagram scale.
+ * @param d Solar-tier body at authored diagram scale.
  * @returns Copy with every spatial field scaled by SOLAR_SCALE.
  */
 export const shrinkSolar = (d: SFBodyDef): SFBodyDef => ({

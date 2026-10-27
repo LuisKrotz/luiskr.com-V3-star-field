@@ -1,6 +1,7 @@
 /**
- * @file engine/spiral.ts
- * @description Barrel for the spiral-galaxy surface — the deterministic
+ * Spiral-galaxy surface barrel.
+ *
+ * The deterministic
  * point-cloud fills (spiral/elliptical/dust, mirrored byte-for-byte in
  * the WASM worker) live in `spiral/fill.ts`, and the scene assembly
  * (`makeSpiralGalaxy` — photo disc, sparkle layer, worker-dispatched

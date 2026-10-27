@@ -10,12 +10,11 @@
  */
 import { WINDOW_EVENTS } from '@core/tokens/events/dom.js'
 import { SF_TEXTURES } from '@core/tokens/starfield/textures.js'
-import { isIOSDevice } from './ios.js'
-import { initStarRenderer } from './renderer-setup.js'
 import { makeGlowTexture, setupStarCamera, setupStarScene } from './scene.js'
 import { buildStarBodies } from './bodies-scene.js'
 import { ensureStarCloud } from './star-cloud.js'
 import { armPicking, bindPicking } from './picking.js'
+import { initStarRenderer } from './renderer-setup.js'
 import { armFrame, handleStarResize, tickStar } from './frame.js'
 import { buildStarPostPipeline } from './post.js'
 import type * as THREE_NS from 'three'
@@ -134,13 +133,6 @@ async function warmUpShaders(
  * @param s Engine state.
  */
 export async function bootstrapStarField(s: SFState): Promise<void> {
-  // iOS devices never reach the GPU path (initStarRenderer bails on the
-  // same check), so bail before the three.js/TSL chunk graph downloads —
-  // ~2MB of modules an iPhone would fetch, parse and eval just to throw
-  // away, and any WebKit module-eval hazard in that graph would sink the
-  // boot before the renderer check could take the 2D fallback.
-  if (isIOSDevice()) return
-
   const THREE = await import('three')
 
   const [

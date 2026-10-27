@@ -1,8 +1,9 @@
 /**
- * @file experiments/star-field/index.ts
- * @description Barrel for the `star-field` experiment module — the
+ * Star Field module barrel.
+ *
+ * The `star-field` experiment module provides the
  * three.js star-chart scene and the <view-star-field> component surface.
- * Self-contained: imports resolve through @core only, never @website/@cms.
+ * Self-contained: imports resolve through the core module, never website or CMS.
  * Re-export-only file.
  */
 /* istanbul ignore file */
