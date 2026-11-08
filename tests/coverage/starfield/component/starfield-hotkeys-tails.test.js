@@ -12,6 +12,7 @@ import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { KEYS } from '@core/tokens/primitives.js'
 import { SF_CLASSES } from '@core/tokens/classes/starfield.js'
 
+/** RTDB payload the fetchFirebaseDb mock serves — minimal fields the view renders. */
 const dbData = { title: 'Star Field' }
 
 jest.unstable_mockModule('@core/utils/data/db.js', () => ({
@@ -41,6 +42,8 @@ jest.unstable_mockModule('@core/utils/ml/frame-time.js', () => ({
 
 await import('../../../../StarField.js')
 
+/** Mounts a <view-star-field> element and pins a null shadowRoot.activeElement
+ *  stub — happy-dom throws on the getter when nothing holds focus. */
 const mount = () => {
   const el = document.createElement(VIEW_TAGS.VIEW_STAR_FIELD)
 
@@ -57,8 +60,10 @@ const mount = () => {
   return el
 }
 
+/** 60ms settle — deferred names-table/_updateDom timers must drain before detach. */
 const settle = () => new Promise((r) => setTimeout(r, 60))
 
+/** Async unmount — settles deferred timers first, then tears down + detaches. */
 const unmount = async (el) => {
   // Deferred names-table/_updateDom timers must settle before detach —
   // happy-dom's shadowRoot.activeElement throws on a detached root.
@@ -68,6 +73,9 @@ const unmount = async (el) => {
   el.remove()
 }
 
+/** Dispatches a synthetic keydown into the element's shadow root —
+ *  cancelable:true so preventDefault works; modifiers are patched on
+ *  after construction since happy-dom's polyfill only copies key fields. */
 const press = (el, key, mods = {}) => {
   // cancelable:true — real keydown is cancelable; happy-dom defaults it
   // false, which would silently no-op preventDefault(). The shared
@@ -268,9 +276,9 @@ describe('StarField hotkey tails', () => {
     el._instructionsOpen = true
     el._updateDom()
 
-    const caps = [
-      ...el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_INSTRUCTIONS_KEYCAP}`),
-    ].map((k) => k.textContent.trim())
+    const caps = [...el.shadowRoot.querySelectorAll(`.${SF_CLASSES.SF_INSTRUCTIONS_KEYCAP}`)].map(
+      (k) => k.textContent.trim()
+    )
 
     expect(caps).toContain(KEYS.SLASH)
     expect(caps).toContain(KEYS.KEY_N.toUpperCase())

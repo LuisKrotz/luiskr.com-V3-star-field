@@ -14,13 +14,18 @@ import { VIEW_TAGS } from '@core/tokens/elements/views.js'
 import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 import { SF_NAMES_FILE } from '@core/tokens/starfield/textures.js'
 
+/** Repo root for the star-field module — the data fixtures live under public/data. */
 const moduleRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+/** Locale-catalog data dir — one subdirectory per supported locale. */
 const dataDir = path.join(moduleRoot, 'public', 'data')
+/** English catalog dir — the canonical reference other locales are checked against. */
 const enDir = path.join(dataDir, 'en')
+/** Every locale dir except the shared `index` (shard manifest, not a locale). */
 const LOCALE_DIRS = readdirSync(dataDir, { withFileTypes: true })
   .filter((e) => e.isDirectory() && e.name !== 'index')
   .map((e) => e.name)
 
+/** Required keys every dossier file must carry — schema contract per body. */
 const DOSSIER_KEYS = ['id', 'name', 'kind', 'tagline', 'facts', 'history', 'source']
 
 describe('star-field module', () => {

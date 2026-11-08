@@ -13,6 +13,7 @@ import * as THREE from 'three'
 import { MeshBasicNodeMaterial } from 'three/webgpu'
 import * as TSL from 'three/tsl'
 
+/** Dependency bundle the node-material paths expect — TSL fns + material class. */
 const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
 import {
@@ -30,6 +31,7 @@ import { createStarState } from '../../../../engine/state.js'
 import { tickStar } from '../../../../engine/frame.js'
 import { SF_GROUPS, SF_KINDS, SF_SURFACES } from '@core/tokens/starfield/kinds.js'
 
+/** Canvas prototype accessor — for installing getContext stubs per test. */
 const ctxProto = () => window.HTMLCanvasElement.prototype
 
 /** Fake 2d context covering every call the generators make. */

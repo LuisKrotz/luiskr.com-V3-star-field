@@ -65,8 +65,10 @@ class MockVec3 {
   }
 }
 
+/** Canvas stub — hint sizing only reads clientWidth/Height. */
 const makeCanvas = () => ({ clientWidth: 400, clientHeight: 400 })
 
+/** Minimal star-state — hint code only reads camera.position + canvas. */
 const makeState = () => ({ camera: { position: { x: 0, y: 0, z: 0 } }, canvas: makeCanvas() })
 
 beforeEach(() => {

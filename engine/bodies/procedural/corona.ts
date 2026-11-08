@@ -23,11 +23,15 @@ import type { ThreeModule } from './shared.js'
  * shrinking soft blobs along a curved magnetic-loop path (each link a
  * radial gradient — nothing with a hard edge survives to crayon).
  */
+/** Atmospheric halo radius (fraction of half-edge) and peak alpha —
+ *  the wide soft wash that frames the star. */
 const _CORONA_HALO_R = 0.92
 const _CORONA_HALO_ALPHA = 0.34
 /** Halo/photosphere shade factors — low values keep the body's own tint
  *  saturated; shading far toward white washed coronas into gray fog. */
 const _CORONA_HALO_SHADE = 0.2
+/** Photosphere knot — hot core radius, alpha, and its stronger shade
+ *  toward white (the brightest point of the sprite). */
 const _CORONA_CORE_R = 0.32
 const _CORONA_CORE_ALPHA = 0.9
 const _CORONA_CORE_SHADE = 0.6
@@ -37,6 +41,8 @@ const _CORONA_CORE_SHADE = 0.6
 const _CORONA_FRINGE_R = 0.8
 const _CORONA_FRINGE_STOP = 0.45
 const _CORONA_FRINGE_ALPHA = 0.05
+/** Flare knots — count base/variance, limb distance base/variance,
+ *  blob size base/variance, alpha base/variance (seeded random ranges). */
 const _CORONA_KNOT_MIN = 5
 const _CORONA_KNOT_VAR = 5
 const _CORONA_KNOT_R0 = 0.5
@@ -45,6 +51,9 @@ const _CORONA_KNOT_SIZE = 0.05
 const _CORONA_KNOT_SIZE_VAR = 0.07
 const _CORONA_KNOT_ALPHA = 0.5
 const _CORONA_KNOT_ALPHA_VAR = 0.3
+/** Prominence wisps — count base/variance, limb start-radius
+ *  base/variance, magnetic-loop bend amplitude, reach off the limb,
+ *  and per-blob alpha. */
 const _CORONA_WISP_MIN = 8
 const _CORONA_WISP_VAR = 5
 const _CORONA_WISP_R0 = 0.28

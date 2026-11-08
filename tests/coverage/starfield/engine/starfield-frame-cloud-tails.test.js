@@ -26,24 +26,32 @@ const { makeStructure } = await import('../../../../engine/bodies/structures.js'
 const { buildStarBodies } = await import('../../../../engine/bodies-scene.js')
 const { seedFrom, lcg } = await import('../../../../engine/rand.js')
 const { wasmPool } = await import('@core/utils/wasm/wasm-pool.js')
+// Real three.js + TSL modules — the frame-cloud tests exercise node-material
+// composition on the genuine pipeline, not mocks.
 const THREE = await import('three')
 const { MeshBasicNodeMaterial } = await import('three/webgpu')
 const TSL = await import('three/tsl')
 
+/** Dependency bundle the frame-cloud factory expects — TSL node fns + material class. */
 const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
+/** wasm-pool dispatch spy — aliased once so beforeEach can reset/re-impl it. */
 const dispatch = wasmPool.dispatch
 
+/** Bare canvas — createStarState only needs the element handle in these tests. */
 const makeCanvas = () => document.createElement('canvas')
 
+/** Star-state factory with per-test field overrides merged on top. */
 const makeState = (overrides = {}) => Object.assign(createStarState(makeCanvas()), overrides)
 
+/** Minimal PerspectiveCamera stub — frame code only touches position/aspect/updateProjectionMatrix. */
 const fakeCamera = () => ({
   position: { x: 0, y: 0, z: 0, set: jest.fn() },
   aspect: 1,
   updateProjectionMatrix: jest.fn(),
 })
 
+/** Microtask+timer flush — drains the frame pipeline's queued promises. */
 const flush = () => new Promise((r) => setTimeout(r, 0))
 
 beforeEach(() => {

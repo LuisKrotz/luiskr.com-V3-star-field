@@ -21,6 +21,7 @@ import { DOM_STRINGS } from '@core/tokens/strings/dom.js'
 import { appText } from '@core/locale/ui-text.js'
 import { renderStarField } from '../../star/render.js'
 
+/** Renders the star-field JSX into a detached <div> — assertions query the wrapper. */
 const mount = (host) => {
   const node = renderStarField(host)
   const div = document.createElement('div')
@@ -30,6 +31,7 @@ const mount = (host) => {
   return div
 }
 
+/** Component-host stub — every field renderStarField reads, overridable per test. */
 const makeHost = (overrides = {}) => ({
   _sfReady: true,
   _sfFailed: false,

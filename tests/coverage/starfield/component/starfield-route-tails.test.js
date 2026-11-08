@@ -20,8 +20,10 @@ jest.unstable_mockModule('@core/utils/data/db.js', () => ({
 
 await import('../../../../StarField.js')
 
+/** Timer flush — drains the engine's queued promises between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
+/** Mounts a <view-star-field> element into the body and returns it. */
 const mount = () => {
   const el = document.createElement(VIEW_TAGS.VIEW_STAR_FIELD)
 
@@ -30,11 +32,14 @@ const mount = () => {
   return el
 }
 
+/** Runs the element's teardown then removes it from the DOM — full unmount. */
 const unmount = (el) => {
   el.onDestroy()
   el.remove()
 }
 
+/** Poll-until-true wait — async engine stages complete at unbounded
+ *  times, so this ticks every 15ms until pred() or the 10s deadline. */
 const waitFor = (pred, timeout = 10000) =>
   new Promise((resolve, reject) => {
     const t0 = Date.now()
@@ -46,6 +51,7 @@ const waitFor = (pred, timeout = 10000) =>
     tick()
   })
 
+/** Star-field route record — router.currentRoute stub for route tests. */
 const SF_ROUTE = { view: VIEW_TAGS.VIEW_STAR_FIELD, path: '/star-field', params: {} }
 
 let origFetch

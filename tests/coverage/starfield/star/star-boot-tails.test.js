@@ -10,6 +10,7 @@ import { describe, test, expect, jest, beforeEach } from '@jest/globals'
 
 import { STATE_CLASSES } from '@core/tokens/classes/state.js'
 
+/** Mutable engine-mock flags — tests flip these to steer init-fail, event, and destroy branches. */
 const mockCtl = { failInit: false, failed: false, events: null, destroyed: false, reduced: null }
 
 jest.unstable_mockModule('../../../../starfield-engine.js', () => ({
@@ -55,6 +56,7 @@ jest.unstable_mockModule('../../../../starfield-engine.js', () => ({
 const { initStarFieldEngine, updateStarLoader, dismissStarLoader } =
   await import('../../../../star/boot.js')
 
+/** Component-host stub — the fields star-boot touches, overridable per test. */
 const makeHost = (overrides = {}) => {
   const c = {
     _canvasEl: null,
@@ -226,4 +228,5 @@ describe('star boot tails', () => {
   })
 })
 
+/** Timer flush — drains the engine's queued promises between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))

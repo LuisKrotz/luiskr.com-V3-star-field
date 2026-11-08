@@ -22,8 +22,10 @@ import {
 } from '../../engine/registry.js'
 import { SF_SCALE } from '@core/tokens/starfield/params.js'
 
+/** fetch-Response stub — ok:true with an async json() returning the body. */
 const jsonRes = (body) => ({ ok: true, json: async () => body })
 
+/** Catalog manifest fixture — three kinds across three shards the registry loads. */
 const manifest = {
   total: 5,
   shardSize: 1000,
@@ -34,12 +36,14 @@ const manifest = {
   },
 }
 
+/** Star-shard payload — compact catalog rows (i/n/m/d/s/x/y/z fields). */
 const starShard = [
   { i: 'star-000000', n: 'Sol', m: -26.7, d: 0, s: 'G2V', x: 0, y: 0, z: 0 },
   { i: 'star-000001', n: 'Sirius', m: -1.4, d: 8.6, s: 'A1V', c: 'CMa', x: -5, y: -6, z: -1 },
   { i: 'star-000002', n: 'Vega', m: 0.0, d: 25, s: 'A0V', x: 10, y: 20, z: 5 },
 ]
 
+/** Exoplanet-shard payload — h = host star id linking planet→system. */
 const exoShard = [
   {
     i: 'exoplanet-000000',
@@ -54,6 +58,7 @@ const exoShard = [
   },
 ]
 
+/** Deep-sky-object shard — t = object type (G=galaxy), r = radial velocity. */
 const dsoShard = [
   {
     i: 'dso-000000',
@@ -69,6 +74,8 @@ const dsoShard = [
   },
 ]
 
+/** fetch mock that routes URL suffixes to the fixture shards; per-test
+ *  overrides merge into (and can replace) the default route table. */
 const routeFetch = (overrides = {}) =>
   jest.fn(async (url) => {
     const routes = {

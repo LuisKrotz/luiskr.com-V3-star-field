@@ -9,6 +9,7 @@
  */
 import { describe, test, expect, jest, beforeEach } from '@jest/globals'
 
+/** Mutable bootstrap-mock flags — tests flip these to steer populate/boot-throw branches. */
 const mockCtl = { populate: true, throwBoot: false }
 
 jest.unstable_mockModule('../../../../engine/bootstrap.js', () => ({
@@ -47,11 +48,13 @@ jest.unstable_mockModule('../../../../engine/bootstrap.js', () => ({
 
 const { StarFieldEngine } = await import('../../../../starfield-engine.js')
 
+/** Canvas stub with a working getRootNode — the engine reads it for root-context lookups. */
 const makeCanvas = () =>
   Object.assign(window.document.createElement('canvas'), {
     getRootNode: () => window.document,
   })
 
+/** Lifecycle-callback bundle the engine wiring expects — every hook a jest.fn. */
 const events = () => ({
   onReady: jest.fn(),
   onSelect: jest.fn(),

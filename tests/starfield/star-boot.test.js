@@ -13,10 +13,14 @@ import { ANIMATION_DURATIONS } from '@core/tokens/motion/animation.js'
 import { HTML_TAGS } from '@core/tokens/elements/html.js'
 import { dismissStarLoader, initStarFieldEngine, updateStarLoader } from '../../star/boot.js'
 
+/** Rewrites the URL without navigation — sets debug/query params per test. */
 const setSearch = (s) => window.history.replaceState(null, '', s)
 
+/** Timer flush — drains the engine's queued promises between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
+/** Poll-until-true wait — async boot stages complete at unbounded times,
+ *  so this ticks until pred() or the 8s deadline rejects. */
 const waitFor = (pred, timeout = 8000) =>
   new Promise((resolve, reject) => {
     const t0 = Date.now()
@@ -29,6 +33,8 @@ const waitFor = (pred, timeout = 8000) =>
     tick()
   })
 
+/** Component-host stub — the fields star-boot touches (_engine/_canvasEl/
+ *  _sfReady/_updateLoader/$ …) with a real canvas appended to the DOM. */
 const makeHost = (overrides = {}) => {
   const canvas = document.createElement(HTML_TAGS.CANVAS)
 

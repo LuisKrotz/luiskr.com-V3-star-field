@@ -21,6 +21,7 @@ import * as TSL from 'three/tsl'
 /** TSL namespace + node-material ctor bundle injected into body makers. */
 const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
+/** Timer flush — drains the engine's queued promises between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
 /** Encodes a fake deep-field binary: uint32 count + stride-6 float records. */

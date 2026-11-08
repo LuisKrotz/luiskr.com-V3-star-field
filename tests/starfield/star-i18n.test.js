@@ -7,7 +7,9 @@
  */
 import { describe, test, expect, jest, beforeEach } from '@jest/globals'
 
+/** RTDB payload the fetch mock serves — title + hint strings the view applies. */
 const dbData = { title: 'Star Field', hint: 'Drag to explore' }
+/** Named jest.fn handle — the mock module re-exports it so tests can clear/re-impl. */
 const fetchFirebaseDb = jest.fn(async () => ({ exists: () => true, val: () => dbData }))
 
 jest.unstable_mockModule('@core/utils/data/db.js', () => ({
@@ -15,8 +17,10 @@ jest.unstable_mockModule('@core/utils/data/db.js', () => ({
 }))
 
 const { loadStarTranslations, applyStarTranslations } = await import('../../star/i18n.js')
+/** Shared store singleton — i18n reads locale/preference state from it. */
 const store = (await import('@core/store.js')).default
 
+/** Timer flush — drains queued i18n/store microtasks between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
 beforeEach(() => {

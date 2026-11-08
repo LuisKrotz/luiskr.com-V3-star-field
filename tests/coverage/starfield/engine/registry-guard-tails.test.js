@@ -12,8 +12,10 @@ import { describe, test, expect, jest, afterEach } from '@jest/globals'
 const { loadRegistryRecord } = await import('../../../../engine/registry.js')
 const { fetchDossier } = await import('../../../../star/dossier.js')
 
+/** fetch-Response stub — ok:true with an async json() returning the body. */
 const jsonRes = (body) => ({ ok: true, json: async () => body })
 
+/** Catalog manifest fixture — star shard split in two to exercise multi-shard load. */
 const manifest = {
   total: 1002,
   shardSize: 1000,
@@ -43,7 +45,11 @@ describe('loadRegistryRecord defensive arms', () => {
     // the record must resolve null without fetching a shard that the
     // manifest never declared.
     expect(await loadRegistryRecord('dso-000000')).toBeNull()
-    expect(f.mock.calls.filter((c) => String(c[0]).endsWith('.json') && !String(c[0]).endsWith('manifest.json')).length).toBe(0)
+    expect(
+      f.mock.calls.filter(
+        (c) => String(c[0]).endsWith('.json') && !String(c[0]).endsWith('manifest.json')
+      ).length
+    ).toBe(0)
   })
 
   test('a shard slot outside the loaded rows resolves null', async () => {
@@ -80,9 +86,7 @@ describe('loadRegistryRecord defensive arms', () => {
     globalThis.fetch = jest.fn(async (url) =>
       String(url).endsWith('manifest.json')
         ? jsonRes(manifest)
-        : jsonRes([
-            { i: 'exoplanet-000000', n: 'Nameless b', h: 'HD 1', x: 1, y: 2, z: 3 },
-          ])
+        : jsonRes([{ i: 'exoplanet-000000', n: 'Nameless b', h: 'HD 1', x: 1, y: 2, z: 3 }])
     )
 
     const d = await fetchDossier('exoplanet-000000', 'en', {})

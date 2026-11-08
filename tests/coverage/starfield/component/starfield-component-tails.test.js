@@ -17,6 +17,7 @@ import { SF_CSS_PROPS } from '@core/tokens/css/starfield.js'
 import { POINTER_EVENTS } from '@core/tokens/events/dom.js'
 import { BREAKPOINTS } from '@core/tokens/layout/breakpoints.js'
 
+/** RTDB payload the fetchFirebaseDb mock serves — minimal fields the view renders. */
 const dbData = { title: 'Star Field' }
 
 jest.unstable_mockModule('@core/utils/data/db.js', () => ({
@@ -34,6 +35,7 @@ jest.unstable_mockModule('../../../../engine/registry.js', () => ({
 
 await import('../../../../StarField.js')
 
+/** Mounts a <view-star-field> element into the body and returns it. */
 const mount = () => {
   const el = document.createElement(VIEW_TAGS.VIEW_STAR_FIELD)
 
@@ -42,11 +44,13 @@ const mount = () => {
   return el
 }
 
+/** Runs the element's teardown then removes it from the DOM — full unmount. */
 const unmount = (el) => {
   el.onDestroy()
   el.remove()
 }
 
+/** Dispatches a synthetic Escape keydown — the nav-close hotkey. */
 const esc = (el) =>
   el.dispatchEvent(new window.KeyboardEvent('keydown', { key: KEYS.ESCAPE, bubbles: true }))
 

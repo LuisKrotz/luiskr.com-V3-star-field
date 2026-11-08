@@ -28,6 +28,7 @@ const fake2d = () => ({
   stroke: jest.fn(),
 })
 
+/** Canvas stub with stubbed clientWidth/Height — happy-dom reports 0s, and the fallback painter needs real extents. */
 const makeCanvas = (w = 640, h = 480) => {
   const el = document.createElement(HTML_TAGS.CANVAS)
 

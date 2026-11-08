@@ -33,14 +33,19 @@ import * as TSL from 'three/tsl'
 import * as THREE from 'three'
 
 /** TSL namespace + node-material ctor bundle injected into body makers. */
+/** Dependency bundle the node-material paths expect — TSL fns + material class. */
 const NODE_DEPS = { TSL, mats: { MeshBasicNodeMaterial } }
 
+/** Rewrites the URL without navigation — sets debug/query params per test. */
 const setSearch = (s) => window.history.replaceState(null, '', s)
 
+/** Timer flush — drains the engine's queued promises between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
+/** Bare canvas — createStarState only needs the element handle in these tests. */
 const makeCanvas = () => document.createElement(HTML_TAGS.CANVAS)
 
+/** Star-state factory with per-test field overrides merged on top. */
 const makeState = (overrides = {}) => {
   const s = createStarState(makeCanvas())
 
@@ -63,6 +68,7 @@ const makeFailOnceRenderer = () => {
   }
 }
 
+/** Minimal PerspectiveCamera stub — frame code only touches position/aspect/updateProjectionMatrix. */
 const fakeCamera = () => ({
   position: { x: 0, y: 0, z: 0, set: jest.fn() },
   aspect: 1,

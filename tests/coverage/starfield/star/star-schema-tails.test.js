@@ -13,14 +13,17 @@ import { emitStarIndexJsonLd, emitStarBodyJsonLd } from '../../../../star/schema
 import { generateProjectSchema } from '@core/utils/schema.js'
 import { TEST_PROJECTS, TEST_TEXT, TEST_URLS } from '@tests/fixtures/test-constants.js'
 
+/** Timer flush — schema emission happens after async route/data settles. */
 const flush = (ms = 30) => new Promise((r) => setTimeout(r, ms))
 
+/** Reads and parses the injected JSON-LD script tag — null when absent. */
 const graphPayload = () => {
   const el = document.getElementById(SCHEMA_STRINGS.JSON_LD_SCRIPT_ID)
 
   return el ? JSON.parse(el.textContent) : null
 }
 
+/** Route-record factory matching the router's shape; per-test overrides merge in. */
 const SF_ROUTE = (over = {}) => ({
   view: VIEW_TAGS.VIEW_STAR_FIELD,
   path: '/star-field-experiment',
@@ -29,6 +32,7 @@ const SF_ROUTE = (over = {}) => ({
   ...over,
 })
 
+/** Catalog manifest the schema paths read — 3 kinds, dso has no shards. */
 const MANIFEST = {
   total: 8,
   shardSize: 1000,
@@ -39,6 +43,7 @@ const MANIFEST = {
   },
 }
 
+/** View stub carrying only the fields schema generation reads. */
 const view = (over = {}) => ({
   _names: null,
   translations: null,

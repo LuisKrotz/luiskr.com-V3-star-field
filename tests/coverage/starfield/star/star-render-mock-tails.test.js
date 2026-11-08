@@ -11,6 +11,7 @@ import { describe, test, expect, jest } from '@jest/globals'
 import { SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 import { ROUTE_PATHS } from '@core/tokens/routes/paths.js'
 
+/** Single catalog body the catalog mock serves — every render arm reads it. */
 const mockBody = {
   id: 'mock-body',
   name: 'Mock Body',
@@ -19,6 +20,7 @@ const mockBody = {
   radius: 1,
   pos: [1, 0, 0],
 }
+/** Group key absent from the label map — exercises the raw-key fallback arm. */
 const mockUnmappedKey = 'unmapped-group'
 
 jest.unstable_mockModule('../../../../engine/catalog.js', () => ({
@@ -29,6 +31,8 @@ jest.unstable_mockModule('../../../../engine/catalog.js', () => ({
 
 const { renderStarField } = await import('../../../../star/render.js')
 
+/** Component-host stub — only the fields renderStarField reads (_dossier,
+ *  _liveText, _selectedId, flags), overridable per test. */
 const makeHost = (overrides = {}) =>
   Object.assign(
     {
@@ -73,6 +77,7 @@ const makeHost = (overrides = {}) =>
     overrides
   )
 
+/** textContent-or-empty accessor — null-safe flattening for assertions. */
 const flatText = (node) => node?.textContent ?? ''
 
 describe('star render tails', () => {

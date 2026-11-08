@@ -14,10 +14,13 @@ import { POINTER_EVENTS } from '@core/tokens/events/dom.js'
 import { StarFieldEngine } from '../../starfield-engine.js'
 import { __setRendererInitDelay } from 'three/webgpu'
 
+/** Rewrites the URL without navigation — sets debug/query params per test. */
 const setSearch = (s) => window.history.replaceState(null, '', s)
 
+/** Timer flush — drains the engine's queued promises between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
+/** Mounts a fresh <canvas> into the DOM — the engine binds its renderer to it. */
 const makeCanvas = () => {
   const canvas = document.createElement(HTML_TAGS.CANVAS)
 

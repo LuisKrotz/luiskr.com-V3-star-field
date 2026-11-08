@@ -23,6 +23,7 @@ import {
   toggleMusicRepeat,
 } from '../../../../star/music.js'
 
+/** Music-host stub — only the fields the player helpers read (_music* + $). */
 const makeHost = (overrides = {}) => ({
   _musicIndex: 0,
   _musicEl: null,
@@ -35,6 +36,7 @@ const makeHost = (overrides = {}) => ({
   ...overrides,
 })
 
+/** Host + real music-card element — $() returns the card so DOM mutations are observable. */
 const mountableHost = (overrides = {}) => {
   const card = document.createElement('div')
   card.className = SF_CLASSES.SF_MUSIC

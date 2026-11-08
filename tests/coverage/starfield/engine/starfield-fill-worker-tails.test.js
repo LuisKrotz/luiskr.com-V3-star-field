@@ -15,6 +15,7 @@ jest.unstable_mockModule('@core/utils/wasm/wasm-pool.js', () => ({
 const { fillField } = await import('../../../../engine/fill-worker.js')
 const { wasmPool } = await import('@core/utils/wasm/wasm-pool.js')
 
+/** wasm-pool dispatch spy — aliased once so tests can reset/re-impl it. */
 const dispatch = wasmPool.dispatch
 
 /**

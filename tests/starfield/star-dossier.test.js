@@ -11,10 +11,13 @@ import { fetchBodyNames, fetchDossier, loadDossier, prefetchDossier } from '../.
 import { getDevLog, clearDevLog } from '@core/devlog.js'
 import { LOG_LEVELS } from '@core/tokens/data/log.js'
 
+/** Timer flush — drains queued dossier-load microtasks between actions. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
+/** fetch-Response stub — ok:true with an async json() returning the body. */
 const jsonRes = (body) => ({ ok: true, json: async () => body })
 
+/** fetch mock routing URL suffixes to dossier files; `missing` frags 404. */
 const fileFetch = (files, missing = []) =>
   jest.fn(async (url) => {
     const u = String(url)

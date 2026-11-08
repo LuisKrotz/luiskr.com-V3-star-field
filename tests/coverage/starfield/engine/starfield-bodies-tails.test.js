@@ -43,6 +43,7 @@ import { spikesFor } from '../../../../engine/bodies/procedural/spikes.js'
 import { SF_KINDS, SF_GROUPS } from '@core/tokens/starfield/kinds.js'
 import { SF_COLORS } from '@core/tokens/starfield/params.js'
 
+/** Canvas prototype accessor — for installing getContext stubs per test. */
 const ctxProto = () => window.HTMLCanvasElement.prototype
 
 /** Fake 2d context surface covering every call maskPhotoTexture makes. */

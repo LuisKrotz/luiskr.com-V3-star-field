@@ -14,6 +14,7 @@ import { SF_CLASSES } from '@core/tokens/classes/starfield.js'
 import { DEBUG_PARAMS, WEBGL_MODES } from '@core/tokens/strings/debug.js'
 import { STATE_CLASSES } from '@core/tokens/classes/state.js'
 
+/** RTDB payload the fetchFirebaseDb mock serves — minimal fields the view renders. */
 const dbData = { title: 'Star Field', explore: 'Star Chart' }
 
 jest.unstable_mockModule('@core/utils/data/db.js', () => ({
@@ -22,8 +23,10 @@ jest.unstable_mockModule('@core/utils/data/db.js', () => ({
 
 await import('../../StarField.js')
 
+/** Rewrites the URL without navigation — sets ?star / ?dossier params per test. */
 const setSearch = (s) => window.history.replaceState(null, '', s)
 
+/** Mounts a <view-star-field> element into the body and returns it. */
 const mount = () => {
   const el = document.createElement(VIEW_TAGS.VIEW_STAR_FIELD)
 
@@ -32,6 +35,8 @@ const mount = () => {
   return el
 }
 
+/** Poll-until-true wait — async engine stages complete at unbounded
+ *  times, so this ticks every 30ms until pred() or the 10s deadline. */
 const waitFor = (pred, timeout = 10000) =>
   new Promise((resolve, reject) => {
     const t0 = Date.now()
@@ -44,6 +49,7 @@ const waitFor = (pred, timeout = 10000) =>
     tick()
   })
 
+/** Runs the element's teardown then removes it from the DOM — full unmount. */
 const unmount = (el) => {
   el.onDestroy()
   el.remove()

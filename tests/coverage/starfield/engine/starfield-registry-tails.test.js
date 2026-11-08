@@ -17,6 +17,7 @@ jest.unstable_mockModule('@core/utils/data/db.js', () => ({
 
 await import('../../../../StarField.js')
 
+/** Catalog manifest fixture — two kinds across two shards the registry loads. */
 const manifest = {
   total: 3,
   shardSize: 1000,
@@ -26,15 +27,18 @@ const manifest = {
   },
 }
 
+/** Star-shard payload — compact catalog rows (i/n/m/d/s/x/y/z fields). */
 const starShard = [
   { i: 'star-000000', n: 'Sirius', m: -1.4, d: 8.6, s: 'A1V', x: 1, y: 2, z: 3 },
   { i: 'star-000001', n: 'Canopus', m: -0.7, d: 310, s: 'A9II', x: 4, y: 5, z: 6 },
 ]
 
+/** Exoplanet-shard payload — h = host star id linking planet→system. */
 const exoShard = [
   { i: 'exoplanet-000000', n: 'Kepler-22 b', h: 'Kepler-22', d: 635, x: 1, y: 2, z: 3 },
 ]
 
+/** fetch mock that routes URL suffixes to the fixture shards above. */
 const regFetch = () =>
   jest.fn(async (url) => {
     const u = String(url)
@@ -46,8 +50,10 @@ const regFetch = () =>
     return { ok: false, status: 404 }
   })
 
+/** Timer flush — lets queued registry-load microtasks drain between steps. */
 const flush = (ms = 0) => new Promise((r) => setTimeout(r, ms))
 
+/** Mounts a <view-star-field> element into the body and returns it. */
 const mount = () => {
   const el = document.createElement(VIEW_TAGS.VIEW_STAR_FIELD)
 
@@ -56,11 +62,14 @@ const mount = () => {
   return el
 }
 
+/** Runs the element's teardown then removes it from the DOM — full unmount. */
 const unmount = (el) => {
   el.onDestroy()
   el.remove()
 }
 
+/** Poll-until-true wait — async engine stages complete at unbounded
+ *  times, so this ticks every 15ms until pred() or the 10s deadline. */
 const waitFor = (pred, timeout = 10000) =>
   new Promise((resolve, reject) => {
     const t0 = Date.now()

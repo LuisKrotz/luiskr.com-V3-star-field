@@ -27,10 +27,13 @@ const mkState = (over = {}) => ({
   ...over,
 })
 
+/** Compact star catalog row — i/n/m/s/x/y/z fields as the registry decodes. */
 const STAR_REC = { i: 'star-000000', n: 'Sirius', m: -1.4, s: 'A1V', x: 1, y: 2, z: 3 }
 
+/** Compact exoplanet catalog row — no host/spectral fields on this record. */
 const EXO_REC = { i: 'exoplanet-000000', n: 'Kepler-22 b', x: 4, y: 5, z: 6 }
 
+/** Compact deep-sky-object row — t = object type (G=galaxy). */
 const DSO_REC = { i: 'dso-009001', n: 'NGC 1234', t: 'G', x: 7, y: 8, z: 9 }
 
 describe('ensureRegistryBody', () => {

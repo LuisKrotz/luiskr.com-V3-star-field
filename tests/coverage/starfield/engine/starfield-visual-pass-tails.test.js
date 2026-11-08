@@ -16,20 +16,24 @@ import { SF_KINDS } from '@core/tokens/starfield/kinds.js'
 import { SF_APPROACH } from '@core/tokens/starfield/params.js'
 import * as THREE from 'three'
 
+/** Bare canvas — createStarState only needs the element handle in these tests. */
 const makeCanvas = () => document.createElement(HTML_TAGS.CANVAS)
 
+/** Star-state factory with per-test field overrides merged on top. */
 const makeState = (overrides = {}) => {
   const s = createStarState(makeCanvas())
 
   return Object.assign(s, overrides)
 }
 
+/** Minimal PerspectiveCamera stub — frame code only touches position/aspect/updateProjectionMatrix. */
 const fakeCamera = () => ({
   position: { x: 0, y: 0, z: 0, set: jest.fn() },
   aspect: 1,
   updateProjectionMatrix: jest.fn(),
 })
 
+/** Canvas prototype accessor — for installing getContext stubs per test. */
 const ctxProto = () => window.HTMLCanvasElement.prototype
 
 /** Fake 2d context covering the mask calls. */
@@ -47,6 +51,8 @@ const fakePhoto = (w = 400, h = 200) => ({
   colorSpace: '',
 })
 
+/** Scene-node record — the fields the visual pass mutates (pivot/spinner
+ *  rotations, mesh, satellite pivots) with per-test extras merged in. */
 const makeNode = (def, mesh = {}, extra = {}) => ({
   def,
   pivot: { rotation: { y: 0 } },
