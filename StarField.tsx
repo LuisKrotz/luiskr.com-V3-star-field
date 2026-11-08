@@ -60,7 +60,7 @@ import { slugify } from '@core/utils/string.js'
 import router from '@core/router/router.js'
 import type { RouteDescriptor } from '@core/router/types.js'
 import type { SFDossier } from './engine/types.js'
-import sfStyles from './star-field.scss?inline'
+import sfStyles from './star-field.scss?tiers'
 
 // ─── Star Field ──────────────────────────────────────────────────────────────
 // Immersive full-screen star chart as a standalone experience. Facade/state

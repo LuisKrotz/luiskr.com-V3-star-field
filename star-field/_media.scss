@@ -32,6 +32,7 @@
   &-cap {
     @extend .txt-xs;
 
+    font-family: var(--font-desc);
     font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink-3);
     letter-spacing: 0.05em;

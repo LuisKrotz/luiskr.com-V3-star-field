@@ -264,6 +264,7 @@
 .#{$_B_SF}-nav-item-meta {
   @extend .txt-xs;
 
+  font-family: var(--font-desc);
   font-weight: calc(400 + var(--fw-lift));
   display: block;
   color: var(--sf-ink-3);

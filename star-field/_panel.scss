@@ -111,6 +111,7 @@
   &-tagline {
     @extend .txt-sm;
 
+    font-family: var(--font-desc);
     font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink);
     margin: 0 0 to-rem($space-xl);
@@ -119,6 +120,7 @@
   &-history {
     @extend .txt-sm;
 
+    font-family: var(--font-desc);
     font-weight: calc(400 + var(--fw-lift));
     line-height: 1.75;
     color: var(--sf-ink);
@@ -128,6 +130,7 @@
   &-source {
     @extend .txt-sm;
 
+    font-family: var(--font-desc);
     font-weight: calc(400 + var(--fw-lift));
     color: var(--sf-ink-3);
     letter-spacing: 0.06em;
@@ -196,6 +199,7 @@
 .#{$_B_SF}-panel-sig {
   @extend .txt-xs;
 
+  font-family: var(--font-desc);
   font-weight: calc(400 + var(--fw-lift));
   color: var(--sf-ink-faint);
   letter-spacing: 0.08em;
