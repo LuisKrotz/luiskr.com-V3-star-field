@@ -11,7 +11,7 @@ import { SCHEMA_STRINGS } from '@core/tokens/strings/schema.js'
 import router from '@core/router/router.js'
 import { emitStarIndexJsonLd, emitStarBodyJsonLd } from '../../../../star/schema.js'
 import { generateProjectSchema } from '@core/utils/schema.js'
-import { TEST_PROJECTS, TEST_TEXT } from '@tests/fixtures/test-constants.js'
+import { TEST_PROJECTS, TEST_TEXT, TEST_URLS } from '@tests/fixtures/test-constants.js'
 
 const flush = (ms = 30) => new Promise((r) => setTimeout(r, ms))
 
@@ -194,14 +194,21 @@ describe('star schema runtime emitters', () => {
         name: 'Mars',
         tagline: 'red planet',
         facts: [{ label: 'Moons', value: '2' }],
+        media: {
+          images: [{ src: TEST_URLS.IMG, caption: TEST_TEXT.HEADING, credit: TEST_TEXT.BODY }],
+          videos: [{ src: TEST_URLS.VIDEO, poster: TEST_URLS.A, credit: TEST_TEXT.BODY }],
+        },
       }
     )
 
-    const article = graphPayload()['@graph'].find((e) => e['@type'] === 'Article')
+    const graph = graphPayload()['@graph']
+    const article = graph.find((e) => e['@type'] === 'Article')
 
     expect(article.headline).toBe('Mars')
     expect(article.about.additionalProperty).toHaveLength(1)
     expect(article.isPartOf['@id']).toBe('https://luiskr.com/star-field-experiment#webpage')
+    expect(graph.some((e) => e['@type'] === 'ImageObject')).toBe(true)
+    expect(graph.some((e) => e['@type'] === 'VideoObject')).toBe(true)
   })
 
   test('body emit falls back through names table then raw id', () => {

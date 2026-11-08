@@ -178,6 +178,7 @@ export function emitStarBodyJsonLd(c: StarField, id: string, dossier: SFDossier 
       name,
       tagline: dossier?.tagline,
       facts: dossier?.facts,
+      media: dossier?.media,
       lang: store.getters.getLang(),
     })
   )
