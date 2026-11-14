@@ -13,6 +13,7 @@
  *                        -cloud fades, hover tracking.
  *   `frame/fx.ts`      — pulse/cycle/corona ambient-life effects.
  */
+import { DATA_ATTRS } from '@core/tokens/attrs/data.js'
 import { SF_MOTION, SF_SPIRAL } from '@core/tokens/starfield/params.js'
 import { FrameTimePredictor } from '@core/utils/ml/frame-time.js'
 import { updateFly } from './fly.js'
@@ -67,6 +68,11 @@ export function tickStar(s: SFState, now?: number): void {
     s.animId = null
 
     s.failed = true
+
+    // The engine is dead — unstamp the print markers so a later walk
+    // skips this canvas instead of asking a corpse for a frame.
+    s.canvas?.removeAttribute(DATA_ATTRS.PRINT_CAPTURE)
+    s.canvas?.removeAttribute(DATA_ATTRS.PRINT_LANDSCAPE)
 
     devError('[StarField] frame error:', err)
 

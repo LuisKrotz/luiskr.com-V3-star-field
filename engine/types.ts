@@ -566,6 +566,9 @@ export interface SFState {
   reduced: boolean
   /** Resize listener to detach on destroy. */
   onResize: (() => void) | null
+  /** printcapture listener — answers the print adapter's frame request
+   *  with a PNG data URL; detached on destroy. */
+  onPrintCapture: ((e: Event) => void) | null
   /** Pointer listeners to detach on destroy. */
   onPointerDown: ((e: Event) => void) | null
   onPointerMove: ((e: Event) => void) | null

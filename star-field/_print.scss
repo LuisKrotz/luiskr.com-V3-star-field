@@ -1,0 +1,124 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  star-field/_print.scss — print contract for the Star Field experiment.
+//  The scene canvas (data-print-capture) is swapped for a .print-copy
+//  still that leads the page; the dossier panel pins flat and expands so
+//  every fact/section that screen-scroll would hide prints in full, and
+//  all interactive chrome — navigator drawer, HUD, tooltip, actions,
+//  instructions modal, badge, music card, loader, close buttons — stays
+//  behind. Imported LAST by the manifest so these rules win at equal
+//  specificity.
+// ════════════════════════════════════════════════════════════════════════════
+
+@media print {
+  :host {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    background: var(--bg-primary);
+  }
+
+  // Live canvas + interactive chrome — none of it prints.
+  .#{$_B_SF}-canvas,
+  .#{$_B_SF}-fallback,
+  .#{$_B_SF}-loader,
+  .#{$_B_SF}-hud,
+  .#{$_B_SF}-live,
+  .#{$_B_SF}-tip,
+  .#{$_B_SF}-nav,
+  .#{$_B_SF}-nav-panel,
+  .#{$_B_SF}-nav-search,
+  .#{$_B_SF}-nav-toggle,
+  .#{$_B_SF}-actions,
+  .#{$_B_SF}-instructions-btn,
+  .#{$_B_SF}-instructions-modal,
+  .#{$_B_SF}-badge,
+  .#{$_B_SF}-music,
+  .#{$_B_SF}-panel-close,
+  .print-src {
+    display: none;
+  }
+
+  // The captured scene still — full measure, natural aspect, leads the
+  // dossier like the experiment's background image does on screen.
+  .print-copy {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
+  }
+
+  .print-caption {
+    display: block;
+    margin: var(--space-xs) auto var(--space-md);
+    font-size: var(--print-caption-size);
+    color: var(--text-secondary);
+    text-align: center;
+    overflow-wrap: break-word;
+  }
+
+  // Dossier panel — pinned flat in the flow when a body is selected
+  // (sf-panel--open): full width, every scroll-hidden row revealed. The
+  // closed/empty panel (no selection) prints as a bare bordered pill —
+  // nothing in it is content, so it drops entirely.
+  .#{$_B_SF}-panel:not(.#{$_B_SF}-panel--open) {
+    display: none;
+  }
+
+  .#{$_B_SF}-panel--open {
+    position: static;
+    translate: none;
+    opacity: 1;
+    visibility: visible;
+    width: auto;
+    margin-top: var(--space-lg);
+    pointer-events: auto;
+    background: var(--bg-primary);
+    backdrop-filter: none;
+    border: var(--space-hairline) solid var(--border-color);
+    box-shadow: none;
+    color: var(--text-primary);
+    overflow: visible;
+
+    .#{$_B_SF}-panel-body {
+      overflow: visible;
+      padding: var(--space-lg);
+    }
+  }
+
+  // Dossier ink tokens read dark-scene values; re-pin them to the
+  // document's light tokens for paper output.
+  .#{$_B_SF}-panel-title,
+  .#{$_B_SF}-fact-val {
+    color: var(--text-primary);
+  }
+
+  .#{$_B_SF}-tagline,
+  .#{$_B_SF}-history,
+  .#{$_B_SF}-panel-sec-body,
+  .#{$_B_SF}-panel-close {
+    color: var(--text-primary);
+  }
+
+  .#{$_B_SF}-tag,
+  .#{$_B_SF}-fact-key,
+  .#{$_B_SF}-panel-sec-title,
+  .#{$_B_SF}-panel-source,
+  .#{$_B_SF}-panel-sig {
+    color: var(--text-secondary);
+  }
+
+  // Dossier media gallery — images contained, never split mid-figure.
+  .#{$_B_SF}-media-fig {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .#{$_B_SF}-media-img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+}

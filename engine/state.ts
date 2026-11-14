@@ -62,6 +62,7 @@ export function createStarState(canvas: HTMLCanvasElement, events: SFEvents = {}
     failed: false,
     reduced: false,
     onResize: null,
+    onPrintCapture: null,
     onPointerDown: null,
     onPointerMove: null,
     onPointerUp: null,

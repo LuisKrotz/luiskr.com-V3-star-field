@@ -28,6 +28,11 @@ import { devError, devWarn } from '@core/devlog.js'
 /** In-flight + resolved dossier cache — `locale:id` → dossier (or promise). */
 const _cache = new Map<string, Promise<SFDossier | null>>()
 
+/** Resolved-value mirror of `_cache` — sync readers (print prep) can't
+ *  await the promise bag, so each landed dossier registers here under
+ *  the same `locale:id` key. */
+const _resolved = new Map<string, SFDossier | null>()
+
 /**
  * Locale body-name table — `byId` feeds the navigator rows, hover
  * tooltips and the URL segment; `bySlug` (each name run through the
@@ -294,6 +299,13 @@ export function fetchDossier(
     }
 
     _cache.set(key, pending)
+
+    // Mirror resolved values for the synchronous readers — a print
+    // fired via the menu path can't await the promise bag, so
+    // `syncDossier` reads what already landed.
+    void pending.then((d) => {
+      _resolved.set(key, d)
+    })
   }
 
   return pending
@@ -344,4 +356,20 @@ export function loadDossier(c: StarField, id: string): void {
  */
 export function prefetchDossier(id: string): void {
   fetchDossier(id)
+}
+
+/**
+ * Synchronous read of the dossier cache — the promise bag `_cache` maps
+ * to resolved values only through `.then`, which is too late for the
+ * synchronous beforeprint walk. `loadDossier`'s own resolved value is
+ * mirrored here so a print fired while a body is selected can compose
+ * its plate without a fetch at all.
+ * @param c The StarField component.
+ * @param id Body id to look up.
+ * @returns The resolved dossier, or null when nothing is loaded for it.
+ */
+export function syncDossier(c: StarField, id: string): SFDossier | null {
+  if (c._selectedId === id && c._dossier) return c._dossier
+
+  return _resolved.get(`${dossierLocale(store.getters.getLang())}:${id}`) ?? null
 }

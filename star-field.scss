@@ -13,6 +13,7 @@
 //    _badge    "Featured on Three.js Resources" showcase chip
 //    _music    ambient playlist card (track list + native audio)
 //    _mobile   <768px full-width sheets + compact HUD
+//    _print    print contract (scene still + full dossier, no controls)
 //  Mobile-first: the drawer and panel become full-width sheets under 768px.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -38,3 +39,4 @@ $_NAV_INSET: to-rem($space-4xl);
 @import 'star-field/badge';
 @import 'star-field/music';
 @import 'star-field/mobile';
+@import 'star-field/print';

@@ -16,7 +16,13 @@
  *   get failed           → bootstrap bailed — host shows CSS fallback
  *   destroy()
  */
-import { POINTER_EVENTS, MOUSE_EVENTS, WINDOW_EVENTS } from '@core/tokens/events/dom.js'
+import {
+  POINTER_EVENTS,
+  MOUSE_EVENTS,
+  PRINT_EVENTS,
+  WINDOW_EVENTS,
+} from '@core/tokens/events/dom.js'
+import { DATA_ATTRS } from '@core/tokens/attrs/data.js'
 import { SF_BODY_IDS, SF_CAMERA, SF_STAR_CLOUD, SF_ZOOM } from '@core/tokens/starfield/params.js'
 import { isRegistryId, loadRegistryRecord, registryWorldPos } from './engine/registry.js'
 import { disposeRegistryBodies, ensureRegistryBody } from './engine/registry-body.js'
@@ -65,6 +71,14 @@ export class StarFieldEngine {
     // A missing scene means boot bailed before assembly — flag it so the
     // host swaps in the CSS fallback instead of a dead canvas.
     if (!s.scene) s.failed = true
+
+    // A failed engine can't answer printcapture — strip the markers so
+    // the print walk skips the dead canvas instead of stranding a blank
+    // plate on paper.
+    if (s.failed) {
+      s.canvas?.removeAttribute(DATA_ATTRS.PRINT_CAPTURE)
+      s.canvas?.removeAttribute(DATA_ATTRS.PRINT_LANDSCAPE)
+    }
 
     s.onReady?.()
   }
@@ -275,6 +289,15 @@ export class StarFieldEngine {
     }
 
     if (s.onResize) window.removeEventListener(WINDOW_EVENTS.RESIZE, s.onResize)
+
+    if (s.onPrintCapture) {
+      canvas?.removeEventListener(PRINT_EVENTS.CAPTURE, s.onPrintCapture)
+
+      // A dead engine's canvas must stop claiming the print plate —
+      // without the listener the marker would only produce a blank well.
+      canvas?.removeAttribute(DATA_ATTRS.PRINT_CAPTURE)
+      canvas?.removeAttribute(DATA_ATTRS.PRINT_LANDSCAPE)
+    }
 
     disposeStarCloud(s)
 

@@ -38,6 +38,7 @@ import {
   toggleMusicRepeat,
 } from './star/music.js'
 import { applyDossierLocale, fetchBodyNames, fetchDossier, loadDossier } from './star/dossier.js'
+import { bindPrintDossiers } from './star/print.js'
 import { emitStarIndexJsonLd } from './star/schema.js'
 import type { SFBodyNames } from './star/dossier.js'
 import { sfCatalogByGroup } from './engine/catalog.js'
@@ -127,6 +128,7 @@ export class StarField extends BaseComponent {
   _sfReady = false // first usable frame delivered — loader dismisses
   _sfFailed = false // engine boot failed — CSS fallback renders instead
   _fallbackDispose: (() => void) | null = null // 2D fallback resize-observer cleanup
+  _printDispose: (() => void) | null = null // printprepare listener unbinder
   _navOpen = false // navigator drawer open state
   _instructionsOpen = false // instructions modal open state (mobile)
   _search = '' // navigator directory filter query
@@ -165,6 +167,10 @@ export class StarField extends BaseComponent {
       this._canvasEl.className = SF_CLASSES.SF_CANVAS
 
       this._canvasEl.setAttribute(ARIA_ATTRS.ARIA_HIDDEN, ATTR_VALUES.TRUE)
+      // The print-capture/landscape markers stay OFF until the engine
+      // proves a painted frame — bootstrap stamps them after shader
+      // warmup, destroy strips them: a mid-boot or dead canvas is
+      // skipped by the walk instead of stranding a blank plate.
     }
 
     return this._canvasEl
@@ -207,6 +213,8 @@ export class StarField extends BaseComponent {
     mountMusic(this)
 
     autoplayMusic(this)
+
+    this._printDispose = bindPrintDossiers(this)
   }
 
   /** Lifecycle: re-mounts the canvas after re-render + re-inits if needed. */
@@ -250,6 +258,10 @@ export class StarField extends BaseComponent {
     this._fallbackDispose?.()
 
     this._fallbackDispose = null
+
+    this._printDispose?.()
+
+    this._printDispose = null
 
     this._musicEl?.pause()
 

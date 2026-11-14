@@ -15,6 +15,7 @@ import { StarFieldEngine } from '../starfield-engine.js'
 import { prefetchDossier } from './dossier.js'
 import type { StarField } from '../StarField.js'
 import { devError } from '@core/devlog.js'
+import { trackPrintJob } from '@core/utils/print/print.js'
 import { bindStarFallback } from '../engine/fallback-stars.js'
 
 /**
@@ -54,7 +55,9 @@ export function updateStarLoader(c: StarField, msg: string, pct: number): void {
  * loader overlay; select → dossier load + live announce; approach →
  * dossier prefetch; hover → live announce; ready → reduced-motion flag +
  * loader dismiss. A failed init still resolves the loader so the page
- * isn't stuck behind a broken overlay.
+ * isn't stuck behind a broken overlay. The init promise is registered
+ * as a pending print job so a print request landing mid-boot waits for
+ * the first painted frame before the media walk captures the canvas.
  * @param c The StarField element.
  */
 export function initStarFieldEngine(c: StarField): void {
@@ -104,7 +107,10 @@ export function initStarFieldEngine(c: StarField): void {
     },
   })
 
-  c._engine.init().catch((err) => {
+  // Registered BEFORE the catch handler so the print gate tracks the raw
+  // init settle — failures resolve through the catch below, never
+  // hanging the pending-job barrier.
+  const init = c._engine.init().catch((err) => {
     devError('[StarField] Engine init error:', err)
     c._isInitializing = false
     c._sfReady = true
@@ -118,6 +124,11 @@ export function initStarFieldEngine(c: StarField): void {
 
     c._dismissLoader()
   })
+
+  // The print gate's pending-job barrier waits on this settle — a print
+  // fired mid-boot pauses until the engine has painted (or failed, in
+  // which case the canvas carries no capture marker and is skipped).
+  trackPrintJob(init)
 }
 
 /**

@@ -1,4 +1,4 @@
-# luiskr.com V3 — star-field
+# luiskr.com — star-field
 
 Three.js star-field exploration experiment — the Solar System plus notable
 Milky Way, Local-Group and cosmic-hierarchy objects (Alpha/Proxima Centauri,
@@ -19,7 +19,7 @@ flat chart glyph, so the field reads correctly at every zoom.
 Route: `/star-field-experiment` (canonical) with per-locale slugs for all
 16 supported locales; reachable from the hamburger menu.
 
-Submodule of [luiskr.com-V3](https://github.com/LuisKrotz/luiskr.com-V3).
+Submodule of [luiskr.com](https://github.com/LuisKrotz/luiskr.com).
 Install deps from the superproject (`yarn install` at the root), then run
 `yarn dev` / `yarn test` / `yarn build` in this folder — see `package.json`
 scripts.
@@ -187,4 +187,4 @@ yarn test     # jest suite for star-field
 yarn build    # emits experiments/star-field/dist/star-field.js
 ```
 
-License: [MPL-2.0](https://github.com/LuisKrotz/luiskr.com-V3/blob/development/LICENSE)
+License: [MPL-2.0](https://github.com/LuisKrotz/luiskr.com/blob/development/LICENSE)

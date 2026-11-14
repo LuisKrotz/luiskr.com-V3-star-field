@@ -65,8 +65,11 @@ const shortcutRows = (t: Record<string, unknown>): Array<[string, unknown]> => [
 
 /** Renders the dossier facts list — one row per {label,value} pair. A
  *  malformed dossier payload renders the rest of the panel instead of
- *  crashing the whole view. */
-function renderFacts(dossier: SFDossier) {
+ *  crashing the whole view.
+ * @param dossier The resolved body dossier.
+ * @returns The facts `<dl>` element.
+ */
+export function renderFacts(dossier: SFDossier) {
   return (
     <dl className={SF_CLASSES.SF_FACTS}>
       {(dossier.facts ?? []).map((fact) => (
@@ -86,7 +89,7 @@ function renderFacts(dossier: SFDossier) {
  * @param src Media entry src from the dossier JSON.
  * @returns The URL to hand to img/video/audio elements.
  */
-function mediaUrl(src: string): string {
+export function mediaUrl(src: string): string {
   return src.startsWith(ATTR_VALUES.HTTP) ? src : `${SF_ASSET_BASE}/${src}`
 }
 
@@ -171,8 +174,10 @@ function renderMedia(dossier: SFDossier) {
  * Renders the dossier's named prose sections — deep-history bodies carry
  * titled subsections (formation, exploration, geology…) between the
  * summary paragraph and the media gallery.
+ * @param dossier The resolved body dossier.
+ * @returns The sections wrapper, or null when none exist.
  */
-function renderSections(dossier: SFDossier) {
+export function renderSections(dossier: SFDossier) {
   if (!dossier.sections?.length) return null
 
   return (
@@ -191,8 +196,11 @@ function renderSections(dossier: SFDossier) {
  * Renders the provenance signature — acquisition and translation ISO
  * dates from the dossier `meta` block, so readers can audit when the
  * data was pulled and this locale's text produced.
+ * @param dossier The resolved body dossier.
+ * @param t Locale label map (acquired/translated keys).
+ * @returns The signature line, or null without a meta block.
  */
-function renderSignature(dossier: SFDossier, t: Record<string, unknown>) {
+export function renderSignature(dossier: SFDossier, t: Record<string, unknown>) {
   if (!dossier.meta) return null
 
   return (

@@ -63,6 +63,10 @@ export interface SFRegistryRecord {
 /** Cached manifest promise — one fetch per session. */
 let _manifest: Promise<SFRegistryManifest | null> | null = null
 
+/** Resolved-value mirror of `_manifest` — sync readers (print prep)
+ *  can't await the promise bag, so each landed manifest registers here. */
+let _manifestResolved: SFRegistryManifest | null = null
+
 /** Resolved shard cache — `index/<kind>-NNN.json` → parsed records. */
 const _shards = new Map<string, Promise<SFRegistryRecord[] | null>>()
 
@@ -115,12 +119,24 @@ export function ensureRegistryManifest(): Promise<SFRegistryManifest | null> {
       // retries instead of inheriting a poisoned manifest.
       .then((m) => {
         if (!m) _manifest = null
+        else _manifestResolved = m
 
         return m
       })
   }
 
   return _manifest
+}
+
+/**
+ * Synchronous read of the registry manifest — the promise bag resolves
+ * too late for the synchronous beforeprint walk, so the landed manifest
+ * mirrors here for print composition (the deep-catalog index page reads
+ * per-kind counts from it). Returns null until the first fetch lands.
+ * @returns The resolved manifest, or null.
+ */
+export function syncRegistryManifest(): SFRegistryManifest | null {
+  return _manifestResolved
 }
 
 /**

@@ -26,6 +26,7 @@ jest.unstable_mockModule('@core/utils/data/db.js', () => ({
 
 jest.unstable_mockModule('../../../../engine/registry.js', () => ({
   ensureRegistryManifest: jest.fn(async () => null),
+  syncRegistryManifest: jest.fn(() => null),
   isRegistryId: (id) => /^\w+-\d{6}$/.test(id),
   loadRegistryRecord: jest.fn(async () => null),
   loadRegistryShard: jest.fn(async () => null),
